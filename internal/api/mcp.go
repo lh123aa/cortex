@@ -118,7 +118,12 @@ func (s *MCPServer) handleSearch(ctx context.Context, args map[string]any) (*mcp
 
 	var sb strings.Builder
 	for i, r := range results {
-		sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nPath: %s\nSection: %s\n\n%s\n---\n", i+1, r.Score, r.Chunk.DocumentID, r.Chunk.HeadingPath, truncateText(r.Chunk.ContentRaw, 300)))
+		// P0-2: 追溯实际文件路径，而非仅 DocumentID
+		docPath := r.Chunk.DocumentID // fallback
+		if doc, err := s.storage.GetDocumentByID(r.Chunk.DocumentID); err == nil && doc != nil {
+			docPath = doc.Path
+		}
+		sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nPath: %s\nSection: %s\n\n%s\n---\n", i+1, r.Score, docPath, r.Chunk.HeadingPath, truncateText(r.Chunk.ContentRaw, 300)))
 	}
 
 	return mcp.NewToolResultText(sb.String()), nil

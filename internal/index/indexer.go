@@ -7,11 +7,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/lh123aa/cortex/internal/chunker"
 	"github.com/lh123aa/cortex/internal/embedding"
+	"github.com/lh123aa/cortex/internal/metrics"
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/storage"
+	"github.com/panjf2000/ants/v2"
 )
 
 // Indexer 统筹负责调度文件提取、分块、向量与存储
@@ -19,6 +23,45 @@ type Indexer struct {
 	storage   storage.Storage
 	chunkers  map[string]chunker.Chunker
 	embedding embedding.EmbeddingProvider
+	pool      *ants.Pool
+}
+
+// NewIndexer 初始化索引器
+func NewIndexer(s storage.Storage, em embedding.EmbeddingProvider) (*Indexer, error) {
+	ckMap := make(map[string]chunker.Chunker)
+	mk, _ := chunker.NewMarkdownChunker(chunker.ChunkConfig{
+		MinChars:         50,
+		MaxTokens:        512,
+		IncludeBreadcrumb: true,
+	})
+	ckMap["md"] = mk
+
+	pk, _ := chunker.NewPDFChunker(chunker.ChunkConfig{
+		MinChars:          50,
+		MaxTokens:         512,
+		IncludeBreadcrumb: true,
+	})
+	ckMap["pdf"] = pk
+
+	dk, _ := chunker.NewDocxChunker(chunker.ChunkConfig{
+		MinChars:          50,
+		MaxTokens:         512,
+		IncludeBreadcrumb: true,
+	})
+	ckMap["docx"] = dk
+
+	// P2-2: 初始化 goroutine pool（默认 4 个 worker）
+	p, err := ants.NewPool(4, ants.WithPreAlloc(false))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create worker pool: %w", err)
+	}
+
+	return &Indexer{
+		storage:   s,
+		chunkers:  ckMap,
+		embedding: em,
+		pool:      p,
+	}, nil
 }
 
 type IndexResult struct {
@@ -29,70 +72,76 @@ type IndexResult struct {
 	Duration int64
 }
 
-func NewIndexer(s storage.Storage, em embedding.EmbeddingProvider) *Indexer {
-	// 配置并挂载具体格式分块器
-	ckMap := make(map[string]chunker.Chunker)
-// ... in NewIndexer initialization:
-	mk, _ := chunker.NewMarkdownChunker(chunker.ChunkConfig{
-		MinChars:         50,
-		MaxTokens:        512,
-		IncludeBreadcrumb: true,
-	})
-	ckMap["md"] = mk
-	
-	// v1.1 注册 PDF 引擎
-	pk, _ := chunker.NewPDFChunker(chunker.ChunkConfig{
-		MinChars:          50,
-		MaxTokens:         512,
-		IncludeBreadcrumb: true,
-	})
-	ckMap["pdf"] = pk
-
-	return &Indexer{
-		storage:   s,
-		chunkers:  ckMap,
-		embedding: em,
-	}
-}
-
-// IndexDirectory 遍历执行整个文件夹
+// IndexDirectory 遍历执行整个文件夹（并发优化）
 func (idx *Indexer) IndexDirectory(rootPath string) (*IndexResult, error) {
+	start := time.Now()
 	result := &IndexResult{}
 
+	// P2-2: 第一阶段 — 收集所有文件路径
+	var files []string
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return nil
 		}
-
-		result.Total++
-
-		// 选择 Chunker
-		fileType := "unknown"
-		if strings.HasSuffix(strings.ToLower(path), ".md") {
-			fileType = "md"
-		}
-
-		// 暴露并执行单一文件的解析
-		indexed, skipped, err := idx.IndexFile(path)
-		if err != nil {
-			result.Failed++
-			return nil // 不阻断继续跑
-		}
-
-		if indexed {
-			result.Indexed++
-		}
-		if skipped {
-			result.Skipped++
-		}
+		files = append(files, path)
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	result.Total = len(files)
 
-	return result, err
+	// 第二阶段 — 使用 goroutine pool 并发处理
+	type fileResult struct {
+		indexed bool
+		skipped bool
+		err     error
+	}
+	resultCh := make(chan fileResult, len(files))
+	var wg sync.WaitGroup
+
+	for _, file := range files {
+		wg.Add(1)
+		err := idx.pool.Submit(func() {
+			defer wg.Done()
+			indexed, skipped, err := idx.indexFileInternal(file)
+			resultCh <- fileResult{indexed: indexed, skipped: skipped, err: err}
+		})
+		if err != nil {
+			wg.Done()
+			resultCh <- fileResult{err: fmt.Errorf("pool submit error: %w", err)}
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	for res := range resultCh {
+		if res.indexed {
+			result.Indexed++
+		}
+		if res.skipped {
+			result.Skipped++
+		}
+		if res.err != nil {
+			result.Failed++
+		}
+		metrics.IndexTotal.Inc()
+	}
+
+	result.Duration = time.Since(start).Milliseconds()
+	return result, nil
 }
 
-// IndexFile 解析单一文件（暴露给Watcher使用）
+// IndexFile 解析单一文件（暴露给Watcher使用，内部调用）
 func (idx *Indexer) IndexFile(path string) (bool, bool, error) {
+	return idx.indexFileInternal(path)
+}
+
+// indexFileInternal 实际索引逻辑
+func (idx *Indexer) indexFileInternal(path string) (bool, bool, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return false, false, err
@@ -105,6 +154,8 @@ func (idx *Indexer) IndexFile(path string) (bool, bool, error) {
 		fileType = "md"
 	} else if strings.HasSuffix(pathLower, ".pdf") {
 		fileType = "pdf"
+	} else if strings.HasSuffix(pathLower, ".docx") {
+		fileType = "docx"
 	}
 	
 	ck, ok := idx.chunkers[fileType]
