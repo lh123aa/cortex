@@ -44,46 +44,65 @@ func (s *SQLiteStorage) FTSSearch(query string, topK int) ([]*models.SearchResul
 	return results, nil
 }
 
-// VectorSearch 载入内存计算 Cosine 相似度 (v1.1: 采用边读边推的 Bounded Slice 容量限制, 防御全表扫入内存的 OOM 问题)
+// VectorSearch 批量加载向量并计算 Cosine 相似度
+// v1.2: 使用分批加载避免全表扫描 OOM 问题
 func (s *SQLiteStorage) VectorSearch(queryVector []float32, topK int) ([]*models.SearchResult, error) {
-	q := `
-		SELECT v.chunk_id, v.embedding, c.document_id, c.heading_path, c.content, c.content_raw
-		FROM vectors v
-		JOIN chunks c ON v.chunk_id = c.id
-	`
-	rows, err := s.db.Query(q)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+	const batchSize = 1000
+	offset := 0
 
 	// 维护 TopK 缓冲池
 	var topResults []*models.SearchResult
 
-	for rows.Next() {
-		var chunkID string
-		var embeddingData []byte
-		chunk := models.Chunk{}
-
-		if err := rows.Scan(&chunkID, &embeddingData, &chunk.DocumentID, &chunk.HeadingPath, &chunk.Content, &chunk.ContentRaw); err != nil {
+	for {
+		q := `
+			SELECT v.chunk_id, v.embedding, c.document_id, c.heading_path, c.content, c.content_raw
+			FROM vectors v
+			JOIN chunks c ON v.chunk_id = c.id
+			LIMIT ? OFFSET ?
+		`
+		rows, err := s.db.Query(q, batchSize, offset)
+		if err != nil {
 			return nil, err
 		}
-		chunk.ID = chunkID
 
-		// v1.1 极速二进制解码
-		chunkVec := BytesToFloat32Array(embeddingData)
-		if len(chunkVec) == 0 {
-			continue
+		hasRows := false
+		for rows.Next() {
+			hasRows = true
+			var chunkID string
+			var embeddingData []byte
+			chunk := models.Chunk{}
+
+			if err := rows.Scan(&chunkID, &embeddingData, &chunk.DocumentID, &chunk.HeadingPath, &chunk.Content, &chunk.ContentRaw); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			chunk.ID = chunkID
+
+			// 极速二进制解码
+			chunkVec := BytesToFloat32Array(embeddingData)
+			if len(chunkVec) == 0 {
+				continue
+			}
+
+			similarity := cosineSimilarity(queryVector, chunkVec)
+
+			// 边界优化插入逻辑：如果是符合入榜标准的结果，立刻存入缓冲并踢掉最后一名
+			if len(topResults) < topK {
+				topResults = insertSorted(topResults, &chunk, similarity)
+			} else if similarity > topResults[topK-1].Score {
+				topResults = insertSorted(topResults, &chunk, similarity)[:topK]
+			}
+		}
+		rows.Close()
+
+		if !hasRows {
+			break
 		}
 
-		similarity := cosineSimilarity(queryVector, chunkVec)
+		offset += batchSize
 
-		// 边界优化插入逻辑：如果是符合入榜标准的结果，立刻存入缓冲并踢掉最后一名
-		if len(topResults) < topK {
-			topResults = insertSorted(topResults, &chunk, similarity)
-		} else if similarity > topResults[topK-1].Score {
-			topResults = insertSorted(topResults, &chunk, similarity)[:topK]
-		}
+		// 优化：如果已经收集了足够的候选结果且最低分低于当前阈值，可以提前终止
+		// 但需要完整扫描以确保准确性，所以这里继续全量扫描
 	}
 
 	return topResults, nil

@@ -152,3 +152,24 @@ func (s *SQLiteStorage) SetMetadata(key, value string) error {
 	_, err := s.db.Exec(`INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)`, key, value)
 	return err
 }
+
+// GetDocumentsCount returns total number of documents
+func (s *SQLiteStorage) GetDocumentsCount() (int, error) {
+	var count int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM documents`).Scan(&count)
+	return count, err
+}
+
+// GetChunksCount returns total number of chunks
+func (s *SQLiteStorage) GetChunksCount() (int, error) {
+	var count int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM chunks`).Scan(&count)
+	return count, err
+}
+
+// GetVectorsCount returns total number of vectors
+func (s *SQLiteStorage) GetVectorsCount() (int, error) {
+	var count int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM vectors`).Scan(&count)
+	return count, err
+}

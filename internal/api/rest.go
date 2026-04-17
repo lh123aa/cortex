@@ -4,13 +4,35 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lh123aa/cortex/internal/models"
+	"github.com/lh123aa/cortex/internal/rag"
 	"github.com/lh123aa/cortex/internal/search"
 	"github.com/lh123aa/cortex/internal/storage"
 	"go.uber.org/zap"
 )
+
+// HTTPServer wraps http.Server with graceful shutdown support
+type HTTPServer struct {
+	*http.Server
+}
+
+// Router returns the Gin router for external use
+func (s *RESTServer) Router() *gin.Engine {
+	return s.router
+}
+
+// ListenAndServe starts the HTTP server
+func (s *RESTServer) ListenAndServe(addr string) error {
+	return s.router.Run(addr)
+}
+
+// Shutdown gracefully shuts down the server
+func (s *HTTPServer) Shutdown(ctx context.Context) error {
+	return s.Server.Shutdown(ctx)
+}
 
 // parsePositiveInt parses a string to positive int, returns 0 if invalid
 func parsePositiveInt(s string) (int, error) {
@@ -24,6 +46,7 @@ func parsePositiveInt(s string) (int, error) {
 // RESTServer Gin-based HTTP API server
 type RESTServer struct {
 	engine *search.HybridSearchEngine
+	rag    *rag.RAGBuilder
 	storage storage.Storage
 	logger  *zap.Logger
 	router  *gin.Engine
@@ -36,6 +59,7 @@ func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, log *zap.L
 
 	s := &RESTServer{
 		engine: se,
+		rag:    rag.NewRAGBuilder(se),
 		storage: st,
 		logger:  log,
 		router:  r,
@@ -139,8 +163,21 @@ func (s *RESTServer) handleContext(c *gin.Context) {
 		}
 	}
 
-	// Note: RAG builder is not directly accessible here, need to wire it
-	c.JSON(200, gin.H{"query": q, "budget": budget, "message": "RAG context endpoint not yet wired"})
+	opts := models.SearchOptions{TopK: 50, Mode: "hybrid"}
+	rc, err := s.rag.BuildContext(context.Background(), q, budget, opts)
+	if err != nil {
+		s.logger.Error("RAG context build failed", zap.Error(err))
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"query":         q,
+		"context":        rc.Context,
+		"token_count":    rc.TokenCount,
+		"token_budget":   rc.TokenBudget,
+		"truncated":      rc.Truncated,
+	})
 }
 
 func (s *RESTServer) handleListDocs(c *gin.Context) {
@@ -167,9 +204,13 @@ func (s *RESTServer) handleGetDoc(c *gin.Context) {
 }
 
 func (s *RESTServer) handleStats(c *gin.Context) {
-	docs, _ := s.storage.ListDocuments(0, 0)
+	docsCount, _ := s.storage.GetDocumentsCount()
+	chunksCount, _ := s.storage.GetChunksCount()
+	vectorsCount, _ := s.storage.GetVectorsCount()
 	c.JSON(200, gin.H{
-		"documents_count": len(docs),
-		"version": "dev",
+		"documents_count": docsCount,
+		"chunks_count":     chunksCount,
+		"vectors_count":    vectorsCount,
+		"version":          "dev",
 	})
 }

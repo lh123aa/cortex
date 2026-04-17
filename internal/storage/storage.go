@@ -14,11 +14,16 @@ type Storage interface {
 	DeleteDocument(id string) error
 	DeleteDocumentByPath(path string) error
 	ListDocuments(limit, offset int) ([]*models.Document, error)
+	GetDocumentsCount() (int, error)
 
 	// 分块操作
 	SaveChunks(chunks []*models.Chunk) error
 	GetChunk(id string) (*models.Chunk, error)
 	DeleteChunksByDocument(docID string) error
+	GetChunksCount() (int, error)
+
+	// 向量操作
+	GetVectorsCount() (int, error)
 
 	// 搜索操作
 	// 向量检索(余弦相似度)，需预加载至内存或利用特定算法
@@ -29,7 +34,7 @@ type Storage interface {
 	// 元数据读写
 	GetMetadata(key string) (string, error)
 	SetMetadata(key, value string) error
-	
+
 	// 关闭数据库连接
 	Close() error
 }

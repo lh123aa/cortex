@@ -38,7 +38,9 @@ type OllamaConfig struct {
 
 // ONNXConfig holds ONNX-specific settings
 type ONNXConfig struct {
-	ModelPath string `mapstructure:"model_path"`
+	BaseURL string `mapstructure:"base_url"`
+	Model   string `mapstructure:"model"`
+	Dim     int    `mapstructure:"dim"`
 }
 
 // IndexConfig holds indexing settings
