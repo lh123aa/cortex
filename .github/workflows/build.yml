@@ -24,9 +24,9 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
 
-      - name: Build with CGO
+      - name: Build with CGO and FTS5
         run: |
-          go build -o cortex-${{ matrix.platform }}-amd64 ./cmd/cortex
+          go build -tags "fts5" -o cortex-${{ matrix.platform }}-amd64 ./cmd/cortex
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
