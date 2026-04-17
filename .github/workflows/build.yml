@@ -62,7 +62,7 @@ jobs:
           echo "Release failed, retrying..."
           for i in 1 2 3; do
             echo "Attempt $i..."
-            if gh release create v1.0.2 --draft --title "v1.0.2" --notes "Add Go and Text chunkers" cortex-* 2>/dev/null; then
+            if gh release create ${GITHUB_REF#refs/tags/} --draft --title "${GITHUB_REF#refs/tags/}" --notes "Fix file type detection for indexer" cortex-* 2>/dev/null; then
               echo "Release created successfully"
               exit 0
             fi
