@@ -50,6 +50,47 @@ func NewIndexer(s storage.Storage, em embedding.EmbeddingProvider) (*Indexer, er
 	})
 	ckMap["docx"] = dk
 
+	gk, _ := chunker.NewGoChunker(chunker.ChunkConfig{
+		MinChars:          50,
+		MaxTokens:         512,
+		IncludeBreadcrumb: true,
+	})
+	ckMap["go"] = gk
+
+	// 通用文本 chunker（用于 yaml, yml, json, txt, toml, ini, cfg, conf, hcl, env, properties, xml, html, css, js, ts, py, rb, java, cpp, c, h, sh, bash, zsh, ps1 等）
+	tk, _ := chunker.NewTextChunker(chunker.ChunkConfig{
+		MinChars:          50,
+		MaxTokens:         512,
+		IncludeBreadcrumb: true,
+	})
+	ckMap["yaml"] = tk
+	ckMap["yml"] = tk
+	ckMap["json"] = tk
+	ckMap["txt"] = tk
+	ckMap["toml"] = tk
+	ckMap["ini"] = tk
+	ckMap["cfg"] = tk
+	ckMap["conf"] = tk
+	ckMap["hcl"] = tk
+	ckMap["env"] = tk
+	ckMap["properties"] = tk
+	ckMap["xml"] = tk
+	ckMap["html"] = tk
+	ckMap["css"] = tk
+	ckMap["js"] = tk
+	ckMap["ts"] = tk
+	ckMap["py"] = tk
+	ckMap["rb"] = tk
+	ckMap["java"] = tk
+	ckMap["cpp"] = tk
+	ckMap["c"] = tk
+	ckMap["h"] = tk
+	ckMap["sh"] = tk
+	ckMap["bash"] = tk
+	ckMap["zsh"] = tk
+	ckMap["ps1"] = tk
+	// md 保持使用 MarkdownChunker（更好的 AST 解析）
+
 	// P2-2: 初始化 goroutine pool（默认 4 个 worker）
 	p, err := ants.NewPool(4, ants.WithPreAlloc(false))
 	if err != nil {
