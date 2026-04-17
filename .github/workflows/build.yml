@@ -51,5 +51,21 @@ jobs:
         with:
           files: cortex-*
           draft: true
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RETRY_COUNT: 3
+
+      - name: Retry Release on failure
+        if: failure()
+        run: |
+          echo "Release failed, retrying..."
+          for i in 1 2 3; do
+            echo "Attempt $i..."
+            if gh release create v1.0.2 --draft --title "v1.0.2" --notes "Add Go and Text chunkers" cortex-* 2>/dev/null; then
+              echo "Release created successfully"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "All retries failed"
