@@ -63,13 +63,13 @@ func (s *MCPServer) registerTools() {
 			Type: "object",
 			Properties: map[string]any{
 				"query": map[string]any{
-					"type":        "string",
-					"description": "The exact search query to lookup",
+					Type:        "string",
+					Description: "The exact search query to lookup",
 				},
 				"top_k": map[string]any{
-					"type":        "integer",
-					"description": "Number of results to return",
-					"default":     10,
+					Type:        "integer",
+					Description: "Number of results to return",
+					Default:     10,
 				},
 			},
 			Required: []string{"query"},
@@ -84,18 +84,37 @@ func (s *MCPServer) registerTools() {
 			Type: "object",
 			Properties: map[string]any{
 				"query": map[string]any{
-					"type":        "string",
-					"description": "The query to build context upon",
+					Type:        "string",
+					Description: "The query to build context upon",
 				},
 				"token_budget": map[string]any{
-					"type":        "integer",
-					"description": "Allowed max tokens",
-					"default":     1500,
+					Type:        "integer",
+					Description: "Allowed max tokens",
+					Default:     1500,
 				},
 			},
 			Required: []string{"query"},
 		},
 	}, s.handleContext)
+
+	// P3-5: 注册 tools/list 处理器（Agent 发现可用工具）
+	s.server.AddHandler(mcp.Handler{
+		Method: "tools/list",
+		Handler: func(ctx context.Context, req map[string]any) (any, error) {
+			return map[string]any{
+				"tools": []map[string]any{
+					{
+						"name":        "cortex_search",
+						"description": "Search the local knowledge base using hybrid vector and full-text search",
+					},
+					{
+						"name":        "cortex_context",
+						"description": "Assemble RAG context within a token budget",
+					},
+				},
+			}, nil
+		},
+	})
 }
 
 func (s *MCPServer) handleSearch(ctx context.Context, args map[string]any) (*mcp.CallToolResult, error) {
