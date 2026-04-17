@@ -19,6 +19,7 @@ import (
 	"github.com/lh123aa/cortex/internal/storage"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -106,15 +107,17 @@ func loadConfig() (*config.Config, *zap.Logger, error) {
 		return nil, nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	level := cfg.Cortex.LogLevel
+	levelStr := cfg.Cortex.LogLevel
 	if logLevel != "" {
-		level = logLevel
+		levelStr = logLevel
 	}
 
-	logger, err := log.NewLogger(level)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to init logger: %w", err)
+	var level zapcore.Level
+	if err := level.UnmarshalText([]byte(levelStr)); err != nil {
+		level = zapcore.InfoLevel
 	}
+
+	logger := log.NewLogger(level)
 
 	return cfg, logger, nil
 }
@@ -261,12 +264,12 @@ func runSearch(cmd *cobra.Command, args []string) {
 	}
 
 	for i, r := range results {
-		fmt.Printf("%d. [Score: %.4f] %s\n", i+1, r.Score, r.Title)
-		fmt.Printf("   %s\n", r.SourcePath)
-		if len(r.Content) > 200 {
-			fmt.Printf("   %s...\n\n", r.Content[:200])
+		fmt.Printf("%d. [Score: %.4f] %s\n", i+1, r.Score, r.Chunk.HeadingPath)
+		fmt.Printf("   %s\n", r.Chunk.DocumentID)
+		if len(r.Chunk.ContentRaw) > 200 {
+			fmt.Printf("   %s...\n\n", r.Chunk.ContentRaw[:200])
 		} else {
-			fmt.Printf("   %s\n\n", r.Content)
+			fmt.Printf("   %s\n\n", r.Chunk.ContentRaw)
 		}
 	}
 }
@@ -312,9 +315,9 @@ func runContext(cmd *cobra.Command, args []string) {
 	fmt.Printf("\n📝 RAG Context (budget: %d tokens):\n\n", tokenBudget)
 	fmt.Println("---")
 	for i, r := range results {
-		fmt.Printf("[%d] %s\n", i+1, r.Title)
-		fmt.Printf("Source: %s\n", r.SourcePath)
-		fmt.Printf("%s\n\n", r.Content)
+		fmt.Printf("[%d] %s\n", i+1, r.Chunk.HeadingPath)
+		fmt.Printf("Source: %s\n", r.Chunk.DocumentID)
+		fmt.Printf("%s\n\n", r.Chunk.ContentRaw)
 	}
 	fmt.Println("---")
 }
@@ -348,19 +351,7 @@ func runMCP(cmd *cobra.Command, args []string) {
 		zap.String("protocol", api.MCPProtocolVersion),
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-sigChan
-		logger.Info("shutting down MCP server...")
-		cancel()
-	}()
-
-	if err := mcpServer.Run(ctx); err != nil {
+	if err := mcpServer.Run(); err != nil {
 		logger.Error("MCP server error", zap.Error(err))
 		os.Exit(1)
 	}

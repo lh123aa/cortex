@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	ServerName = "cortex"
+	MCPProtocolVersion = "2025-06-18"
+	ServerName        = "cortex"
 )
 
 // Tool input schemas
