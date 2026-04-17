@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  cortex:
+    build: .
+    container_name: cortex
+    volumes:
+      - cortex-data:/data
+      - ./knowledge_base:/knowledge_base:ro  # 只读挂载本体宿主机的知识库
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    command: ["./cortex", "mcp"]  # 默认以后台跑mcp服务，可接前端或其他
+  
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  cortex-data:
+  ollama-data:

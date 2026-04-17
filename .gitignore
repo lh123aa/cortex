@@ -1,0 +1,42 @@
+# Binaries
+cortex
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output
+*.out
+
+# SQLite
+*.db
+*.db-wal
+*.db-shm
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies (go mod tidy)
+vendor/
+
+# Build output
+/dist/
+/build/
+
+# Next.js (not used but keep from original)
+node_modules/
+.next/
+coverage/
+*.log
+.env*
+!.env.example
