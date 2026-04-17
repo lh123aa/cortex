@@ -197,6 +197,50 @@ func (idx *Indexer) indexFileInternal(path string) (bool, bool, error) {
 		fileType = "pdf"
 	} else if strings.HasSuffix(pathLower, ".docx") {
 		fileType = "docx"
+	} else if strings.HasSuffix(pathLower, ".go") {
+		fileType = "go"
+	} else if strings.HasSuffix(pathLower, ".yaml") || strings.HasSuffix(pathLower, ".yml") {
+		fileType = "yaml"
+	} else if strings.HasSuffix(pathLower, ".json") {
+		fileType = "json"
+	} else if strings.HasSuffix(pathLower, ".txt") {
+		fileType = "txt"
+	} else if strings.HasSuffix(pathLower, ".toml") {
+		fileType = "toml"
+	} else if strings.HasSuffix(pathLower, ".ini") {
+		fileType = "ini"
+	} else if strings.HasSuffix(pathLower, ".cfg") || strings.HasSuffix(pathLower, ".conf") {
+		fileType = "cfg"
+	} else if strings.HasSuffix(pathLower, ".hcl") {
+		fileType = "hcl"
+	} else if strings.HasSuffix(pathLower, ".env") {
+		fileType = "env"
+	} else if strings.HasSuffix(pathLower, ".properties") {
+		fileType = "properties"
+	} else if strings.HasSuffix(pathLower, ".xml") {
+		fileType = "xml"
+	} else if strings.HasSuffix(pathLower, ".html") || strings.HasSuffix(pathLower, ".htm") {
+		fileType = "html"
+	} else if strings.HasSuffix(pathLower, ".css") {
+		fileType = "css"
+	} else if strings.HasSuffix(pathLower, ".js") {
+		fileType = "js"
+	} else if strings.HasSuffix(pathLower, ".ts") {
+		fileType = "ts"
+	} else if strings.HasSuffix(pathLower, ".py") {
+		fileType = "py"
+	} else if strings.HasSuffix(pathLower, ".rb") {
+		fileType = "rb"
+	} else if strings.HasSuffix(pathLower, ".java") {
+		fileType = "java"
+	} else if strings.HasSuffix(pathLower, ".cpp") || strings.HasSuffix(pathLower, ".cc") || strings.HasSuffix(pathLower, ".cxx") {
+		fileType = "cpp"
+	} else if strings.HasSuffix(pathLower, ".c") || strings.HasSuffix(pathLower, ".h") {
+		fileType = "c"
+	} else if strings.HasSuffix(pathLower, ".sh") || strings.HasSuffix(pathLower, ".bash") || strings.HasSuffix(pathLower, ".zsh") {
+		fileType = "sh"
+	} else if strings.HasSuffix(pathLower, ".ps1") {
+		fileType = "ps1"
 	}
 	
 	ck, ok := idx.chunkers[fileType]
