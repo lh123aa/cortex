@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -101,7 +102,7 @@ func Load(configPath string) (*Config, error) {
 	// Environment variable overrides
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("CORTEX")
-	viper.SetEnvKeyReplacer(newReplacer())
+	viper.SetEnvKeyReplacer(strings.NewReplacer("_", "."))
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {

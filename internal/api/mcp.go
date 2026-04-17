@@ -14,9 +14,19 @@ import (
 )
 
 const (
-	MCPProtocolVersion = "2025-06-18"
-	ServerName         = "cortex"
+	ServerName = "cortex"
 )
+
+// Tool input schemas
+type SearchArgs struct {
+	Query string `json:"query" jsonschema:"description=The exact search query to lookup;required"`
+	TopK  int    `json:"top_k,omitempty" jsonschema:"description=Number of results to return"`
+}
+
+type ContextArgs struct {
+	Query       string `json:"query" jsonschema:"description=The query to build context upon;required"`
+	TokenBudget int    `json:"token_budget,omitempty" jsonschema:"description=Allowed max tokens"`
+}
 
 type MCPServer struct {
 	server  *mcp.Server
@@ -34,12 +44,12 @@ func NewMCPServer(se *search.HybridSearchEngine, st storage.Storage, log *zap.Lo
 		logger:  log,
 	}
 
-	// 实例化 MCP Server
+	// 实例化 MCP Server - v1.2.0 API
 	s.server = mcp.NewServer(&mcp.Implementation{
 		Name:    ServerName,
 		Version: "v1.0.0",
 	}, &mcp.ServerOptions{
-		ProtocolVersion: MCPProtocolVersion,
+		// v1.2.0: 没有 ProtocolVersion 字段，协议版本自动协商
 	})
 
 	s.registerTools()
@@ -56,83 +66,29 @@ func truncateText(text string, n int) string {
 
 func (s *MCPServer) registerTools() {
 	// cortex_search: 提供语义搜索
-	s.server.AddTool(mcp.Tool{
+	mcp.AddTool(s.server, &mcp.Tool{
 		Name:        "cortex_search",
 		Description: "Search the local knowledge base (cortex) using vector and fts and return relevant chunks",
-		InputSchema: mcp.ToolInputSchema{
-			Type: "object",
-			Properties: map[string]any{
-				"query": map[string]any{
-					Type:        "string",
-					Description: "The exact search query to lookup",
-				},
-				"top_k": map[string]any{
-					Type:        "integer",
-					Description: "Number of results to return",
-					Default:     10,
-				},
-			},
-			Required: []string{"query"},
-		},
-	}, s.handleSearch)
+	}, s.handleSearchTool)
 
 	// cortex_context: 组装 RAG
-	s.server.AddTool(mcp.Tool{
+	mcp.AddTool(s.server, &mcp.Tool{
 		Name:        "cortex_context",
 		Description: "Assemble relevant information within a specific token budget limit strictly",
-		InputSchema: mcp.ToolInputSchema{
-			Type: "object",
-			Properties: map[string]any{
-				"query": map[string]any{
-					Type:        "string",
-					Description: "The query to build context upon",
-				},
-				"token_budget": map[string]any{
-					Type:        "integer",
-					Description: "Allowed max tokens",
-					Default:     1500,
-				},
-			},
-			Required: []string{"query"},
-		},
-	}, s.handleContext)
-
-	// P3-5: 注册 tools/list 处理器（Agent 发现可用工具）
-	s.server.AddHandler(mcp.Handler{
-		Method: "tools/list",
-		Handler: func(ctx context.Context, req map[string]any) (any, error) {
-			return map[string]any{
-				"tools": []map[string]any{
-					{
-						"name":        "cortex_search",
-						"description": "Search the local knowledge base using hybrid vector and full-text search",
-					},
-					{
-						"name":        "cortex_context",
-						"description": "Assemble RAG context within a token budget",
-					},
-				},
-			}, nil
-		},
-	})
+	}, s.handleContextTool)
 }
 
-func (s *MCPServer) handleSearch(ctx context.Context, args map[string]any) (*mcp.CallToolResult, error) {
-	query, ok := args["query"].(string)
-	if !ok {
-		return nil, fmt.Errorf("cortex error: query is strictly required for tool")
-	}
-
-	topK := 10
-	if tk, ok := args["top_k"].(float64); ok {
-		topK = int(tk)
+func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
+	topK := args.TopK
+	if topK <= 0 {
+		topK = 10
 	}
 
 	opts := models.SearchOptions{TopK: topK, Mode: "hybrid"}
-	results, err := s.search.Search(ctx, query, opts)
+	results, err := s.search.Search(ctx, args.Query, opts)
 	if err != nil {
 		s.logger.Error("mcp tool execution failed on search", zap.Error(err))
-		return nil, fmt.Errorf("search operational error: %v", err)
+		return nil, nil, fmt.Errorf("search operational error: %v", err)
 	}
 
 	var sb strings.Builder
@@ -145,31 +101,30 @@ func (s *MCPServer) handleSearch(ctx context.Context, args map[string]any) (*mcp
 		sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nPath: %s\nSection: %s\n\n%s\n---\n", i+1, r.Score, docPath, r.Chunk.HeadingPath, truncateText(r.Chunk.ContentRaw, 300)))
 	}
 
-	return mcp.NewToolResultText(sb.String()), nil
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: sb.String()}},
+	}, nil, nil
 }
 
-func (s *MCPServer) handleContext(ctx context.Context, args map[string]any) (*mcp.CallToolResult, error) {
-	query, ok := args["query"].(string)
-	if !ok {
-		return nil, fmt.Errorf("cortex error: query requried")
-	}
-
-	budget := 1500
-	if b, ok := args["token_budget"].(float64); ok {
-		budget = int(b)
+func (s *MCPServer) handleContextTool(ctx context.Context, req *mcp.CallToolRequest, args ContextArgs) (*mcp.CallToolResult, any, error) {
+	budget := args.TokenBudget
+	if budget <= 0 {
+		budget = 1500
 	}
 
 	opts := models.SearchOptions{TopK: 50, Mode: "hybrid"}
-	c, err := s.rag.BuildContext(ctx, query, budget, opts)
+	c, err := s.rag.BuildContext(ctx, args.Query, budget, opts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	ans := fmt.Sprintf("Context Built (%d / %d tokens)\n========\n%s", c.TokenCount, c.TokenBudget, c.Context)
-	return mcp.NewToolResultText(ans), nil
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: ans}},
+	}, nil, nil
 }
 
 func (s *MCPServer) Run() error {
 	// mcp-go-sdk Server 底层自动借助 stdin/stdout 进行 JsonRPC 通讯交互
-	return s.server.Run()
+	return s.server.Run(context.Background(), &mcp.StdioTransport{})
 }

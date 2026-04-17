@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lh123aa/cortex/internal/models"
@@ -94,7 +93,8 @@ func (s *RESTServer) Run(addr string) error {
 // --- Handlers ---
 
 func (s *RESTServer) handleHealth(c *gin.Context) {
-	if err := s.storage.GetMetadata("version"); err == nil {
+	// storage has version info?
+	if _, err := s.storage.GetMetadata("version"); err == nil {
 		c.JSON(200, gin.H{"status": "ok"})
 		return
 	}

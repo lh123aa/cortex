@@ -2,7 +2,6 @@ package storage
 
 import (
 	"database/sql"
-	"encoding/json"
 
 	"github.com/lh123aa/cortex/internal/models"
 )

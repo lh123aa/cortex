@@ -44,9 +44,9 @@ func NewMarkdownChunker(config ChunkConfig) (*MarkdownChunker, error) {
 // Chunk AST提取重组
 func (c *MarkdownChunker) Chunk(content string, path string) ([]*models.Chunk, error) {
 	reader := text.NewReader([]byte(content))
-	doc := ast.NewDocument()
-	if err := c.md.Parser().Parse(reader, doc); err != nil {
-		return nil, fmt.Errorf("failed to parse markdown AST: %w", err)
+	doc := c.md.Parser().Parse(reader)
+	if doc == nil {
+		return nil, fmt.Errorf("failed to parse markdown AST: result is nil")
 	}
 
 	docIDHash := generateID(path, "")
@@ -56,7 +56,7 @@ func (c *MarkdownChunker) Chunk(content string, path string) ([]*models.Chunk, e
 	var currentTokens int
 	var currentHeading string = "Document Start"
 	var currentLevel int = 0
-	
+
 	// 遍历 AST 叶子节点将其合并到 Chunk 中，不超 Token Budget
 	ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
@@ -88,7 +88,7 @@ func (c *MarkdownChunker) Chunk(content string, path string) ([]*models.Chunk, e
 			} else {
 				blockText = string(n.Text([]byte(content)))
 			}
-			
+
 			blockText = strings.TrimSpace(blockText)
 			if blockText == "" {
 				return ast.WalkContinue, nil
@@ -96,7 +96,7 @@ func (c *MarkdownChunker) Chunk(content string, path string) ([]*models.Chunk, e
 
 			// 精确计算 Tokens
 			tokens := len(c.tokenizer.Encode(blockText, nil, nil))
-			
+
 			if currentTokens+tokens > c.config.MaxTokens && currentPara.Len() > c.config.MinChars {
 				// 如果合并后超标，先吐出以前收集的
 				chunk := c.buildChunk(currentPara.String(), currentTokens, path, docIDHash, currentHeading, currentLevel)

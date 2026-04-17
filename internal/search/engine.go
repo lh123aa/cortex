@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"sort"
 
 	"github.com/lh123aa/cortex/internal/embedding"
 	"github.com/lh123aa/cortex/internal/models"

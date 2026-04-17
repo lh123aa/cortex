@@ -49,7 +49,12 @@ func (c *DocxChunker) Chunk(content string, path string) ([]*models.Chunk, error
 	var mainDoc []byte
 	for _, f := range r.File {
 		if f.Name == "word/document.xml" {
-			mainDoc, err = io.ReadAll(f.Open())
+			rc, err := f.Open()
+			if err != nil {
+				return nil, fmt.Errorf("failed to open document.xml: %w", err)
+			}
+			mainDoc, err = io.ReadAll(rc)
+			rc.Close()
 			if err != nil {
 				return nil, fmt.Errorf("failed to read document.xml: %w", err)
 			}

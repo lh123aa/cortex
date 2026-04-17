@@ -58,19 +58,19 @@ func (o *OllamaEmbedding) Embed(text string) ([]float32, error) {
 
 // EmbedWithContext 支持 context 的单个 embedding
 func (o *OllamaEmbedding) EmbedWithContext(ctx context.Context, text string) ([]float32, error) {
-	req := ollamaRequest{
+	reqBody := ollamaRequest{
 		Model:  o.Model,
 		Prompt: text,
 	}
-	body, _ := json.Marshal(req)
+	body, _ := json.Marshal(reqBody)
 
-	req, err := http.NewRequestWithContext(ctx, "POST", o.BaseURL+"/api/embeddings", bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", o.BaseURL+"/api/embeddings", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Content-Type", "application/json")
 
-	resp, err := o.client.Do(req)
+	resp, err := o.client.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}
