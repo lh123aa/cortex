@@ -1,0 +1,101 @@
+# Prometheus Alert Rules for Cortex
+# Place this file in your Prometheus rules directory
+
+groups:
+  - name: cortex_alerts
+    rules:
+      # Search errors
+      - alert: CortexHighSearchErrorRate
+        expr: rate(cortex_search_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cortex search error rate is high"
+          description: "Search error rate is {{ $value }} per second over the last 5 minutes"
+
+      # Embedding errors
+      - alert: CortexHighEmbeddingErrorRate
+        expr: rate(cortex_embedding_errors_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cortex embedding error rate is high"
+          description: "Embedding error rate is {{ $value }} per second over the last 5 minutes"
+
+      # Index failures
+      - alert: CortexIndexFailures
+        expr: cortex_index_errors_total > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cortex index errors detected"
+          description: "Total index errors: {{ $value }}"
+
+      # High search latency
+      - alert: CortexHighSearchLatency
+        expr: histogram_quantile(0.95, rate(cortex_search_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cortex search latency is high"
+          description: "P95 search latency is {{ $value }} seconds"
+
+      # Low cache hit rate
+      - alert: CortexLowCacheHitRate
+        expr: cortex_search_cache_hits_total / (cortex_search_cache_hits_total + cortex_search_cache_misses_total) < 0.5
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Cortex cache hit rate is low"
+          description: "Cache hit rate is {{ $value | humanizePercentage }}"
+
+      # API errors
+      - alert: CortexHighAPIErrorRate
+        expr: sum(rate(cortex_api_requests_total{status=~"5.."}[5m])) / sum(rate(cortex_api_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cortex API error rate is high"
+          description: "{{ $value | humanizePercentage }} of API requests are returning 5xx errors"
+
+      # Index progress stuck
+      - alert: CortexIndexProgressStuck
+        expr: cortex_index_files_total > 0 and cortex_index_filesIndexed{service="cortex"} == cortex_index_files_total{service="cortex"}
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: "Cortex index progress appears stuck"
+          description: "Index progress has not updated in over an hour"
+
+  - name: cortex_slo
+    rules:
+      # Search availability (99.9% target)
+      - alert: CortexSearchAvailabilitySLO
+        expr: |
+          1 - (
+            sum(rate(cortex_search_errors_total[1h])) /
+            sum(rate(cortex_search_total[1h]))
+          ) > 0.999
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cortex search availability SLO breached"
+          description: "Search availability is below 99.9% over the last hour"
+
+      # Search latency SLO (P95 < 500ms)
+      - alert: CortexSearchLatencySLO
+        expr: histogram_quantile(0.95, rate(cortex_search_duration_seconds_bucket[1h])) > 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cortex search latency SLO at risk"
+          description: "P95 search latency is above 500ms SLO target"

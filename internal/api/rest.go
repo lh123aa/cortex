@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/lh123aa/cortex/internal/embedding"
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/rag"
 	"github.com/lh123aa/cortex/internal/search"
@@ -50,6 +51,7 @@ type RESTServer struct {
 	storage storage.Storage
 	logger  *zap.Logger
 	router  *gin.Engine
+	health  *HealthChecker
 
 	// API Key Authentication
 	auth          *APIKeyAuth
@@ -58,7 +60,7 @@ type RESTServer struct {
 	authMu        sync.RWMutex
 }
 
-func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, log *zap.Logger) *RESTServer {
+func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, em embedding.EmbeddingProvider, log *zap.Logger) *RESTServer {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -69,6 +71,7 @@ func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, log *zap.L
 		storage:  st,
 		logger:   log,
 		router:   r,
+		health:   NewHealthChecker(st, em),
 		auth:     NewAPIKeyAuth("X-API-Key", "api_key"),
 		authEnabled: false,
 		authKeys: make(map[string]string),
@@ -115,8 +118,10 @@ func (s *RESTServer) ListAPIKeys() []string {
 }
 
 func (s *RESTServer) registerRoutes() {
-	// Health - 始终公开
+	// Health - 始终公开（增强版）
 	s.router.GET("/health", s.handleHealth)
+	s.router.GET("/health/ready", s.handleReady)
+	s.router.GET("/health/live", s.handleLive)
 
 	// API Key auth middleware wrapper
 	authHandler := s.auth.Middleware()
@@ -166,12 +171,31 @@ func (s *RESTServer) Run(addr string) error {
 // --- Handlers ---
 
 func (s *RESTServer) handleHealth(c *gin.Context) {
-	// storage has version info?
-	if _, err := s.storage.GetMetadata("version"); err == nil {
-		c.JSON(200, gin.H{"status": "ok"})
-		return
+	// 返回完整健康状态（包含所有检查）
+	status := s.health.FullCheck()
+	if status.Status == "healthy" {
+		c.JSON(200, status)
+	} else {
+		c.JSON(503, status) // Service Unavailable
 	}
-	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func (s *RESTServer) handleReady(c *gin.Context) {
+	// 就绪检查
+	if s.health.ReadyCheck() {
+		c.JSON(200, gin.H{"status": "ready"})
+	} else {
+		c.JSON(503, gin.H{"status": "not_ready"})
+	}
+}
+
+func (s *RESTServer) handleLive(c *gin.Context) {
+	// 存活检查
+	if s.health.LiveCheck() {
+		c.JSON(200, gin.H{"status": "alive"})
+	} else {
+		c.JSON(503, gin.H{"status": "dead"})
+	}
 }
 
 func (s *RESTServer) handleSearch(c *gin.Context) {

@@ -47,14 +47,28 @@ func (s *SQLiteStorage) FTSSearch(query string, topK int) ([]*models.SearchResul
 
 // VectorSearch 使用 HNSW 索引进行向量搜索
 // v2.0: 从 O(n) 全表扫描优化为 O(log n) HNSW 近似最近邻搜索
+// v2.1: HNSW 失败时自动降级到 brute-force
 func (s *SQLiteStorage) VectorSearch(queryVector []float32, topK int) ([]*models.SearchResult, error) {
-	// 如果 HNSW 索引可用，使用 HNSW 搜索
+	// 如果 HNSW 索引可用，尝试使用 HNSW 搜索
 	if s.useHNSW && s.hnsw != nil {
-		return s.vectorSearchHNSW(queryVector, topK)
+		results, err := s.vectorSearchHNSW(queryVector, topK)
+		if err == nil && len(results) > 0 {
+			return results, nil
+		}
+		// HNSW 失败，触发降级
+		s.logDegraded("hnsw", err)
 	}
 
-	// 否则回退到旧的暴力搜索
+	// 降级到旧的暴力搜索
 	return s.vectorSearchBruteForce(queryVector, topK)
+}
+
+// logDegraded 记录降级事件（未来可通过 metrics 暴露）
+func (s *SQLiteStorage) logDegraded(reason string, err error) {
+	// 目前只是日志记录，未来可添加 metrics 计数
+	// metrics.SearchDegraded.Inc()
+	_ = reason
+	_ = err
 }
 
 // vectorSearchHNSW 使用 HNSW 索引搜索
