@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lh123aa/cortex/internal/models"
@@ -44,11 +45,17 @@ func parsePositiveInt(s string) (int, error) {
 
 // RESTServer Gin-based HTTP API server
 type RESTServer struct {
-	engine *search.HybridSearchEngine
-	rag    *rag.RAGBuilder
+	engine  *search.HybridSearchEngine
+	rag     *rag.RAGBuilder
 	storage storage.Storage
 	logger  *zap.Logger
 	router  *gin.Engine
+
+	// API Key Authentication
+	auth          *APIKeyAuth
+	authEnabled   bool
+	authKeys      map[string]string // key -> name mapping for audit
+	authMu        sync.RWMutex
 }
 
 func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, log *zap.Logger) *RESTServer {
@@ -57,36 +64,102 @@ func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, log *zap.L
 	r.Use(gin.Recovery())
 
 	s := &RESTServer{
-		engine: se,
-		rag:    rag.NewRAGBuilder(se),
-		storage: st,
-		logger:  log,
-		router:  r,
+		engine:   se,
+		rag:      rag.NewRAGBuilder(se),
+		storage:  st,
+		logger:   log,
+		router:   r,
+		auth:     NewAPIKeyAuth("X-API-Key", "api_key"),
+		authEnabled: false,
+		authKeys: make(map[string]string),
 	}
 	s.registerRoutes()
 	return s
 }
 
+// EnableAuth 启用 API Key 认证
+func (s *RESTServer) EnableAuth() {
+	s.authEnabled = true
+}
+
+// DisableAuth 禁用 API Key 认证（用于开发模式）
+func (s *RESTServer) DisableAuth() {
+	s.authEnabled = false
+}
+
+// AddAPIKey 添加一个 API key，可选关联名称用于审计
+func (s *RESTServer) AddAPIKey(key string, name string) {
+	s.auth.AddKey(key)
+	s.authMu.Lock()
+	s.authKeys[key] = name
+	s.authMu.Unlock()
+}
+
+// RemoveAPIKey 移除一个 API key
+func (s *RESTServer) RemoveAPIKey(key string) {
+	s.auth.RemoveKey(key)
+	s.authMu.Lock()
+	delete(s.authKeys, key)
+	s.authMu.Unlock()
+}
+
+// ListAPIKeys 返回所有 API key 的名称列表（不返回 key 本身）
+func (s *RESTServer) ListAPIKeys() []string {
+	s.authMu.RLock()
+	defer s.authMu.RUnlock()
+	names := make([]string, 0, len(s.authKeys))
+	for _, name := range s.authKeys {
+		names = append(names, name)
+	}
+	return names
+}
+
 func (s *RESTServer) registerRoutes() {
-	// Health
+	// Health - 始终公开
 	s.router.GET("/health", s.handleHealth)
 
-	// Search
-	s.router.GET("/v1/search", s.handleSearch)
+	// API Key auth middleware wrapper
+	authHandler := s.auth.Middleware()
+	if !s.authEnabled {
+		// 如果认证被禁用，使用一个空的 handler
+		authHandler = func(c *gin.Context) { c.Next() }
+	}
 
-	// Context (RAG)
-	s.router.GET("/v1/context", s.handleContext)
+	// Protected routes
+	protected := s.router.Group("/v1")
+	protected.Use(authHandler)
+	{
+		// Search
+		protected.GET("/search", s.handleSearch)
 
-	// Documents
-	s.router.GET("/v1/docs", s.handleListDocs)
-	s.router.GET("/v1/docs/:id", s.handleGetDoc)
+		// Context (RAG)
+		protected.GET("/context", s.handleContext)
 
-	// Stats
-	s.router.GET("/v1/stats", s.handleStats)
+		// Documents
+		protected.GET("/docs", s.handleListDocs)
+		protected.GET("/docs/:id", s.handleGetDoc)
+
+		// Stats
+		protected.GET("/stats", s.handleStats)
+	}
+
+	// Admin routes (also protected, for key management)
+	admin := s.router.Group("/admin")
+	admin.Use(authHandler)
+	{
+		admin.GET("/keys", s.handleListKeys)
+	}
+
+	// Internal: Index progress (protected)
+	internal := s.router.Group("/internal")
+	internal.Use(authHandler)
+	{
+		internal.GET("/progress/:root_path", s.handleIndexProgress)
+	}
 }
 
 func (s *RESTServer) Run(addr string) error {
-	s.logger.Info("starting REST API server", zap.String("addr", addr))
+	s.logger.Info("starting REST API server", zap.String("addr", addr), zap.Bool("auth_enabled", s.authEnabled))
 	return s.router.Run(addr)
 }
 
@@ -134,17 +207,17 @@ func (s *RESTServer) handleSearch(c *gin.Context) {
 		}
 		enriched[i] = gin.H{
 			"rank":          i + 1,
-			"score":        r.Score,
-			"path":         path,
-			"section":      r.Chunk.HeadingPath,
-			"content_raw":  r.Chunk.ContentRaw,
-			"token_count":  r.Chunk.TokenCount,
+			"score":         r.Score,
+			"path":          path,
+			"section":       r.Chunk.HeadingPath,
+			"content_raw":   r.Chunk.ContentRaw,
+			"token_count":   r.Chunk.TokenCount,
 		}
 	}
 
 	c.JSON(200, gin.H{
-		"query":  q,
-		"total":  len(results),
+		"query":   q,
+		"total":   len(results),
 		"results": enriched,
 	})
 }
@@ -172,11 +245,11 @@ func (s *RESTServer) handleContext(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"query":         q,
-		"context":        rc.Context,
-		"token_count":    rc.TokenCount,
-		"token_budget":   rc.TokenBudget,
-		"truncated":      rc.Truncated,
+		"query":        q,
+		"context":      rc.Context,
+		"token_count":  rc.TokenCount,
+		"token_budget": rc.TokenBudget,
+		"truncated":    rc.Truncated,
 	})
 }
 
@@ -213,4 +286,31 @@ func (s *RESTServer) handleStats(c *gin.Context) {
 		"vectors_count":    vectorsCount,
 		"version":          "dev",
 	})
+}
+
+// handleListKeys 返回所有 API key 的名称（不返回 key 本身）
+func (s *RESTServer) handleListKeys(c *gin.Context) {
+	keys := s.ListAPIKeys()
+	c.JSON(200, gin.H{"keys": keys, "count": len(keys)})
+}
+
+// handleIndexProgress 获取索引进度（内部使用）
+func (s *RESTServer) handleIndexProgress(c *gin.Context) {
+	rootPath := c.Param("root_path")
+	if rootPath == "" {
+		c.JSON(400, gin.H{"error": "root_path is required"})
+		return
+	}
+
+	progress, err := s.storage.GetIndexProgress(rootPath)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	if progress == nil {
+		c.JSON(404, gin.H{"error": "no index progress found"})
+		return
+	}
+
+	c.JSON(200, progress)
 }

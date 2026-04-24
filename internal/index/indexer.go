@@ -113,7 +113,133 @@ type IndexResult struct {
 	Duration int64
 }
 
-// IndexDirectory 遍历执行整个文件夹（并发优化）
+// IndexDirectoryWithCheckpoint 遍历执行整个文件夹（支持断点恢复）
+func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string) (*IndexResult, error) {
+	start := time.Now()
+	result := &IndexResult{}
+
+	// 尝试获取已有进度
+	progress, err := idx.storage.GetIndexProgress(rootPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get index progress: %w", err)
+	}
+
+	// 初始化或恢复进度
+	if progress == nil {
+		progress = &models.IndexProgress{
+			RootPath:  rootPath,
+			Status:    "running",
+			StartedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+	}
+
+	// 第一阶段 — 收集所有文件路径
+	var allFiles []string
+	err = filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		allFiles = append(allFiles, path)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	result.Total = len(allFiles)
+	progress.TotalFiles = len(allFiles)
+
+	// 从上次中断的位置继续
+	startIndex := progress.LastFileIndex
+	if startIndex >= len(allFiles) {
+		// 已经全部处理完成
+		result.Indexed = progress.IndexedFiles
+		result.Skipped = progress.Skipped
+		result.Failed = progress.FailedFiles
+		idx.storage.CompleteIndexProgress(rootPath)
+		return result, nil
+	}
+
+	// 处理剩余文件
+	filesToProcess := allFiles[startIndex:]
+	resultCh := make(chan fileResult, len(filesToProcess))
+	var wg sync.WaitGroup
+
+	for i, file := range filesToProcess {
+		wg.Add(1)
+		err := idx.pool.Submit(func() {
+			defer wg.Done()
+			indexed, skipped, err := idx.indexFileInternal(file)
+			resultCh <- fileResult{indexed: indexed, skipped: skipped, err: err}
+		})
+		if err != nil {
+			wg.Done()
+			resultCh <- fileResult{err: fmt.Errorf("pool submit error: %w", err)}
+		}
+
+		// 每 10 个文件保存一次进度
+		if (i+1)%10 == 0 || i == len(filesToProcess)-1 {
+			progress.LastFileIndex = startIndex + i + 1
+			progress.LastFilePath = file
+			progress.UpdatedAt = time.Now()
+
+			// 汇总当前结果
+			for j := 0; j < len(resultCh); j++ {
+				select {
+				case res := <-resultCh:
+					if res.indexed {
+						result.Indexed++
+						progress.IndexedFiles++
+					}
+					if res.skipped {
+						result.Skipped++
+					}
+					if res.err != nil {
+						result.Failed++
+						progress.FailedFiles++
+					}
+				default:
+					break
+				}
+			}
+
+			if err := idx.storage.SaveIndexProgress(progress); err != nil {
+				log.Printf("Warning: failed to save index progress: %v", err)
+			}
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	for res := range resultCh {
+		if res.indexed {
+			result.Indexed++
+			progress.IndexedFiles++
+		}
+		if res.skipped {
+			result.Skipped++
+		}
+		if res.err != nil {
+			result.Failed++
+			progress.FailedFiles++
+		}
+		metrics.IndexTotal.Inc()
+	}
+
+	// 标记完成
+	progress.Status = "completed"
+	progress.CompletedAt = time.Now()
+	progress.UpdatedAt = time.Now()
+	idx.storage.SaveIndexProgress(progress)
+
+	result.Duration = time.Since(start).Milliseconds()
+	return result, nil
+}
+
+// IndexDirectory 遍历执行整个文件夹（并发优化，不支持断点恢复）
 func (idx *Indexer) IndexDirectory(rootPath string) (*IndexResult, error) {
 	start := time.Now()
 	result := &IndexResult{}
@@ -242,7 +368,7 @@ func (idx *Indexer) indexFileInternal(path string) (bool, bool, error) {
 	} else if strings.HasSuffix(pathLower, ".ps1") {
 		fileType = "ps1"
 	}
-	
+
 	ck, ok := idx.chunkers[fileType]
 	if !ok {
 		return false, true, fmt.Errorf("unsupported file type: %s", path)
@@ -309,4 +435,9 @@ func (idx *Indexer) indexFileInternal(path string) (bool, bool, error) {
 	}
 
 	return true, false, nil
+}
+
+// GetIndexProgress 获取当前索引进度
+func (idx *Indexer) GetIndexProgress(rootPath string) (*models.IndexProgress, error) {
+	return idx.storage.GetIndexProgress(rootPath)
 }

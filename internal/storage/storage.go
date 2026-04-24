@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"time"
+
 	"github.com/lh123aa/cortex/internal/models"
 )
 
@@ -31,10 +33,26 @@ type Storage interface {
 	// FTS 全文检索
 	FTSSearch(query string, topK int) ([]*models.SearchResult, error)
 
+	// 缓存操作
+	GetCachedSearch(query string, mode string, topK int) ([]*models.SearchResult, bool)
+	SetCachedSearch(query string, mode string, topK int, results []*models.SearchResult, ttl time.Duration) error
+	InvalidateSearchCache() error
+
 	// 元数据读写
 	GetMetadata(key string) (string, error)
 	SetMetadata(key, value string) error
 
+	// 索引进度操作（断点恢复）
+	SaveIndexProgress(p *models.IndexProgress) error
+	GetIndexProgress(rootPath string) (*models.IndexProgress, error)
+	ListIndexProgress(limit, offset int) ([]*models.IndexProgress, error)
+	DeleteIndexProgress(id int) error
+	CompleteIndexProgress(rootPath string) error
+	FailIndexProgress(rootPath string, errMsg string) error
+
 	// 关闭数据库连接
 	Close() error
+
+	// HNSW 索引构建（可选实现，用于加速向量搜索）
+	BuildHNSWIndex() error
 }

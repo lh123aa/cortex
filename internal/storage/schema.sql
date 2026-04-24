@@ -24,6 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
 -- 分块表 (Chunks)
 CREATE TABLE IF NOT EXISTS chunks (
     id TEXT PRIMARY KEY,
+    rowid INTEGER PRIMARY KEY AUTOINCREMENT,
     document_id TEXT NOT NULL,
     heading_path TEXT,
     heading_level INTEGER,
@@ -88,3 +89,37 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 索引进度追踪表（用于断点恢复）
+CREATE TABLE IF NOT EXISTS index_progress (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    root_path TEXT NOT NULL,
+    last_file_path TEXT DEFAULT '',
+    last_file_index INTEGER DEFAULT 0,
+    total_files INTEGER DEFAULT 0,
+    indexed_files INTEGER DEFAULT 0,
+    indexed_chunks INTEGER DEFAULT 0,
+    failed_files INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'running',
+    started_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP,
+    error_message TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_progress_root ON index_progress(root_path);
+CREATE INDEX IF NOT EXISTS idx_progress_status ON index_progress(status);
+
+-- 搜索缓存表
+CREATE TABLE IF NOT EXISTS search_cache (
+    query_hash TEXT PRIMARY KEY,
+    query TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    top_k INTEGER NOT NULL,
+    results TEXT NOT NULL,
+    hit_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_cache_expires ON search_cache(expires_at);

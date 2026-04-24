@@ -82,7 +82,7 @@ func (s *SQLiteStorage) SaveChunks(chunks []*models.Chunk) error {
 	defer tx.Rollback()
 
 	stmtChunk, err := tx.Prepare(`
-		INSERT OR REPLACE INTO chunks 
+		INSERT OR REPLACE INTO chunks
 		(id, document_id, heading_path, heading_level, content, content_raw, line_start, line_end, char_start, char_end, token_count, embedding_model)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
@@ -112,6 +112,11 @@ func (s *SQLiteStorage) SaveChunks(chunks []*models.Chunk) error {
 			if _, err := stmtVec.Exec(c.ID, embData, len(c.Embedding), c.EmbeddingModel); err != nil {
 				return err
 			}
+
+			// 3. 同时更新 HNSW 索引 (如果索引已构建)
+			if s.useHNSW && s.hnsw != nil {
+				s.hnsw.Add(c.ID, c.Embedding)
+			}
 		}
 	}
 
@@ -131,9 +136,33 @@ func (s *SQLiteStorage) GetChunk(id string) (*models.Chunk, error) {
 
 // DeleteChunksByDocument 清理旧区块
 func (s *SQLiteStorage) DeleteChunksByDocument(docID string) error {
-	// CASCADE 外键会一同删除 vectors 和 chunks_fts 中需要使用 trigger 删除，这里暂略化 FTS 的删除处理 (FTS 可在 trigger 维护)
-	_, err := s.db.Exec(`DELETE FROM chunks WHERE document_id = ?`, docID)
-	return err
+	// 先获取要删除的 chunk IDs（用于更新 HNSW 索引）
+	var chunkIDs []string
+	rows, err := s.db.Query(`SELECT id FROM chunks WHERE document_id = ?`, docID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var id string
+			if rows.Scan(&id) == nil {
+				chunkIDs = append(chunkIDs, id)
+			}
+		}
+	}
+
+	// 执行删除
+	_, err = s.db.Exec(`DELETE FROM chunks WHERE document_id = ?`, docID)
+	if err != nil {
+		return err
+	}
+
+	// 从 HNSW 索引中移除
+	if s.useHNSW && s.hnsw != nil {
+		for _, id := range chunkIDs {
+			s.hnsw.Remove(id)
+		}
+	}
+
+	return nil
 }
 
 // GetMetadata

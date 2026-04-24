@@ -133,6 +133,11 @@ func initStorage(cfg *config.Config, logger *zap.Logger) (storage.Storage, error
 		return nil, fmt.Errorf("failed to init storage: %w", err)
 	}
 
+	// 构建 HNSW 索引（如果数据库中已有向量）
+	if err := st.BuildHNSWIndex(); err != nil {
+		logger.Warn("failed to build HNSW index, using brute force search", zap.Error(err))
+	}
+
 	logger.Info("storage initialized", zap.String("path", cfg.Cortex.DBPath))
 	return st, nil
 }
@@ -154,7 +159,16 @@ func initEmbedding(cfg *config.Config, logger *zap.Logger) (embedding.EmbeddingP
 	}
 
 	if cfg.Embedding.Provider == "onnx" {
-		return nil, fmt.Errorf("ONNX provider not yet implemented")
+		onnx := embedding.NewONNXEmbedding(
+			cfg.Embedding.ONNX.BaseURL,
+			cfg.Embedding.ONNX.Model,
+			cfg.Embedding.ONNX.Dim,
+		)
+		primary = onnx
+		logger.Info("embedding provider initialized",
+			zap.String("provider", "onnx"),
+			zap.String("model", cfg.Embedding.ONNX.Model),
+		)
 	}
 
 	if primary != nil {

@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 )
 
@@ -26,9 +28,9 @@ type CortexConfig struct {
 
 // EmbeddingConfig holds embedding provider settings
 type EmbeddingConfig struct {
-	Provider string             `mapstructure:"provider"`
-	Ollama  OllamaConfig        `mapstructure:"ollama"`
-	ONNX    ONNXConfig         `mapstructure:"onnx"`
+	Provider string       `mapstructure:"provider"`
+	Ollama   OllamaConfig  `mapstructure:"ollama"`
+	ONNX     ONNXConfig    `mapstructure:"onnx"`
 }
 
 // OllamaConfig holds Ollama-specific settings
@@ -66,8 +68,20 @@ type BackupConfig struct {
 	AutoBackup bool   `mapstructure:"auto_backup"`
 }
 
+// ConfigWatcher 配置变更监听器
+type ConfigWatcher struct {
+	viper  *viper.Viper
+	mu     sync.RWMutex
+	done   chan struct{}
+	onChange func(*Config) // 配置变更回调
+}
+
 // Global config instance
-var cfg *Config
+var (
+	cfg     *Config
+	watcher *ConfigWatcher
+	mu      sync.RWMutex
+)
 
 // Load loads configuration from file and environment variables
 func Load(configPath string) (*Config, error) {
@@ -90,47 +104,185 @@ func Load(configPath string) (*Config, error) {
 	viper.SetDefault("backup.max_backups", 10)
 	viper.SetDefault("backup.auto_backup", false)
 
+	v := viper.New()
 	if configPath != "" {
-		viper.SetConfigFile(configPath)
+		v.SetConfigFile(configPath)
 	} else {
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
-		viper.AddConfigPath(filepath.Join(defaultDir, "config"))
-		viper.AddConfigPath(".")
+		v.SetConfigName("config")
+		v.SetConfigType("yaml")
+		v.AddConfigPath(filepath.Join(defaultDir, "config"))
+		v.AddConfigPath(".")
 	}
 
 	// Environment variable overrides
-	viper.AutomaticEnv()
-	viper.SetEnvPrefix("CORTEX")
-	viper.SetEnvKeyReplacer(strings.NewReplacer("_", "."))
+	v.AutomaticEnv()
+	v.SetEnvPrefix("CORTEX")
+	v.SetEnvKeyReplacer(strings.NewReplacer("_", "."))
 
-	if err := viper.ReadInConfig(); err != nil {
+	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("failed to read config: %w", err)
 		}
 		// Config file not found, use defaults only
 	}
 
-	if err := viper.Unmarshal(&cfg); err != nil {
+	config := &Config{}
+	if err := v.Unmarshal(config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
+
+	mu.Lock()
+	cfg = config
+	mu.Unlock()
 
 	return cfg, nil
 }
 
-// Get returns the global config instance
+// WatchConfig 启动配置热更新监控
+func WatchConfig(onChange func(*Config)) error {
+	mu.RLock()
+	c := cfg
+	mu.RUnlock()
+	if c == nil {
+		return fmt.Errorf("config not loaded, call Load first")
+	}
+
+	mu.Lock()
+	if watcher != nil {
+		mu.Unlock()
+		return nil // already watching
+	}
+
+	v := viper.New()
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
+
+	home, _ := os.UserHomeDir()
+	defaultDir := filepath.Join(home, ".cortex")
+	v.AddConfigPath(filepath.Join(defaultDir, "config"))
+	v.AddConfigPath(".")
+
+	// 读取现有配置
+	if err := v.ReadInConfig(); err != nil {
+		mu.Unlock()
+		return fmt.Errorf("failed to read config for watching: %w", err)
+	}
+
+	watcher = &ConfigWatcher{
+		viper:     v,
+		done:      make(chan struct{}),
+		onChange:  onChange,
+	}
+	mu.Unlock()
+
+	go watcher.watch()
+	return nil
+}
+
+// watch 监听配置文件变更
+func (w *ConfigWatcher) watch() {
+	defer func() {
+		if r := recover(); r != nil {
+			// ignore
+		}
+	}()
+
+	for {
+		select {
+		case <-w.done:
+			return
+		case event, ok := <-w.viper.WatchConfig():
+			if !ok {
+				return
+			}
+			w.handleChange(event)
+		}
+	}
+}
+
+// handleChange 处理配置变更
+func (w *ConfigWatcher) handleChange(event fsnotify.Event) {
+	if event.Op != fsnotify.Write {
+		return
+	}
+
+	mu.RLock()
+	currentCfg := cfg
+	mu.RUnlock()
+
+	newCfg := &Config{}
+	if err := w.viper.Unmarshal(newCfg); err != nil {
+		// log error
+		return
+	}
+
+	mu.Lock()
+	cfg = newCfg
+	mu.Unlock()
+
+	if w.onChange != nil {
+		w.onChange(newCfg)
+	}
+}
+
+// StopWatch 停止配置监听
+func StopWatch() {
+	mu.Lock()
+	defer mu.Unlock()
+	if watcher != nil {
+		close(watcher.done)
+		watcher = nil
+	}
+}
+
+// Get returns the global config instance (thread-safe)
 func Get() *Config {
+	mu.RLock()
+	defer mu.RUnlock()
 	return cfg
 }
 
-// replacer for env variable names
-type replacer struct{}
+// UpdatePartial 部分更新配置
+func UpdatePartial(updates map[string]interface{}) error {
+	mu.RLock()
+	currentCfg := cfg
+	mu.RUnlock()
 
-func newReplacer() *replacer {
-	return &replacer{}
+	if currentCfg == nil {
+		return fmt.Errorf("config not loaded")
+	}
+
+	// 使用 viper 的 MergeConfigMap 进行部分更新
+	v := viper.New()
+	if err := v.MergeConfigMap(updates); err != nil {
+		return err
+	}
+
+	newCfg := &Config{}
+	if err := v.Unmarshal(newCfg); err != nil {
+		return err
+	}
+
+	mu.Lock()
+	cfg = newCfg
+	mu.Unlock()
+
+	return nil
 }
 
-func (r *replacer) Replace(s string) string {
-	// Already handled by viper
-	return s
+// ValidateConfig 验证配置有效性
+func ValidateConfig(c *Config) error {
+	if c.Cortex.DBPath == "" {
+		return fmt.Errorf("cortex.db_path is required")
+	}
+	if c.Embedding.Provider != "ollama" && c.Embedding.Provider != "onnx" {
+		return fmt.Errorf("embedding.provider must be 'ollama' or 'onnx'")
+	}
+	if c.Index.Workers <= 0 || c.Index.Workers > 32 {
+		return fmt.Errorf("index.workers must be between 1 and 32")
+	}
+	if c.Search.DefaultTopK <= 0 || c.Search.DefaultTopK > 1000 {
+		return fmt.Errorf("search.default_top_k must be between 1 and 1000")
+	}
+	return nil
 }

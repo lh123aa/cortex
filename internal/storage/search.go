@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/lh123aa/cortex/internal/models"
+	"github.com/lh123aa/cortex/internal/vector"
 )
 
 // FTSSearch 进行基于 FTS5 的 全文关键词检索 (BM25)
@@ -44,9 +45,48 @@ func (s *SQLiteStorage) FTSSearch(query string, topK int) ([]*models.SearchResul
 	return results, nil
 }
 
-// VectorSearch 批量加载向量并计算 Cosine 相似度
-// v1.2: 使用分批加载避免全表扫描 OOM 问题
+// VectorSearch 使用 HNSW 索引进行向量搜索
+// v2.0: 从 O(n) 全表扫描优化为 O(log n) HNSW 近似最近邻搜索
 func (s *SQLiteStorage) VectorSearch(queryVector []float32, topK int) ([]*models.SearchResult, error) {
+	// 如果 HNSW 索引可用，使用 HNSW 搜索
+	if s.useHNSW && s.hnsw != nil {
+		return s.vectorSearchHNSW(queryVector, topK)
+	}
+
+	// 否则回退到旧的暴力搜索
+	return s.vectorSearchBruteForce(queryVector, topK)
+}
+
+// vectorSearchHNSW 使用 HNSW 索引搜索
+func (s *SQLiteStorage) vectorSearchHNSW(queryVector []float32, topK int) ([]*models.SearchResult, error) {
+	// HNSW 搜索
+	ids, distances := s.hnsw.Search(queryVector, topK)
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	// 批量获取 chunk 信息
+	results := make([]*models.SearchResult, 0, len(ids))
+	for i, id := range ids {
+		chunk, err := s.GetChunk(id)
+		if err != nil || chunk == nil {
+			continue
+		}
+		// 距离转换为相似度 (1 - distance)
+		similarity := 1.0 - distances[i]
+		results = append(results, &models.SearchResult{
+			Chunk:       chunk,
+			Score:       similarity,
+			VectorScore: similarity,
+		})
+	}
+
+	return results, nil
+}
+
+// vectorSearchBruteForce 回退方案：暴力搜索
+func (s *SQLiteStorage) vectorSearchBruteForce(queryVector []float32, topK int) ([]*models.SearchResult, error) {
 	const batchSize = 1000
 	offset := 0
 
@@ -86,7 +126,7 @@ func (s *SQLiteStorage) VectorSearch(queryVector []float32, topK int) ([]*models
 
 			similarity := cosineSimilarity(queryVector, chunkVec)
 
-			// 边界优化插入逻辑：如果是符合入榜标准的结果，立刻存入缓冲并踢掉最后一名
+			// 边界优化插入逻辑
 			if len(topResults) < topK {
 				topResults = insertSorted(topResults, &chunk, similarity)
 			} else if similarity > topResults[topK-1].Score {
@@ -100,9 +140,6 @@ func (s *SQLiteStorage) VectorSearch(queryVector []float32, topK int) ([]*models
 		}
 
 		offset += batchSize
-
-		// 优化：如果已经收集了足够的候选结果且最低分低于当前阈值，可以提前终止
-		// 但需要完整扫描以确保准确性，所以这里继续全量扫描
 	}
 
 	return topResults, nil
