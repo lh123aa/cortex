@@ -4,10 +4,39 @@ PRAGMA synchronous=NORMAL;
 PRAGMA cache_size=10000;
 PRAGMA busy_timeout=5000;
 
--- 文档表
+-- 用户表
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+
+-- API Keys 表
+CREATE TABLE IF NOT EXISTS api_keys (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    key_hash TEXT NOT NULL,
+    name TEXT,
+    last_used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
+
+-- 文档表（新增 user_id 列）
 CREATE TABLE IF NOT EXISTS documents (
     id TEXT PRIMARY KEY,
-    path TEXT UNIQUE NOT NULL,
+    user_id TEXT NOT NULL DEFAULT '',
+    path TEXT NOT NULL,
     title TEXT,
     file_type TEXT DEFAULT 'md',
     content_hash TEXT NOT NULL,
@@ -15,16 +44,19 @@ CREATE TABLE IF NOT EXISTS documents (
     chunk_count INTEGER DEFAULT 0,
     indexed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status TEXT DEFAULT 'indexed'
+    status TEXT DEFAULT 'indexed',
+    UNIQUE(path, user_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_documents_path ON documents(path);
 CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
+CREATE INDEX IF NOT EXISTS idx_documents_user ON documents(user_id);
 
--- 分块表 (Chunks)
+-- 分块表 (Chunks)（新增 user_id 列）
 CREATE TABLE IF NOT EXISTS chunks (
     id TEXT PRIMARY KEY,
     rowid INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL DEFAULT '',
     document_id TEXT NOT NULL,
     heading_path TEXT,
     heading_level INTEGER,
@@ -35,7 +67,7 @@ CREATE TABLE IF NOT EXISTS chunks (
     char_start INTEGER,
     char_end INTEGER,
     token_count INTEGER,
-    embedding BLOB,  /* 保存序列化后的 JSON 向量 float32 array */
+    embedding BLOB,
     embedding_model TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -43,6 +75,7 @@ CREATE TABLE IF NOT EXISTS chunks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_chunks_doc_id ON chunks(document_id);
+CREATE INDEX IF NOT EXISTS idx_chunks_user ON chunks(user_id);
 
 -- 全文搜索 FTS5 虚拟表
 CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
@@ -51,37 +84,40 @@ CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
     document_id,
     content='chunks',
     content_rowid='rowid',
-    tokenize='unicode61' /* unicode61自带较为基础的分词支持 */
+    tokenize='unicode61'
 );
 
 -- 维护 FTS 与 chunks 表一致性的 Triggers
 CREATE TRIGGER IF NOT EXISTS chunks_ai AFTER INSERT ON chunks BEGIN
-  INSERT INTO chunks_fts(rowid, content_raw, heading_path, document_id) 
+  INSERT INTO chunks_fts(rowid, content_raw, heading_path, document_id)
   VALUES (new.rowid, new.content_raw, new.heading_path, new.document_id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS chunks_ad AFTER DELETE ON chunks BEGIN
-  INSERT INTO chunks_fts(chunks_fts, rowid, content_raw, heading_path, document_id) 
+  INSERT INTO chunks_fts(chunks_fts, rowid, content_raw, heading_path, document_id)
   VALUES ('delete', old.rowid, old.content_raw, old.heading_path, old.document_id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS chunks_au AFTER UPDATE ON chunks BEGIN
-  INSERT INTO chunks_fts(chunks_fts, rowid, content_raw, heading_path, document_id) 
+  INSERT INTO chunks_fts(chunks_fts, rowid, content_raw, heading_path, document_id)
   VALUES ('delete', old.rowid, old.content_raw, old.heading_path, old.document_id);
-  INSERT INTO chunks_fts(rowid, content_raw, heading_path, document_id) 
+  INSERT INTO chunks_fts(rowid, content_raw, heading_path, document_id)
   VALUES (new.rowid, new.content_raw, new.heading_path, new.document_id);
 END;
 
 
--- 向量存储表（自建向量索引结构）
+-- 向量存储表（新增 user_id 列）
 CREATE TABLE IF NOT EXISTS vectors (
     chunk_id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT '',
     embedding BLOB NOT NULL,
     dimension INTEGER NOT NULL,
     model TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chunk_id) REFERENCES chunks(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_vectors_user ON vectors(user_id);
 
 -- 元数据表
 CREATE TABLE IF NOT EXISTS metadata (

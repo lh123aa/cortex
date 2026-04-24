@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cortex Metrics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #333; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card h3 { color: #666; font-size: 14px; margin-bottom: 10px; }
+        .card .value { font-size: 32px; font-weight: bold; color: #333; }
+        .card .sub { font-size: 12px; color: #999; margin-top: 5px; }
+        .chart-container { height: 200px; margin-top: 15px; }
+        .status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+        .status.healthy { background: #4caf50; }
+        .status.degraded { background: #ff9800; }
+        .status.unhealthy { background: #f44336; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { color: #666; font-weight: 500; }
+        .metric-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .metric-row:last-child { border-bottom: none; }
+        .metric-label { color: #666; }
+        .metric-value { font-weight: 500; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cortex Metrics Dashboard</h1>
+
+        <!-- Status Overview -->
+        <div class="grid" style="margin-bottom: 20px;">
+            <div class="card">
+                <h3>System Status</h3>
+                <div style="margin-top: 10px;">
+                    <span class="status healthy"></span> Storage
+                    <span class="status healthy"></span> Embedding
+                    <span class="status healthy"></span> API
+                </div>
+            </div>
+            <div class="card">
+                <h3>Version</h3>
+                <div class="value" style="font-size: 24px;" id="version">v1.3.0</div>
+                <div class="sub">Production Build</div>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="grid">
+            <div class="card">
+                <h3>Total Documents</h3>
+                <div class="value" id="docs_total">0</div>
+                <div class="sub"><span id="docs_delta">+0</span> today</div>
+            </div>
+            <div class="card">
+                <h3>Total Chunks</h3>
+                <div class="value" id="chunks_total">0</div>
+                <div class="sub">Distributed across documents</div>
+            </div>
+            <div class="card">
+                <h3>Vector Index Size</h3>
+                <div class="value" id="vector_size">0 MB</div>
+                <div class="sub">In-memory HNSW index</div>
+            </div>
+            <div class="card">
+                <h3>Search Requests</h3>
+                <div class="value" id="search_total">0</div>
+                <div class="sub"><span id="search_hit_rate">0%</span> cache hit rate</div>
+            </div>
+            <div class="card">
+                <h3>Index Operations</h3>
+                <div class="value" id="index_total">0</div>
+                <div class="sub"><span id="index_errors">0</span> errors</div>
+            </div>
+            <div class="card">
+                <h3>Avg Search Latency</h3>
+                <div class="value" id="search_latency">0ms</div>
+                <div class="sub">Last 5 minutes</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid" style="margin-top: 20px;">
+            <div class="card">
+                <h3>Search Requests Over Time</h3>
+                <div class="chart-container">
+                    <canvas id="searchChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Index Operations Over Time</h3>
+                <div class="chart-container">
+                    <canvas id="indexChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Metrics Table -->
+        <div class="card" style="margin-top: 20px;">
+            <h3>Current Metrics</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>cortex_documents_total</td>
+                        <td id="m_docs_total">0</td>
+                        <td>Total indexed documents</td>
+                    </tr>
+                    <tr>
+                        <td>cortex_chunks_total</td>
+                        <td id="m_chunks_total">0</td>
+                        <td>Total chunks created</td>
+                    </tr>
+                    <tr>
+                        <td>cortex_vectors_total</td>
+                        <td id="m_vectors_total">0</td>
+                        <td>Total vectors in index</td>
+                    </tr>
+                    <tr>
+                        <td>cortex_search_total</td>
+                        <td id="m_search_total">0</td>
+                        <td>Total search requests</td>
+                    </tr>
+                    <tr>
+                        <td>cortex_search_cache_hits_total</td>
+                        <td id="m_cache_hits">0</td>
+                        <td>Search cache hits</td>
+                    </tr>
+                    <tr>
+                        <td>cortex_hnsw_index_size_bytes</td>
+                        <td id="m_hnsw_size">0</td>
+                        <td>HNSW index memory size</td>
+                    </tr>
+                    <tr>
+                        <td>cortex_vector_dimension</td>
+                        <td id="m_vector_dim">768</td>
+                        <td>Embedding vector dimension</td>
+                    </tr>
+                    <tr>
+                        <td>cortex_index_total</td>
+                        <td id="m_index_total">0</td>
+                        <td>Total index operations</td>
+                    </tr>
+                    <tr>
+                        <td>cortex_users_total</td>
+                        <td id="m_users_total">0</td>
+                        <td>Total registered users</td>
+                    </tr>
+                    <tr>
+                        <td>cortex_pq_compression_ratio</td>
+                        <td id="m_pq_ratio">N/A</td>
+                        <td>PQ compression ratio</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Health Checks -->
+        <div class="card" style="margin-top: 20px;">
+            <h3>Health Checks</h3>
+            <div class="metric-row">
+                <span class="metric-label">Storage</span>
+                <span class="metric-value" style="color: #4caf50;">✓ Healthy</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Embedding Provider</span>
+                <span class="metric-value" style="color: #4caf50;">✓ Healthy</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">HNSW Index</span>
+                <span class="metric-value" style="color: #4caf50;">✓ Ready</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Search Cache</span>
+                <span class="metric-value" id="cache_status">✓ Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Poll metrics from Prometheus endpoint
+        async function fetchMetrics() {
+            try {
+                const response = await fetch('/metrics');
+                const text = await response.text();
+                parseAndUpdateMetrics(text);
+            } catch (e) {
+                console.error('Failed to fetch metrics:', e);
+            }
+        }
+
+        function parseAndUpdateMetrics(text) {
+            const lines = text.split('\n');
+            const metrics = {};
+
+            for (const line of lines) {
+                if (line.startsWith('cortex_')) {
+                    const match = line.match(/cortex_(\w+)(.*)/);
+                    if (match) {
+                        const name = match[1];
+                        const valueMatch = line.match(/\{[^}]*\}[^0-9]*([0-9.]+)/) || line.match(/ ([0-9.]+)$/);
+                        if (valueMatch) {
+                            metrics[name] = parseFloat(valueMatch[1]);
+                        }
+                    }
+                }
+            }
+
+            // Update UI with metrics
+            updateMetric('docs_total', metrics.documents_total);
+            updateMetric('chunks_total', metrics.chunks_total);
+            updateMetric('vector_size', formatBytes(metrics.hnsw_index_size_bytes || 0));
+            updateMetric('search_total', metrics.search_total);
+            updateMetric('index_total', metrics.index_total);
+            updateMetric('m_docs_total', metrics.documents_total);
+            updateMetric('m_chunks_total', metrics.chunks_total);
+            updateMetric('m_vectors_total', metrics.vectors_total);
+            updateMetric('m_search_total', metrics.search_total);
+            updateMetric('m_cache_hits', metrics.search_cache_hits_total);
+            updateMetric('m_hnsw_size', formatBytes(metrics.hnsw_index_size_bytes || 0));
+            updateMetric('m_vector_dim', metrics.vector_dimension);
+            updateMetric('m_index_total', metrics.index_total);
+            updateMetric('m_users_total', metrics.users_total);
+            updateMetric('m_pq_ratio', metrics.pq_compression_ratio ? metrics.pq_compression_ratio.toFixed(1) + 'x' : 'N/A');
+
+            // Calculate cache hit rate
+            const hits = metrics.search_cache_hits_total || 0;
+            const misses = metrics.search_cache_misses_total || 0;
+            const total = hits + misses;
+            const hitRate = total > 0 ? ((hits / total) * 100).toFixed(1) : 0;
+            document.getElementById('search_hit_rate').textContent = hitRate + '%';
+
+            // Update charts
+            updateCharts(metrics);
+        }
+
+        function updateMetric(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = value !== undefined ? value : 'N/A';
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+        }
+
+        // Simple chart updates
+        function updateCharts(metrics) {
+            // This would be enhanced with real historical data
+            // For now, just show current state
+        }
+
+        // Poll every 30 seconds
+        fetchMetrics();
+        setInterval(fetchMetrics, 30000);
+    </script>
+</body>
+</html>

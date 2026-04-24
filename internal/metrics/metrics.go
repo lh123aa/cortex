@@ -166,4 +166,74 @@ var (
 		Help:      "API request latency",
 		Buckets:   prometheus.DefBuckets,
 	})
+
+	// --- User-specific metrics ---
+
+	// UsersTotal total number of users
+	UsersTotal = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "cortex",
+		Name:      "users_total",
+		Help:      "Total number of registered users",
+	})
+
+	// UserDocumentsTotal documents per user
+	UserDocumentsTotal = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "cortex",
+		Name:      "user_documents_total",
+		Help:      "Number of documents per user",
+	}, []string{"user_id"})
+
+	// UserVectorsTotal vectors per user
+	UserVectorsTotal = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "cortex",
+		Name:      "user_vectors_total",
+		Help:      "Number of vectors per user",
+	}, []string{"user_id"})
+
+	// --- Memory metrics ---
+
+	// MemoryUsageBytes current memory usage
+	MemoryUsageBytes = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "cortex",
+		Name:      "memory_usage_bytes",
+		Help:      "Current memory usage in bytes",
+	})
+
+	// VectorIndexMemoryBytes vector index memory usage
+	VectorIndexMemoryBytes = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "cortex",
+		Name:      "vector_index_memory_bytes",
+		Help:      "Vector index memory usage in bytes",
+	})
+
+	// PQCompressionRatio current PQ compression ratio
+	PQCompressionRatio = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "cortex",
+		Name:      "pq_compression_ratio",
+		Help:      "Product Quantization compression ratio",
+	})
+
+	// --- Auth metrics ---
+
+	// AuthTotal total authentication attempts
+	AuthTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "cortex",
+		Name:      "auth_total",
+		Help:      "Total authentication attempts by result",
+	}, []string{"result"}) // success/failure/invalid_token
+
+	// AuthLatency authentication latency
+	AuthLatency = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "cortex",
+		Name:      "auth_duration_seconds",
+		Help:      "Authentication operation latency",
+		Buckets:   prometheus.DefBuckets,
+	})
+
+	// APIKeyUsageTotal API key usage count
+	APIKeyUsageTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "cortex",
+		Name:      "api_key_usage_total",
+		Help:      "Total API key usage by key_id",
+	}, []string{"key_id"})
 )

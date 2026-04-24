@@ -16,6 +16,7 @@ type HybridSearchEngine struct {
 	embedding embedding.EmbeddingProvider
 	useCache  bool
 	cacheTTL  time.Duration
+	reranker  Reranker // 可选的重排序器
 }
 
 // NewHybridSearchEngine 初始化搜索引擎
@@ -26,6 +27,11 @@ func NewHybridSearchEngine(s storage.Storage, emb embedding.EmbeddingProvider) *
 		useCache:  true, // 默认启用缓存
 		cacheTTL:  5 * time.Minute,
 	}
+}
+
+// SetReranker 设置重排序器
+func (s *HybridSearchEngine) SetReranker(r Reranker) {
+	s.reranker = r
 }
 
 // SetCacheTTL 设置缓存 TTL
@@ -39,14 +45,17 @@ func (s *HybridSearchEngine) DisableCache() {
 }
 
 // Search 执行整体搜索与融合逻辑
+// v2.2: 添加用户隔离支持
 func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts models.SearchOptions) ([]*models.SearchResult, error) {
 	start := time.Now()
 	metrics.SearchTotal.Inc()
 	metrics.SearchByMode.WithLabelValues(opts.Mode).Inc()
 
-	// 1. 尝试从缓存获取
+	userID := opts.UserID
+
+	// 1. 尝试从缓存获取（用户隔离缓存）
 	if s.useCache {
-		if cached, ok := s.storage.GetCachedSearch(query, opts.Mode, opts.TopK); ok {
+		if cached, ok := s.storage.GetCachedSearch(query, userID, opts.Mode, opts.TopK); ok {
 			metrics.SearchCacheHits.Inc()
 			metrics.SearchDuration.Observe(time.Since(start).Seconds())
 			metrics.SearchResultsReturned.Observe(float64(len(cached)))
@@ -65,7 +74,7 @@ func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts mode
 		qVec, err := s.embedding.Embed(query)
 		if err == nil && len(qVec) > 0 {
 			metrics.SearchLatency.Observe(time.Since(vecStart).Seconds())
-			vRes, err := s.storage.VectorSearch(qVec, opts.TopK*2)
+			vRes, err := s.storage.VectorSearch(qVec, userID, opts.TopK*2)
 			if err == nil {
 				vectorResults = vRes
 			}
@@ -74,7 +83,7 @@ func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts mode
 
 	// 4. 如果非纯粹Vector，执行FTS基于BM25召回
 	if opts.Mode != "vector" {
-		fRes, err := s.storage.FTSSearch(query, opts.TopK*2)
+		fRes, err := s.storage.FTSSearch(query, userID, opts.TopK*2)
 		if err == nil {
 			ftsResults = fRes
 		}
@@ -95,17 +104,25 @@ func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts mode
 		finalResults = finalResults[:opts.TopK]
 	}
 
-	// 7. Rank
+	// 7. 可选: 重排序
+	if s.reranker != nil && len(finalResults) > 0 {
+		reranked, err := s.reranker.Rerank(ctx, query, finalResults, opts.TopK)
+		if err == nil {
+			finalResults = reranked
+		}
+	}
+
+	// 8. Rank
 	for i := range finalResults {
 		finalResults[i].Rank = i + 1
 	}
 
-	// 8. 写入缓存
+	// 9. 写入缓存（用户隔离缓存）
 	if s.useCache && len(finalResults) > 0 {
-		s.storage.SetCachedSearch(query, opts.Mode, opts.TopK, finalResults, s.cacheTTL)
+		s.storage.SetCachedSearch(query, userID, opts.Mode, opts.TopK, finalResults, s.cacheTTL)
 	}
 
-	// 9. 记录指标
+	// 10. 记录指标
 	metrics.SearchDuration.Observe(time.Since(start).Seconds())
 	metrics.SearchResultsReturned.Observe(float64(len(finalResults)))
 
@@ -115,6 +132,11 @@ func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts mode
 // InvalidateCache 使缓存失效（文档更新时调用）
 func (s *HybridSearchEngine) InvalidateCache() {
 	s.storage.InvalidateSearchCache()
+}
+
+// InvalidateUserCache 使某个用户的缓存失效
+func (s *HybridSearchEngine) InvalidateUserCache(userID string) {
+	s.storage.InvalidateUserSearchCache(userID)
 }
 
 // rrfMerge 倒数排名融合算法实现 (Reciprocal Rank Fusion)
@@ -166,10 +188,10 @@ func (s *HybridSearchEngine) normalizeScores(res []*models.SearchResult) []*mode
 	return res
 }
 
-// GetStats 返回搜索引擎统计信息
-func (s *HybridSearchEngine) GetStats() (docs, chunks, vectors int) {
-	docs, _ = s.storage.GetDocumentsCount()
-	chunks, _ = s.storage.GetChunksCount()
-	vectors, _ = s.storage.GetVectorsCount()
+// GetStats 返回搜索引擎统计信息（用户隔离）
+func (s *HybridSearchEngine) GetStats(userID string) (docs, chunks, vectors int) {
+	docs, _ = s.storage.GetDocumentsCount(userID)
+	chunks, _ = s.storage.GetChunksCount(userID)
+	vectors, _ = s.storage.GetVectorsCount(userID)
 	return
 }

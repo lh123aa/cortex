@@ -20,9 +20,9 @@ type SearchCacheEntry struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
-// GetCachedSearch 获取缓存的搜索结果
-func (s *SQLiteStorage) GetCachedSearch(query string, mode string, topK int) ([]*models.SearchResult, bool) {
-	queryHash := hashQuery(query, mode, topK)
+// GetCachedSearch 获取缓存的搜索结果（用户隔离）
+func (s *SQLiteStorage) GetCachedSearch(query string, userID string, mode string, topK int) ([]*models.SearchResult, bool) {
+	queryHash := hashQuery(query, userID, mode, topK)
 
 	var entry SearchCacheEntry
 	err := s.db.QueryRow(`
@@ -53,9 +53,9 @@ func (s *SQLiteStorage) GetCachedSearch(query string, mode string, topK int) ([]
 	return results, true
 }
 
-// SetCachedSearch 设置搜索缓存
-func (s *SQLiteStorage) SetCachedSearch(query string, mode string, topK int, results []*models.SearchResult, ttl time.Duration) error {
-	queryHash := hashQuery(query, mode, topK)
+// SetCachedSearch 设置搜索缓存（用户隔离）
+func (s *SQLiteStorage) SetCachedSearch(query string, userID string, mode string, topK int, results []*models.SearchResult, ttl time.Duration) error {
+	queryHash := hashQuery(query, userID, mode, topK)
 
 	// 序列化结果
 	resultsJSON, err := json.Marshal(results)
@@ -76,6 +76,14 @@ func (s *SQLiteStorage) SetCachedSearch(query string, mode string, topK int, res
 
 // InvalidateSearchCache 使缓存失效（文档更新时调用）
 func (s *SQLiteStorage) InvalidateSearchCache() error {
+	_, err := s.db.Exec(`DELETE FROM search_cache`)
+	return err
+}
+
+// InvalidateUserSearchCache 使某个用户的缓存失效
+func (s *SQLiteStorage) InvalidateUserSearchCache(userID string) error {
+	// 缓存 key 包含 user_id，所以只需要清空所有缓存（简单实现）
+	// 未来可以添加 user_id 列来精确清理
 	_, err := s.db.Exec(`DELETE FROM search_cache`)
 	return err
 }
@@ -114,10 +122,10 @@ func (s *SQLiteStorage) GetCacheStats() (total int, expired int, avgHits float64
 	return total, expired, avgHits, nil
 }
 
-// hashQuery 生成查询的 hash
-func hashQuery(query, mode string, topK int) string {
-	// 简单的 hash 实现
-	data := query + mode + string(rune(topK))
+// hashQuery 生成查询的 hash（包含 user_id 以实现用户隔离缓存）
+func hashQuery(query, userID, mode string, topK int) string {
+	// 简单的 hash 实现，包含 user_id 以实现用户隔离
+	data := userID + "|" + query + "|" + mode + "|" + string(rune(topK))
 	hash := 0
 	for i, c := range data {
 		hash = hash*31 + int(c) + i
@@ -125,7 +133,12 @@ func hashQuery(query, mode string, topK int) string {
 	if hash < 0 {
 		hash = -hash
 	}
-	return string(rune(hash%1000000)) + "_" + query[:min(50, len(query))]
+	// 使用 query 的前30字符以缩短 hash 长度
+	queryPrefix := query
+	if len(queryPrefix) > 30 {
+		queryPrefix = queryPrefix[:30]
+	}
+	return string(rune(hash%1000000)) + "_" + queryPrefix
 }
 
 func min(a, b int) int {

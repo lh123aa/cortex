@@ -14,6 +14,7 @@ func TestSQLiteStorage_Cache(t *testing.T) {
 	// Setup: save a document and chunks
 	doc := &models.Document{
 		ID:          "cache-doc-test",
+		UserID:      "test-user",
 		Path:        "/test/cache.md",
 		FileType:    "md",
 		ContentHash: "cache-hash",
@@ -26,6 +27,7 @@ func TestSQLiteStorage_Cache(t *testing.T) {
 	chunks := []*models.Chunk{
 		{
 			ID:           "cache-chunk-1",
+			UserID:       "test-user",
 			DocumentID:   "cache-doc-test",
 			HeadingPath:  "Header 1",
 			HeadingLevel: 1,
@@ -46,12 +48,12 @@ func TestSQLiteStorage_Cache(t *testing.T) {
 		},
 	}
 
-	err := db.SetCachedSearch("test query", "hybrid", 10, results, 5*time.Minute)
+	err := db.SetCachedSearch("test query", "test-user", "hybrid", 10, results, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("SetCachedSearch failed: %v", err)
 	}
 
-	cached, found := db.GetCachedSearch("test query", "hybrid", 10)
+	cached, found := db.GetCachedSearch("test query", "test-user", "hybrid", 10)
 	if !found {
 		t.Fatal("Expected to find cached result")
 	}
@@ -69,11 +71,11 @@ func TestSQLiteStorage_CacheInvalidation(t *testing.T) {
 
 	// Set cache
 	results := []*models.SearchResult{}
-	db.SetCachedSearch("query1", "hybrid", 10, results, 5*time.Minute)
-	db.SetCachedSearch("query2", "fts", 5, results, 5*time.Minute)
+	db.SetCachedSearch("query1", "test-user", "hybrid", 10, results, 5*time.Minute)
+	db.SetCachedSearch("query2", "test-user", "fts", 5, results, 5*time.Minute)
 
 	// Verify cache exists
-	cached, found := db.GetCachedSearch("query1", "hybrid", 10)
+	cached, found := db.GetCachedSearch("query1", "test-user", "hybrid", 10)
 	if !found {
 		t.Fatal("Expected to find cached result before invalidation")
 	}
@@ -85,7 +87,7 @@ func TestSQLiteStorage_CacheInvalidation(t *testing.T) {
 	}
 
 	// Verify cache is cleared
-	cached, found = db.GetCachedSearch("query1", "hybrid", 10)
+	cached, found = db.GetCachedSearch("query1", "test-user", "hybrid", 10)
 	if found {
 		t.Fatal("Expected cache to be invalidated")
 	}
@@ -96,8 +98,8 @@ func TestSQLiteStorage_CacheStats(t *testing.T) {
 	defer cleanup()
 
 	results := []*models.SearchResult{}
-	db.SetCachedSearch("query1", "hybrid", 10, results, 5*time.Minute)
-	db.SetCachedSearch("query2", "fts", 5, results, 5*time.Minute)
+	db.SetCachedSearch("query1", "test-user", "hybrid", 10, results, 5*time.Minute)
+	db.SetCachedSearch("query2", "test-user", "fts", 5, results, 5*time.Minute)
 
 	total, expired, avgHits, err := db.GetCacheStats()
 	if err != nil {
@@ -118,7 +120,7 @@ func TestSQLiteStorage_GetDocumentsCount(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	count, err := db.GetDocumentsCount()
+	count, err := db.GetDocumentsCount("test-user")
 	if err != nil {
 		t.Fatalf("GetDocumentsCount failed: %v", err)
 	}
@@ -129,6 +131,7 @@ func TestSQLiteStorage_GetDocumentsCount(t *testing.T) {
 	// Add document
 	doc := &models.Document{
 		ID:          "count-test-doc",
+		UserID:      "test-user",
 		Path:        "/test/count.md",
 		FileType:    "md",
 		ContentHash: "count-hash",
@@ -136,7 +139,7 @@ func TestSQLiteStorage_GetDocumentsCount(t *testing.T) {
 	}
 	db.SaveDocument(doc)
 
-	count, err = db.GetDocumentsCount()
+	count, err = db.GetDocumentsCount("test-user")
 	if err != nil {
 		t.Fatalf("GetDocumentsCount failed: %v", err)
 	}
@@ -149,7 +152,7 @@ func TestSQLiteStorage_GetChunksCount(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	count, err := db.GetChunksCount()
+	count, err := db.GetChunksCount("test-user")
 	if err != nil {
 		t.Fatalf("GetChunksCount failed: %v", err)
 	}
@@ -160,6 +163,7 @@ func TestSQLiteStorage_GetChunksCount(t *testing.T) {
 	// Add document and chunks
 	doc := &models.Document{
 		ID:          "chunks-count-doc",
+		UserID:      "test-user",
 		Path:        "/test/chunks-count.md",
 		FileType:    "md",
 		ContentHash: "chunks-count-hash",
@@ -170,12 +174,14 @@ func TestSQLiteStorage_GetChunksCount(t *testing.T) {
 	chunks := []*models.Chunk{
 		{
 			ID:           "cc-chunk-1",
+			UserID:       "test-user",
 			DocumentID:   "chunks-count-doc",
 			ContentRaw:   "Content 1",
 			TokenCount:   2,
 		},
 		{
 			ID:           "cc-chunk-2",
+			UserID:       "test-user",
 			DocumentID:   "chunks-count-doc",
 			ContentRaw:   "Content 2",
 			TokenCount:   2,
@@ -183,7 +189,7 @@ func TestSQLiteStorage_GetChunksCount(t *testing.T) {
 	}
 	db.SaveChunks(chunks)
 
-	count, err = db.GetChunksCount()
+	count, err = db.GetChunksCount("test-user")
 	if err != nil {
 		t.Fatalf("GetChunksCount failed: %v", err)
 	}
@@ -196,7 +202,7 @@ func TestSQLiteStorage_GetVectorsCount(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	count, err := db.GetVectorsCount()
+	count, err := db.GetVectorsCount("test-user")
 	if err != nil {
 		t.Fatalf("GetVectorsCount failed: %v", err)
 	}
@@ -211,6 +217,7 @@ func TestSQLiteStorage_DeleteDocument(t *testing.T) {
 
 	doc := &models.Document{
 		ID:          "delete-doc-test",
+		UserID:      "test-user",
 		Path:        "/test/delete-doc.md",
 		FileType:    "md",
 		ContentHash: "delete-doc-hash",
@@ -219,13 +226,13 @@ func TestSQLiteStorage_DeleteDocument(t *testing.T) {
 	db.SaveDocument(doc)
 
 	// Delete document
-	err := db.DeleteDocument("delete-doc-test")
+	err := db.DeleteDocument("delete-doc-test", "test-user")
 	if err != nil {
 		t.Fatalf("DeleteDocument failed: %v", err)
 	}
 
 	// Verify deleted
-	retrieved, err := db.GetDocumentByID("delete-doc-test")
+	retrieved, err := db.GetDocumentByID("delete-doc-test", "test-user")
 	if err != nil {
 		t.Fatalf("GetDocumentByID failed: %v", err)
 	}
@@ -240,6 +247,7 @@ func TestSQLiteStorage_MultipleSaveDocument(t *testing.T) {
 
 	doc := &models.Document{
 		ID:          "multi-save-doc",
+		UserID:      "test-user",
 		Path:        "/test/multi-save.md",
 		FileType:    "md",
 		ContentHash: "hash-v1",
@@ -258,7 +266,7 @@ func TestSQLiteStorage_MultipleSaveDocument(t *testing.T) {
 		t.Fatalf("SaveDocument update failed: %v", err)
 	}
 
-	retrieved, _ := db.GetDocumentByID("multi-save-doc")
+	retrieved, _ := db.GetDocumentByID("multi-save-doc", "test-user")
 	if retrieved.ContentHash != "hash-v2" {
 		t.Errorf("Expected hash-v2, got %s", retrieved.ContentHash)
 	}

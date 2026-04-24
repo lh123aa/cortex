@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/lh123aa/cortex/internal/auth"
 	"github.com/lh123aa/cortex/internal/embedding"
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/rag"
@@ -53,8 +54,9 @@ type RESTServer struct {
 	router  *gin.Engine
 	health  *HealthChecker
 
-	// API Key Authentication
-	auth          *APIKeyAuth
+	// Auth
+	authService   *auth.AuthService
+	authMiddleware *AuthMiddleware
 	authEnabled   bool
 	authKeys      map[string]string // key -> name mapping for audit
 	authMu        sync.RWMutex
@@ -72,8 +74,29 @@ func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, em embeddi
 		logger:   log,
 		router:   r,
 		health:   NewHealthChecker(st, em),
-		auth:     NewAPIKeyAuth("X-API-Key", "api_key"),
 		authEnabled: false,
+		authKeys: make(map[string]string),
+	}
+	s.registerRoutes()
+	return s
+}
+
+// NewRESTServerWithAuth 创建带认证的 RESTServer
+func NewRESTServerWithAuth(se *search.HybridSearchEngine, st storage.Storage, em embedding.EmbeddingProvider, log *zap.Logger, authService *auth.AuthService) *RESTServer {
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Recovery())
+
+	s := &RESTServer{
+		engine:   se,
+		rag:      rag.NewRAGBuilder(se),
+		storage:  st,
+		logger:   log,
+		router:   r,
+		health:   NewHealthChecker(st, em),
+		authService:    authService,
+		authMiddleware: NewAuthMiddleware(authService),
+		authEnabled: true,
 		authKeys: make(map[string]string),
 	}
 	s.registerRoutes()
@@ -123,6 +146,14 @@ func (s *RESTServer) registerRoutes() {
 	s.router.GET("/health/ready", s.handleReady)
 	s.router.GET("/health/live", s.handleLive)
 
+	// Auth routes (注册/登录)
+	authRoutes := s.router.Group("/auth")
+	{
+		authRoutes.POST("/register", s.handleRegister)
+		authRoutes.POST("/login", s.handleLogin)
+		authRoutes.POST("/logout", s.handleLogout)
+	}
+
 	// API Key auth middleware wrapper
 	authHandler := s.auth.Middleware()
 	if !s.authEnabled {
@@ -148,14 +179,14 @@ func (s *RESTServer) registerRoutes() {
 		protected.GET("/stats", s.handleStats)
 	}
 
-	// Admin routes (also protected, for key management)
+	// Admin routes (也受保护，用于密钥管理)
 	admin := s.router.Group("/admin")
 	admin.Use(authHandler)
 	{
 		admin.GET("/keys", s.handleListKeys)
 	}
 
-	// Internal: Index progress (protected)
+	// Internal: Index progress (受保护)
 	internal := s.router.Group("/internal")
 	internal.Use(authHandler)
 	{
@@ -166,6 +197,78 @@ func (s *RESTServer) registerRoutes() {
 func (s *RESTServer) Run(addr string) error {
 	s.logger.Info("starting REST API server", zap.String("addr", addr), zap.Bool("auth_enabled", s.authEnabled))
 	return s.router.Run(addr)
+}
+
+// --- Auth Handlers ---
+
+func (s *RESTServer) handleRegister(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required,min=3,max=50"`
+		Password string `json:"password" binding:"required,min=6"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	if s.authService == nil {
+		c.JSON(500, gin.H{"error": "auth service not initialized"})
+		return
+	}
+
+	user, err := s.authService.Register(req.Username, req.Password)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, gin.H{
+		"id":       user.ID,
+		"username": user.Username,
+		"role":     user.Role,
+	})
+}
+
+func (s *RESTServer) handleLogin(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	if s.authService == nil {
+		c.JSON(500, gin.H{"error": "auth service not initialized"})
+		return
+	}
+
+	token, user, err := s.authService.Login(req.Username, req.Password)
+	if err != nil {
+		c.JSON(401, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"token": token,
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"role":     user.Role,
+		},
+	})
+}
+
+func (s *RESTServer) handleLogout(c *gin.Context) {
+	// 从 context 获取 token 并使其失效
+	token := extractBearerToken(c)
+	if token != "" && s.authService != nil {
+		s.authService.Logout(token)
+	}
+	c.JSON(200, gin.H{"message": "logged out"})
 }
 
 // --- Handlers ---
@@ -214,7 +317,13 @@ func (s *RESTServer) handleSearch(c *gin.Context) {
 
 	mode := c.DefaultQuery("mode", "hybrid")
 
-	opts := models.SearchOptions{TopK: topK, Mode: mode}
+	// 获取用户ID进行隔离
+	userID := ""
+	if uc := GetUserContext(c); uc != nil {
+		userID = uc.UserID
+	}
+
+	opts := models.SearchOptions{TopK: topK, Mode: mode, UserID: userID}
 	results, err := s.engine.Search(context.Background(), q, opts)
 	if err != nil {
 		s.logger.Error("search failed", zap.Error(err))
@@ -226,7 +335,7 @@ func (s *RESTServer) handleSearch(c *gin.Context) {
 	enriched := make([]gin.H, len(results))
 	for i, r := range results {
 		path := r.Chunk.DocumentID
-		if doc, _ := s.storage.GetDocumentByID(r.Chunk.DocumentID); doc != nil {
+		if doc, _ := s.storage.GetDocumentByID(r.Chunk.DocumentID, userID); doc != nil {
 			path = doc.Path
 		}
 		enriched[i] = gin.H{
@@ -260,7 +369,13 @@ func (s *RESTServer) handleContext(c *gin.Context) {
 		}
 	}
 
-	opts := models.SearchOptions{TopK: 50, Mode: "hybrid"}
+	// 获取用户ID进行隔离
+	userID := ""
+	if uc := GetUserContext(c); uc != nil {
+		userID = uc.UserID
+	}
+
+	opts := models.SearchOptions{TopK: 50, Mode: "hybrid", UserID: userID}
 	rc, err := s.rag.BuildContext(context.Background(), q, budget, opts)
 	if err != nil {
 		s.logger.Error("RAG context build failed", zap.Error(err))
@@ -278,7 +393,13 @@ func (s *RESTServer) handleContext(c *gin.Context) {
 }
 
 func (s *RESTServer) handleListDocs(c *gin.Context) {
-	docs, err := s.storage.ListDocuments(100, 0)
+	// 获取用户ID进行隔离
+	userID := ""
+	if uc := GetUserContext(c); uc != nil {
+		userID = uc.UserID
+	}
+
+	docs, err := s.storage.ListDocuments(userID, 100, 0)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -288,7 +409,14 @@ func (s *RESTServer) handleListDocs(c *gin.Context) {
 
 func (s *RESTServer) handleGetDoc(c *gin.Context) {
 	id := c.Param("id")
-	doc, err := s.storage.GetDocumentByID(id)
+
+	// 获取用户ID进行隔离
+	userID := ""
+	if uc := GetUserContext(c); uc != nil {
+		userID = uc.UserID
+	}
+
+	doc, err := s.storage.GetDocumentByID(id, userID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -301,9 +429,15 @@ func (s *RESTServer) handleGetDoc(c *gin.Context) {
 }
 
 func (s *RESTServer) handleStats(c *gin.Context) {
-	docsCount, _ := s.storage.GetDocumentsCount()
-	chunksCount, _ := s.storage.GetChunksCount()
-	vectorsCount, _ := s.storage.GetVectorsCount()
+	// 获取用户ID进行隔离
+	userID := ""
+	if uc := GetUserContext(c); uc != nil {
+		userID = uc.UserID
+	}
+
+	docsCount, _ := s.storage.GetDocumentsCount(userID)
+	chunksCount, _ := s.storage.GetChunksCount(userID)
+	vectorsCount, _ := s.storage.GetVectorsCount(userID)
 	c.JSON(200, gin.H{
 		"documents_count": docsCount,
 		"chunks_count":     chunksCount,

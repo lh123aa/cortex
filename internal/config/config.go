@@ -14,10 +14,11 @@ import (
 // Config holds all configuration for Cortex
 type Config struct {
 	Cortex     CortexConfig     `mapstructure:"cortex"`
-	Embedding EmbeddingConfig   `mapstructure:"embedding"`
-	Index     IndexConfig       `mapstructure:"index"`
-	Search    SearchConfig      `mapstructure:"search"`
-	Backup    BackupConfig      `mapstructure:"backup"`
+	Embedding  EmbeddingConfig  `mapstructure:"embedding"`
+	Index      IndexConfig      `mapstructure:"index"`
+	Search     SearchConfig     `mapstructure:"search"`
+	Backup     BackupConfig     `mapstructure:"backup"`
+	Vector     VectorConfig     `mapstructure:"vector"`
 }
 
 // CortexConfig holds core Cortex settings
@@ -68,6 +69,19 @@ type BackupConfig struct {
 	AutoBackup bool   `mapstructure:"auto_backup"`
 }
 
+// VectorConfig 向量相关配置
+type VectorConfig struct {
+	Compression string `mapstructure:"compression"` // none/pq
+	Dimension  int    `mapstructure:"dimension"`    // 原始向量维度 (默认768)
+	PQDim      int    `mapstructure:"pq_dim"`      // PQ压缩后维度 (默认64)
+	CodebookSize int  `mapstructure:"codebook_size"` // 码本大小 (默认256)
+}
+
+// UsePQ 是否启用 PQ 压缩
+func (v *VectorConfig) UsePQ() bool {
+	return v.Compression == "pq"
+}
+
 // ConfigWatcher 配置变更监听器
 type ConfigWatcher struct {
 	viper  *viper.Viper
@@ -103,6 +117,10 @@ func Load(configPath string) (*Config, error) {
 	viper.SetDefault("backup.dir", filepath.Join(defaultDir, "backups"))
 	viper.SetDefault("backup.max_backups", 10)
 	viper.SetDefault("backup.auto_backup", false)
+	viper.SetDefault("vector.compression", "none")
+	viper.SetDefault("vector.dimension", 768)
+	viper.SetDefault("vector.pq_dim", 64)
+	viper.SetDefault("vector.codebook_size", 256)
 
 	v := viper.New()
 	if configPath != "" {

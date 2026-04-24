@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lh123aa/cortex/internal/api"
+	"github.com/lh123aa/cortex/internal/auth"
 	"github.com/lh123aa/cortex/internal/config"
 	"github.com/lh123aa/cortex/internal/embedding"
 	"github.com/lh123aa/cortex/internal/index"
@@ -219,7 +220,7 @@ func runIndex(cmd *cobra.Command, args []string) {
 	path := args[0]
 	logger.Info("starting indexing", zap.String("path", path))
 
-	result, err := idx.IndexDirectory(path)
+	result, err := idx.IndexDirectory(path, "")
 	if err != nil {
 		logger.Error("indexing failed", zap.Error(err))
 		os.Exit(1)
@@ -260,6 +261,7 @@ func runSearch(cmd *cobra.Command, args []string) {
 	opts := models.SearchOptions{
 		TopK: topK,
 		Mode: mode,
+		UserID: "", // CLI mode - no user isolation
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -315,6 +317,7 @@ func runContext(cmd *cobra.Command, args []string) {
 	opts := models.SearchOptions{
 		TopK: 20,
 		Mode: "hybrid",
+		UserID: "", // CLI mode - no user isolation
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -394,7 +397,17 @@ func runServe(cmd *cobra.Command, args []string) {
 		logger.Fatal("failed to init search engine", zap.Error(err))
 	}
 
-	restServer := api.NewRESTServer(se, st, logger)
+	// 创建认证服务（用于 API 认证）
+	authService := auth.NewAuthServiceWithDefaults()
+
+	// 根据配置决定是否启用认证
+	var restServer *api.RESTServer
+	if cfg.Cortex.AuthEnabled {
+		restServer = api.NewRESTServerWithAuth(se, st, emb, logger, authService)
+		logger.Info("auth enabled", zap.Bool("auth", cfg.Cortex.AuthEnabled))
+	} else {
+		restServer = api.NewRESTServer(se, st, emb, logger)
+	}
 
 	logger.Info("starting REST API server", zap.String("addr", ":8080"))
 
@@ -426,9 +439,9 @@ func runStatus(cmd *cobra.Command, args []string) {
 	}
 	defer st.Close()
 
-	docCount, _ := st.GetDocumentsCount()
-	chunkCount, _ := st.GetChunksCount()
-	vectorCount, _ := st.GetVectorsCount()
+	docCount, _ := st.GetDocumentsCount("")
+	chunkCount, _ := st.GetChunksCount("")
+	vectorCount, _ := st.GetVectorsCount("")
 
 	fmt.Println("\n📊 Cortex Status")
 	fmt.Println("================")

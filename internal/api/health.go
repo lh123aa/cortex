@@ -46,8 +46,8 @@ func (hc *HealthChecker) CheckStorage() Check {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// 尝试一个简单的查询
-	_, err := hc.storage.GetDocumentsCount()
+	// 尝试一个简单的查询（使用空 userID 进行健康检查）
+	_, err := hc.storage.GetDocumentsCount("")
 	latency := time.Since(start)
 
 	if err != nil {

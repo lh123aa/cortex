@@ -96,7 +96,7 @@ func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolReque
 	for i, r := range results {
 		// P0-2: 追溯实际文件路径，而非仅 DocumentID
 		docPath := r.Chunk.DocumentID // fallback
-		if doc, err := s.storage.GetDocumentByID(r.Chunk.DocumentID); err == nil && doc != nil {
+		if doc, err := s.storage.GetDocumentByID(r.Chunk.DocumentID, ""); err == nil && doc != nil {
 			docPath = doc.Path
 		}
 		sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nPath: %s\nSection: %s\n\n%s\n---\n", i+1, r.Score, docPath, r.Chunk.HeadingPath, truncateText(r.Chunk.ContentRaw, 300)))

@@ -113,8 +113,8 @@ type IndexResult struct {
 	Duration int64
 }
 
-// IndexDirectoryWithCheckpoint 遍历执行整个文件夹（支持断点恢复）
-func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string) (*IndexResult, error) {
+// IndexDirectoryWithCheckpoint 遍历执行整个文件夹（支持断点恢复，用户隔离）
+func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string) (*IndexResult, error) {
 	start := time.Now()
 	result := &IndexResult{}
 
@@ -167,9 +167,11 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string) (*IndexResult,
 
 	for i, file := range filesToProcess {
 		wg.Add(1)
+		// 闭包捕获 userID
+		currentUserID := userID
 		err := idx.pool.Submit(func() {
 			defer wg.Done()
-			indexed, skipped, err := idx.indexFileInternal(file)
+			indexed, skipped, err := idx.indexFileInternalWithUser(file, currentUserID)
 			resultCh <- fileResult{indexed: indexed, skipped: skipped, err: err}
 		})
 		if err != nil {
@@ -239,8 +241,8 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string) (*IndexResult,
 	return result, nil
 }
 
-// IndexDirectory 遍历执行整个文件夹（并发优化，不支持断点恢复）
-func (idx *Indexer) IndexDirectory(rootPath string) (*IndexResult, error) {
+// IndexDirectory 遍历执行整个文件夹（并发优化，不支持断点恢复，用户隔离）
+func (idx *Indexer) IndexDirectory(rootPath string, userID string) (*IndexResult, error) {
 	start := time.Now()
 	result := &IndexResult{}
 
@@ -269,9 +271,10 @@ func (idx *Indexer) IndexDirectory(rootPath string) (*IndexResult, error) {
 
 	for _, file := range files {
 		wg.Add(1)
+		currentUserID := userID // 闭包捕获
 		err := idx.pool.Submit(func() {
 			defer wg.Done()
-			indexed, skipped, err := idx.indexFileInternal(file)
+			indexed, skipped, err := idx.indexFileInternalWithUser(file, currentUserID)
 			resultCh <- fileResult{indexed: indexed, skipped: skipped, err: err}
 		})
 		if err != nil {
@@ -302,13 +305,18 @@ func (idx *Indexer) IndexDirectory(rootPath string) (*IndexResult, error) {
 	return result, nil
 }
 
-// IndexFile 解析单一文件（暴露给Watcher使用，内部调用）
-func (idx *Indexer) IndexFile(path string) (bool, bool, error) {
-	return idx.indexFileInternal(path)
+// IndexFile 解析单一文件（暴露给Watcher使用，内部调用，用户隔离）
+func (idx *Indexer) IndexFile(path string, userID string) (bool, bool, error) {
+	return idx.indexFileInternalWithUser(path, userID)
 }
 
-// indexFileInternal 实际索引逻辑
+// indexFileInternal 实际索引逻辑（无用户隔离，用于向后兼容）
 func (idx *Indexer) indexFileInternal(path string) (bool, bool, error) {
+	return idx.indexFileInternalWithUser(path, "")
+}
+
+// indexFileInternalWithUser 实际索引逻辑（用户隔离）
+func (idx *Indexer) indexFileInternalWithUser(path string, userID string) (bool, bool, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return false, false, err
@@ -378,16 +386,15 @@ func (idx *Indexer) indexFileInternal(path string) (bool, bool, error) {
 	hashStr := hex.EncodeToString(hashBytes[:])
 	docID := hashStr[:16]
 
-	// 查询是否存在及比对Hash
-	doc, _ := idx.storage.GetDocumentByPath(path)
+	// 查询是否存在及比对Hash（用户隔离）
+	doc, _ := idx.storage.GetDocumentByPath(path, userID)
 	if doc != nil && doc.ContentHash == hashStr {
 		// 跳过重复索引
 		return false, true, nil
 	}
 
-
 	if doc != nil {
-		idx.storage.DeleteChunksByDocument(doc.ID)
+		idx.storage.DeleteChunksByDocument(doc.ID, userID)
 	}
 
 	// 开始文本切块解析
@@ -396,11 +403,16 @@ func (idx *Indexer) indexFileInternal(path string) (bool, bool, error) {
 		return false, false, err
 	}
 
+	// 设置 userID 和 documentID
+	for i, c := range chunks {
+		c.UserID = userID
+		c.DocumentID = docID
+	}
+
 	// 转换为向量
 	texts := make([]string, len(chunks))
 	for i, c := range chunks {
 		texts[i] = c.ContentRaw
-		c.DocumentID = docID
 	}
 
 	// 进行Embedding
@@ -414,9 +426,10 @@ func (idx *Indexer) indexFileInternal(path string) (bool, bool, error) {
 		}
 	}
 
-	// 保存 Document
+	// 保存 Document（用户隔离）
 	newDoc := &models.Document{
 		ID:          docID,
+		UserID:      userID,
 		Path:        path,
 		FileType:    fileType,
 		ContentHash: hashStr,
@@ -440,4 +453,124 @@ func (idx *Indexer) indexFileInternal(path string) (bool, bool, error) {
 // GetIndexProgress 获取当前索引进度
 func (idx *Indexer) GetIndexProgress(rootPath string) (*models.IndexProgress, error) {
 	return idx.storage.GetIndexProgress(rootPath)
+}
+
+// ==============================================
+// 增量索引器 (IncrementalIndexer)
+// ==============================================
+
+// IncrementalIndexer 增量索引器 - 用于定期增量同步
+type IncrementalIndexer struct {
+	indexer  *Indexer
+	states   map[string]*FileState // path -> state
+	mu       sync.RWMutex
+	rootPath string
+	userID   string
+}
+
+// FileState 文件状态（用于增量比对）
+type FileState struct {
+	ModTime     time.Time
+	ContentHash string
+	IndexedAt   time.Time
+}
+
+// NewIncrementalIndexer 创建增量索引器
+func NewIncrementalIndexer(idx *Indexer, rootPath string, userID string) *IncrementalIndexer {
+	return &IncrementalIndexer{
+		indexer:  idx,
+		states:   make(map[string]*FileState),
+		rootPath: rootPath,
+		userID:   userID,
+	}
+}
+
+// ScanDirectory 扫描目录，返回需要索引的文件列表
+func (ii *IncrementalIndexer) ScanDirectory() ([]string, error) {
+	var files []string
+	err := filepath.Walk(ii.rootPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		files = append(files, path)
+		return nil
+	})
+	return files, err
+}
+
+// Sync 执行增量同步
+// 返回: added/updated/removed/total
+func (ii *IncrementalIndexer) Sync() (added, updated, removed, total int, err error) {
+	files, err := ii.ScanDirectory()
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+
+	currentFiles := make(map[string]bool)
+	var changed bool
+
+	for _, path := range files {
+		currentFiles[path] = true
+
+		content, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+
+		hashBytes := sha256.Sum256(content)
+		hashStr := hex.EncodeToString(hashBytes[:])
+
+		ii.mu.Lock()
+		oldState, exists := ii.states[path]
+		ii.mu.Unlock()
+
+		if !exists || oldState.ContentHash != hashStr {
+			// 新文件或内容已更改
+			indexed, _, err := ii.indexer.IndexFile(path, ii.userID)
+			if err != nil {
+				continue
+			}
+			if indexed {
+				if exists {
+					updated++
+				} else {
+					added++
+				}
+				changed = true
+
+				ii.mu.Lock()
+				ii.states[path] = &FileState{
+					ModTime:     time.Now(),
+					ContentHash: hashStr,
+					IndexedAt:   time.Now(),
+				}
+				ii.mu.Unlock()
+			}
+		}
+	}
+
+	// 检测已删除的文件
+	ii.mu.Lock()
+	for path := range ii.states {
+		if !currentFiles[path] {
+			// 文件已删除
+			err := ii.indexer.storage.DeleteDocumentByPath(path, ii.userID)
+			if err == nil {
+				removed++
+				changed = true
+				delete(ii.states, path)
+			}
+		}
+	}
+	ii.mu.Unlock()
+
+	total = len(files)
+	return added, updated, removed, total, nil
+}
+
+// GetStats 获取增量索引器状态
+func (ii *IncrementalIndexer) GetStats() (tracked int) {
+	ii.mu.RLock()
+	defer ii.mu.RUnlock()
+	return len(ii.states)
 }
