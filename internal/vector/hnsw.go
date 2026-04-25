@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"math"
 	"math/rand"
+	"sort"
 	"sync"
 )
 
@@ -252,14 +253,24 @@ func (h *HNSW) Search(query []float32, k int) ([]string, []float64) {
 	// 归一化查询向量
 	query = normalize(query)
 
-	// 从顶层开始搜索
+	// 从顶层开始，逐层下降到第 0 层
 	ep := h.enterPoint
 	for level := h.maxLevel; level > 0; level-- {
-		ep = h.searchLayer(query, ep, 1, level)[0].id
+		layerResults := h.searchLayer(query, ep, 1, level)
+		if len(layerResults) > 0 && layerResults[0].id < len(h.vectors) {
+			ep = layerResults[0].id
+		} else {
+			// 如果该层搜索失败，保持当前 ep
+		}
 	}
 
 	// 底层精细搜索
 	results := h.searchLayer(query, ep, h.cfg.EfConstruction, 0)
+
+	// 按距离排序
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].dist < results[j].dist
+	})
 
 	// 取前 k 个
 	if len(results) > k {
@@ -304,13 +315,11 @@ func (pq *priorityQueue) Push(x any) {
 }
 
 func (pq *priorityQueue) Pop() any {
-	if len(pq.items) == 0 {
-		return searchResult{}
-	}
-	old := pq.items
-	n := len(old)
-	item := old[n-1]
-	pq.items = old[0 : n-1]
+	// heap.Pop 已经做了 swap 和 sift down
+	// 这里只需要返回 items[n]（原来的堆顶）
+	n := len(pq.items) - 1
+	item := pq.items[n]
+	pq.items = pq.items[:n]
 	return item
 }
 
