@@ -118,8 +118,17 @@ type Storage interface {
 	// GetUserByUsername 根据用户名获取用户
 	GetUserByUsername(username string) (*models.User, error)
 
+	// ListUsers 列出所有用户（管理员）
+	ListUsers(limit, offset int) ([]*models.User, error)
+
 	// DeleteUser 删除用户
 	DeleteUser(id string) error
+
+	// ListAPIKeys 列出所有 API Keys（管理员）
+	ListAPIKeys(limit, offset int) ([]*models.APIKey, error)
+
+	// ListAPIKeysByUser 列出用户的所有 API Keys
+	ListAPIKeysByUser(userID string) ([]*models.APIKey, error)
 
 	// ========== Token 操作 ==========
 

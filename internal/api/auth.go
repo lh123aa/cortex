@@ -1,7 +1,9 @@
 package api
 
 import (
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"net/http"
 	"sync"
 
@@ -9,40 +11,47 @@ import (
 )
 
 // APIKeyAuth API Key 认证中间件
+// 使用哈希存储密钥，防止内存泄漏后密钥被直接利用
 type APIKeyAuth struct {
-	headerName  string
-	queryName   string
-	validKeys   map[string]bool
-	mu          sync.RWMutex
+	headerName   string
+	queryName    string
+	validKeyHashes map[string]bool  // 存储哈希而非原始密钥
+	mu           sync.RWMutex
 }
 
 func NewAPIKeyAuth(headerName, queryName string) *APIKeyAuth {
 	return &APIKeyAuth{
-		headerName: headerName,
-		queryName:  queryName,
-		validKeys:  make(map[string]bool),
+		headerName:   headerName,
+		queryName:    queryName,
+		validKeyHashes: make(map[string]bool),
 	}
 }
 
-// AddKey 添加一个有效的 API key
+// hashKey 对密钥进行 SHA256 哈希
+func (a *APIKeyAuth) hashKey(key string) string {
+	hash := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(hash[:])
+}
+
+// AddKey 添加一个有效的 API key（内部存储哈希）
 func (a *APIKeyAuth) AddKey(key string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.validKeys[key] = true
+	a.validKeyHashes[a.hashKey(key)] = true
 }
 
 // RemoveKey 移除一个 API key
 func (a *APIKeyAuth) RemoveKey(key string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	delete(a.validKeys, key)
+	delete(a.validKeyHashes, a.hashKey(key))
 }
 
 // ClearKeys 清除所有 API keys
 func (a *APIKeyAuth) ClearKeys() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.validKeys = make(map[string]bool)
+	a.validKeyHashes = make(map[string]bool)
 }
 
 // Middleware returns a Gin middleware that validates API keys
@@ -103,10 +112,10 @@ func (a *APIKeyAuth) getKeyFromRequest(c *gin.Context) string {
 func (a *APIKeyAuth) isValidKey(key string) bool {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	return a.validKeys[key]
+	return a.validKeyHashes[a.hashKey(key)]
 }
 
-// ConstantTimeCompare performs a constant-time comparison of two strings
+// constantTimeCompare performs a constant-time comparison of two strings
 // to prevent timing attacks
 func constantTimeCompare(a, b string) bool {
 	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1

@@ -351,6 +351,78 @@ func (s *SQLiteStorage) DeleteUser(id string) error {
 	return err
 }
 
+// ListUsers 列出所有用户（管理员）
+func (s *SQLiteStorage) ListUsers(limit, offset int) ([]*models.User, error) {
+	rows, err := s.db.Query(`
+		SELECT id, username, password_hash, role, created_at, is_active
+		FROM users
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?`,
+		limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*models.User
+	for rows.Next() {
+		var user models.User
+		if err := rows.Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.IsActive); err != nil {
+			return nil, err
+		}
+		users = append(users, &user)
+	}
+	return users, rows.Err()
+}
+
+// ListAPIKeys 列出所有 API Keys（管理员）
+func (s *SQLiteStorage) ListAPIKeys(limit, offset int) ([]*models.APIKey, error) {
+	rows, err := s.db.Query(`
+		SELECT id, user_id, key_hash, name, last_used, created_at, expires_at
+		FROM api_keys
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?`,
+		limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var apiKeys []*models.APIKey
+	for rows.Next() {
+		var key models.APIKey
+		if err := rows.Scan(&key.ID, &key.UserID, &key.KeyHash, &key.Name, &key.LastUsed, &key.CreatedAt, &key.ExpiresAt); err != nil {
+			return nil, err
+		}
+		apiKeys = append(apiKeys, &key)
+	}
+	return apiKeys, rows.Err()
+}
+
+// ListAPIKeysByUser 列出用户的所有 API Keys
+func (s *SQLiteStorage) ListAPIKeysByUser(userID string) ([]*models.APIKey, error) {
+	rows, err := s.db.Query(`
+		SELECT id, user_id, key_hash, name, last_used, created_at, expires_at
+		FROM api_keys
+		WHERE user_id = ?
+		ORDER BY created_at DESC`,
+		userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var apiKeys []*models.APIKey
+	for rows.Next() {
+		var key models.APIKey
+		if err := rows.Scan(&key.ID, &key.UserID, &key.KeyHash, &key.Name, &key.LastUsed, &key.CreatedAt, &key.ExpiresAt); err != nil {
+			return nil, err
+		}
+		apiKeys = append(apiKeys, &key)
+	}
+	return apiKeys, rows.Err()
+}
+
 // DeleteUserData 删除用户的所有数据
 func (s *SQLiteStorage) DeleteUserData(userID string) error {
 	// 删除用户的文档、chunks、向量等

@@ -241,9 +241,8 @@ func (s *AuthService) DeleteAPIKey(keyHash string) error {
 
 // ListAPIKeys 列出用户的 API Keys
 func (s *AuthService) ListAPIKeys(userID string) ([]*models.APIKey, error) {
-	// 这个需要遍历，返回用户的keys
-	// 简化实现：返回nil，实际需要扫描
-	return nil, nil
+	// 获取该用户的所有 API keys
+	return s.storage.ListAPIKeysByUser(userID)
 }
 
 // ChangePassword 修改密码
@@ -275,9 +274,7 @@ func (s *AuthService) ChangePassword(userID string, oldPwd, newPwd string) error
 
 // ListUsers 列出所有用户（管理员）
 func (s *AuthService) ListUsers() ([]*models.User, error) {
-	// 需要在storage中添加ListUsers方法
-	// 暂时返回nil
-	return nil, nil
+	return s.storage.ListUsers(1000, 0) // 限制最多返回1000个用户
 }
 
 // DeactivateUser 禁用用户

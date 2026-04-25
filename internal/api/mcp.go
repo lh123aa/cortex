@@ -35,6 +35,13 @@ type MCPServer struct {
 	rag     *rag.RAGBuilder
 	storage storage.Storage
 	logger  *zap.Logger
+	userID  string  // 用户隔离：当前 MCP 会话的 userID
+}
+
+// SetUserID 设置 MCP 服务器的用户上下文
+// 注意：生产环境应通过 MCP 认证机制获取用户身份
+func (s *MCPServer) SetUserID(userID string) {
+	s.userID = userID
 }
 
 func NewMCPServer(se *search.HybridSearchEngine, st storage.Storage, log *zap.Logger) *MCPServer {
@@ -94,9 +101,9 @@ func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolReque
 
 	var sb strings.Builder
 	for i, r := range results {
-		// P0-2: 追溯实际文件路径，而非仅 DocumentID
+		// P1-3: 使用用户隔离查询，而非空字符串
 		docPath := r.Chunk.DocumentID // fallback
-		if doc, err := s.storage.GetDocumentByID(r.Chunk.DocumentID, ""); err == nil && doc != nil {
+		if doc, err := s.storage.GetDocumentByID(r.Chunk.DocumentID, s.userID); err == nil && doc != nil {
 			docPath = doc.Path
 		}
 		sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nPath: %s\nSection: %s\n\n%s\n---\n", i+1, r.Score, docPath, r.Chunk.HeadingPath, truncateText(r.Chunk.ContentRaw, 300)))
