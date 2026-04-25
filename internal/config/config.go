@@ -104,27 +104,29 @@ func Load(configPath string) (*Config, error) {
 	home, _ := os.UserHomeDir()
 	defaultDir := filepath.Join(home, ".cortex")
 
-	viper.SetDefault("cortex.db_path", filepath.Join(defaultDir, "cortex.db"))
-	viper.SetDefault("cortex.log_level", "info")
-	viper.SetDefault("embedding.provider", "ollama")
-	viper.SetDefault("embedding.ollama.base_url", "http://localhost:11434")
-	viper.SetDefault("embedding.ollama.model", "nomic-embed-text")
-	viper.SetDefault("index.max_tokens", 512)
-	viper.SetDefault("index.overlap_tokens", 64)
-	viper.SetDefault("index.min_chars", 50)
-	viper.SetDefault("index.workers", 8) // 优化：从 4 提升到 8，提升索引吞吐量
-	viper.SetDefault("search.cache_ttl", "5m")
-	viper.SetDefault("search.default_top_k", 10)
-	viper.SetDefault("backup.enabled", true)
-	viper.SetDefault("backup.dir", filepath.Join(defaultDir, "backups"))
-	viper.SetDefault("backup.max_backups", 10)
-	viper.SetDefault("backup.auto_backup", false)
-	viper.SetDefault("vector.compression", "none")
-	viper.SetDefault("vector.dimension", 768)
-	viper.SetDefault("vector.pq_dim", 64)
-	viper.SetDefault("vector.codebook_size", 256)
-
 	v := viper.New()
+
+	// 设置默认值
+	v.SetDefault("cortex.db_path", filepath.Join(defaultDir, "cortex.db"))
+	v.SetDefault("cortex.log_level", "info")
+	v.SetDefault("embedding.provider", "ollama")
+	v.SetDefault("embedding.ollama.base_url", "http://localhost:11434")
+	v.SetDefault("embedding.ollama.model", "nomic-embed-text")
+	v.SetDefault("index.max_tokens", 512)
+	v.SetDefault("index.overlap_tokens", 64)
+	v.SetDefault("index.min_chars", 50)
+	v.SetDefault("index.workers", 8)
+	v.SetDefault("search.cache_ttl", "5m")
+	v.SetDefault("search.default_top_k", 10)
+	v.SetDefault("backup.enabled", true)
+	v.SetDefault("backup.dir", filepath.Join(defaultDir, "backups"))
+	v.SetDefault("backup.max_backups", 10)
+	v.SetDefault("backup.auto_backup", false)
+	v.SetDefault("vector.compression", "none")
+	v.SetDefault("vector.dimension", 768)
+	v.SetDefault("vector.pq_dim", 64)
+	v.SetDefault("vector.codebook_size", 256)
+
 	if configPath != "" {
 		v.SetConfigFile(configPath)
 	} else {
@@ -266,22 +268,71 @@ func UpdatePartial(updates map[string]interface{}) error {
 		return fmt.Errorf("config not loaded")
 	}
 
-	// 使用 viper 的 MergeConfigMap 进行部分更新
-	v := viper.New()
-	if err := v.MergeConfigMap(updates); err != nil {
-		return err
-	}
+	// 直接修改当前配置的副本
+	newCfg := currentCfg
 
-	newCfg := &Config{}
-	if err := v.Unmarshal(newCfg); err != nil {
-		return err
-	}
+	// 应用更新
+	applyUpdate(newCfg, updates)
 
 	mu.Lock()
 	cfg = newCfg
 	mu.Unlock()
 
 	return nil
+}
+
+// applyUpdate 递归应用更新到配置结构体
+func applyUpdate(cfg *Config, updates map[string]interface{}) {
+	for key, value := range updates {
+		switch key {
+		case "cortex.db_path":
+			cfg.Cortex.DBPath, _ = value.(string)
+		case "cortex.log_level":
+			cfg.Cortex.LogLevel, _ = value.(string)
+		case "cortex.auth_enabled":
+			cfg.Cortex.AuthEnabled, _ = value.(bool)
+		case "embedding.provider":
+			cfg.Embedding.Provider, _ = value.(string)
+		case "embedding.ollama.base_url":
+			cfg.Embedding.Ollama.BaseURL, _ = value.(string)
+		case "embedding.ollama.model":
+			cfg.Embedding.Ollama.Model, _ = value.(string)
+		case "embedding.onnx.base_url":
+			cfg.Embedding.ONNX.BaseURL, _ = value.(string)
+		case "embedding.onnx.model":
+			cfg.Embedding.ONNX.Model, _ = value.(string)
+		case "embedding.onnx.dim":
+			cfg.Embedding.ONNX.Dim, _ = value.(int)
+		case "index.max_tokens":
+			cfg.Index.MaxTokens, _ = value.(int)
+		case "index.overlap_tokens":
+			cfg.Index.OverlapTokens, _ = value.(int)
+		case "index.min_chars":
+			cfg.Index.MinChars, _ = value.(int)
+		case "index.workers":
+			cfg.Index.Workers, _ = value.(int)
+		case "search.cache_ttl":
+			cfg.Search.CacheTTL, _ = value.(string)
+		case "search.default_top_k":
+			cfg.Search.DefaultTopK, _ = value.(int)
+		case "backup.enabled":
+			cfg.Backup.Enabled, _ = value.(bool)
+		case "backup.dir":
+			cfg.Backup.Dir, _ = value.(string)
+		case "backup.max_backups":
+			cfg.Backup.MaxBackups, _ = value.(int)
+		case "backup.auto_backup":
+			cfg.Backup.AutoBackup, _ = value.(bool)
+		case "vector.compression":
+			cfg.Vector.Compression, _ = value.(string)
+		case "vector.dimension":
+			cfg.Vector.Dimension, _ = value.(int)
+		case "vector.pq_dim":
+			cfg.Vector.PQDim, _ = value.(int)
+		case "vector.codebook_size":
+			cfg.Vector.CodebookSize, _ = value.(int)
+		}
+	}
 }
 
 // ValidateConfig 验证配置有效性

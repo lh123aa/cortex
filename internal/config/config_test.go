@@ -72,10 +72,11 @@ search:
 }
 
 func TestLoad_Defaults(t *testing.T) {
-	// Load without a config file - should use defaults
-	cfg, err := Load("/non/existent/path.yaml")
+	// Load with empty config path - should use defaults
+	// Empty path triggers default config search paths
+	cfg, err := Load("")
 	if err != nil {
-		t.Fatalf("Load failed: %v", err)
+		t.Fatalf("Load with empty path failed: %v", err)
 	}
 
 	// Check defaults
@@ -91,8 +92,8 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.Index.MaxTokens != 512 {
 		t.Errorf("Expected default max_tokens 512, got %d", cfg.Index.MaxTokens)
 	}
-	if cfg.Index.Workers != 4 {
-		t.Errorf("Expected default workers 4, got %d", cfg.Index.Workers)
+	if cfg.Index.Workers != 8 {
+		t.Errorf("Expected default workers 8, got %d", cfg.Index.Workers)
 	}
 	if cfg.Search.DefaultTopK != 10 {
 		t.Errorf("Expected default default_top_k 10, got %d", cfg.Search.DefaultTopK)

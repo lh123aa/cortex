@@ -1,6 +1,7 @@
 package vector
 
 import (
+	"container/heap"
 	"math"
 	"math/rand"
 	"sync"
@@ -63,13 +64,14 @@ func (h *HNSW) Count() int {
 }
 
 // randomLevel 生成随机层数，遵循指数分布
+// 使用标准 HNSW 算法: level 0 的概率为 1/e^ml
 func (h *HNSW) randomLevel() int {
-	// level = floor(-ln(uniform(0,1)) / ml)
-	// 等价于: level = 0 的概率为 e^(-ml)，level > 0 的概率递减
-	r := rand.Float64()
-	lvl := int(-math.Log(-math.Log(r)) / h.cfg.ML)
-	if lvl >= h.cfg.MaxLayers {
-		lvl = h.cfg.MaxLayers - 1
+	lvl := 0
+	for lvl < h.cfg.MaxLayers-1 {
+		if rand.Float64() > math.Exp(-h.cfg.ML) {
+			break
+		}
+		lvl++
 	}
 	return lvl
 }
@@ -302,6 +304,9 @@ func (pq *priorityQueue) Push(x any) {
 }
 
 func (pq *priorityQueue) Pop() any {
+	if len(pq.items) == 0 {
+		return searchResult{}
+	}
 	old := pq.items
 	n := len(old)
 	item := old[n-1]
@@ -310,11 +315,14 @@ func (pq *priorityQueue) Pop() any {
 }
 
 func (pq *priorityQueue) push(id int, dist float64) {
-	pq.items = append(pq.items, searchResult{id: id, dist: dist})
+	heap.Push(pq, searchResult{id: id, dist: dist})
 }
 
 func (pq *priorityQueue) pop() (int, float64) {
-	item := pq.Pop().(searchResult)
+	if len(pq.items) == 0 {
+		return 0, 0
+	}
+	item := heap.Pop(pq).(searchResult)
 	return item.id, item.dist
 }
 
@@ -327,6 +335,11 @@ func (pq *priorityQueue) getWorst() float64 {
 
 // searchLayer 在指定层搜索最近邻
 func (h *HNSW) searchLayer(query []float32, entryPoint int, ef int, level int) []searchResult {
+	// 空索引检查
+	if len(h.vectors) == 0 || entryPoint >= len(h.vectors) {
+		return []searchResult{}
+	}
+
 	visited := make(map[int]bool)
 	candidates := &priorityQueue{}
 	result := &priorityQueue{}
