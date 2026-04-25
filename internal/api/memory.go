@@ -70,19 +70,6 @@ func (h *MemoryHandler) WriteMemory(c *gin.Context) {
 		summary = req.Content
 	}
 
-	// 保存记忆到数据库
-	memory := &models.Memory{
-		ID:        memoryID,
-		UserID:    userID,
-		Content:   req.Content,
-		Summary:   summary,
-		Tags:      req.Tags,
-		Source:    req.Source,
-		SourceID:  memoryID,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
 	// 分块并生成向量
 	chunks, err := h.chunker.Chunk(req.Content, fmt.Sprintf("memory://%s", memoryID))
 	if err != nil {

@@ -171,7 +171,7 @@ func TestHNSW_Search(t *testing.T) {
 	}
 
 	// Search for vector close to vec1
-	ids, distances := h.Search([]float32{1.0, 0.1, 0.0}, 2)
+	ids, _ := h.Search([]float32{1.0, 0.1, 0.0}, 2)
 
 	if len(ids) != 2 {
 		t.Errorf("Expected 2 results, got %d", len(ids))

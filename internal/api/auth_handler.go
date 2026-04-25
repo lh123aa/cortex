@@ -170,7 +170,11 @@ func (h *AuthHandler) ListAPIKeys(c *gin.Context) {
 		return
 	}
 
-	keys := h.authService.ListAPIKeys(user.ID)
+	keys, err := h.authService.ListAPIKeys(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"keys": keys})
 }
 
@@ -206,7 +210,11 @@ func (h *AuthHandler) ListUsers(c *gin.Context) {
 		return
 	}
 
-	users := h.authService.ListUsers()
+	users, err := h.authService.ListUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"users": users})
 }
 

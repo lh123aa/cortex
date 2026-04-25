@@ -143,7 +143,7 @@ func TestEmbedBatchWithContext_Cancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err := emb.EmbedBatchWithContext(ctx, []string{"text1"}, 0)
+	_, err := emb.EmbedBatchWithContext(ctx, []string{"text1"})
 	if err == nil {
 		t.Log("Warning: expected cancellation error")
 	}

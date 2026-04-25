@@ -410,13 +410,13 @@ func (s *SQLiteStorage) SaveToken(token *models.AuthToken) error {
 // GetToken 获取 token
 func (s *SQLiteStorage) GetToken(token string) (*models.AuthToken, error) {
 	row := s.db.QueryRow(`
-		SELECT token, user_id, username, expires_at, created_at
+		SELECT token, user_id, username, expires_at
 		FROM auth_tokens
 		WHERE token = ? AND expires_at > datetime('now')`,
 		token)
 	var authToken models.AuthToken
 	var expiresAt time.Time
-	err := row.Scan(&authToken.Token, &authToken.UserID, &authToken.Username, &expiresAt, &authToken.CreatedAt)
+	err := row.Scan(&authToken.Token, &authToken.UserID, &authToken.Username, &expiresAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

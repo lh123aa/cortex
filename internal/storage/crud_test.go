@@ -48,7 +48,7 @@ func TestSQLiteStorage_SaveDocument(t *testing.T) {
 	}
 
 	// Verify by retrieving
-	retrieved, err := db.GetDocumentByID("test-doc-1")
+	retrieved, err := db.GetDocumentByID("test-doc-1", "")
 	if err != nil {
 		t.Fatalf("GetDocumentByID failed: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestSQLiteStorage_GetDocumentByPath(t *testing.T) {
 		t.Fatalf("SaveDocument failed: %v", err)
 	}
 
-	retrieved, err := db.GetDocumentByPath("/test/path2.md")
+	retrieved, err := db.GetDocumentByPath("/test/path2.md", "")
 	if err != nil {
 		t.Fatalf("GetDocumentByPath failed: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestSQLiteStorage_SaveChunks(t *testing.T) {
 	}
 
 	// Verify retrieval
-	retrieved, err := db.GetChunk("chunk-1")
+	retrieved, err := db.GetChunk("chunk-1", "")
 	if err != nil {
 		t.Fatalf("GetChunk failed: %v", err)
 	}
@@ -181,14 +181,14 @@ func TestSQLiteStorage_DeleteChunksByDocument(t *testing.T) {
 	}
 
 	// Delete chunks
-	err := db.DeleteChunksByDocument("doc-delete-test")
+	err := db.DeleteChunksByDocument("doc-delete-test", "")
 	if err != nil {
 		t.Fatalf("DeleteChunksByDocument failed: %v", err)
 	}
 
 	// Verify chunks are deleted
 	for _, id := range []string{"chunk-to-delete-1", "chunk-to-delete-2"} {
-		retrieved, err := db.GetChunk(id)
+		retrieved, err := db.GetChunk(id, "")
 		if err != nil {
 			t.Fatalf("GetChunk failed for %s: %v", id, err)
 		}
@@ -216,7 +216,7 @@ func TestSQLiteStorage_ListDocuments(t *testing.T) {
 		}
 	}
 
-	docs, err := db.ListDocuments(10, 0)
+	docs, err := db.ListDocuments("", 10, 0)
 	if err != nil {
 		t.Fatalf("ListDocuments failed: %v", err)
 	}
@@ -225,7 +225,7 @@ func TestSQLiteStorage_ListDocuments(t *testing.T) {
 	}
 
 	// Test pagination
-	docs, err = db.ListDocuments(2, 0)
+	docs, err = db.ListDocuments("", 2, 0)
 	if err != nil {
 		t.Fatalf("ListDocuments failed: %v", err)
 	}
