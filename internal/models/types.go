@@ -5,7 +5,7 @@ import "time"
 // Document 代表一个被索引的文档 (支持原始 Markdown, PDF 等)
 type Document struct {
 	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`       // 所有者用户 ID
+	UserID      string    `json:"user_id"` // 所有者用户 ID
 	Path        string    `json:"path"`
 	Title       string    `json:"title"`
 	FileType    string    `json:"file_type"` // md/pdf/docx
@@ -20,7 +20,7 @@ type Document struct {
 // Chunk 代表某个文档在被切分后的一块文本与向量
 type Chunk struct {
 	ID             string    `json:"id"`
-	UserID         string    `json:"user_id"`        // 所有者用户 ID
+	UserID         string    `json:"user_id"` // 所有者用户 ID
 	DocumentID     string    `json:"document_id"`
 	HeadingPath    string    `json:"heading_path"`  // 例如: "基础知识 > Go语言 > 并发"
 	HeadingLevel   int       `json:"heading_level"` // 0-6
@@ -44,8 +44,8 @@ type SearchOptions struct {
 	Filter      string   `json:"filter"`       // 路径过滤
 	TokenBudget int      `json:"token_budget"` // RAG模式Token预算
 	MinScore    float64  `json:"min_score"`    // 最小分数阈值
-	Collections []string `json:"collections"`   // 限定集合
-	UserID      string   `json:"-"`             // 用户隔离，不暴露给客户端
+	Collections []string `json:"collections"`  // 限定集合
+	UserID      string   `json:"-"`            // 用户隔离，不暴露给客户端
 }
 
 // SearchResult 表示一条召回的结构
@@ -96,15 +96,15 @@ type IndexResponse struct {
 
 // Memory 记忆条目（用于非文件内容的直接写入）
 type Memory struct {
-	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`
-	Content     string    `json:"content"`        // 记忆内容
-	Summary     string    `json:"summary"`       // 自动生成的摘要
-	Tags        []string  `json:"tags"`           // 标签
-	Source      string    `json:"source"`         // 来源 (e.g., "conversation", "manual")
-	SourceID    string    `json:"source_id"`     // 来源ID (e.g., conversation_id)
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	Content   string    `json:"content"`   // 记忆内容
+	Summary   string    `json:"summary"`   // 自动生成的摘要
+	Tags      []string  `json:"tags"`      // 标签
+	Source    string    `json:"source"`    // 来源 (e.g., "conversation", "manual")
+	SourceID  string    `json:"source_id"` // 来源ID (e.g., conversation_id)
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // MemoryRequest 写入记忆请求
@@ -127,9 +127,9 @@ type MemoryResponse struct {
 
 // MemorySearchResult 记忆搜索结果
 type MemorySearchResult struct {
-	ID       string  `json:"id"`
-	Content  string  `json:"content"`
-	Summary  string  `json:"summary"`
-	Score    float64 `json:"score"`
-	Source   string  `json:"source"`
+	ID      string  `json:"id"`
+	Content string  `json:"content"`
+	Summary string  `json:"summary"`
+	Score   float64 `json:"score"`
+	Source  string  `json:"source"`
 }

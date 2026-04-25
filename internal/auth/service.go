@@ -16,23 +16,23 @@ import (
 
 // 错误定义
 var (
-	ErrUserNotFound       = errors.New("user not found")
-	ErrInvalidPassword    = errors.New("invalid password")
-	ErrUserExists         = errors.New("user already exists")
-	ErrInvalidToken       = errors.New("invalid token")
-	ErrTokenExpired       = errors.New("token expired")
-	ErrAPIKeyNotFound     = errors.New("api key not found")
-	ErrAPIKeyInvalid      = errors.New("invalid api key")
-	ErrAPIKeyExpired      = errors.New("api key expired")
-	ErrInsufficientPerms  = errors.New("insufficient permissions")
+	ErrUserNotFound      = errors.New("user not found")
+	ErrInvalidPassword   = errors.New("invalid password")
+	ErrUserExists        = errors.New("user already exists")
+	ErrInvalidToken      = errors.New("invalid token")
+	ErrTokenExpired      = errors.New("token expired")
+	ErrAPIKeyNotFound    = errors.New("api key not found")
+	ErrAPIKeyInvalid     = errors.New("invalid api key")
+	ErrAPIKeyExpired     = errors.New("api key expired")
+	ErrInsufficientPerms = errors.New("insufficient permissions")
 )
 
 // AuthService 认证服务
 type AuthService struct {
-	storage   storage.Storage
-	tokenExp  time.Duration
-	tokenMu   sync.RWMutex
-	apiKeyMu  sync.RWMutex
+	storage  storage.Storage
+	tokenExp time.Duration
+	tokenMu  sync.RWMutex
+	apiKeyMu sync.RWMutex
 }
 
 // NewAuthService 创建认证服务（使用指定的存储）
@@ -79,9 +79,9 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.User, error
 		Username:     req.Username,
 		PasswordHash: string(hash),
 		Role:         models.RoleUser,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-		IsActive:    true,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		IsActive:     true,
 	}
 
 	if err := s.storage.SaveUser(user); err != nil {

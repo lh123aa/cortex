@@ -23,16 +23,16 @@ func NewRAGBuilder(se SearchEngine) *RAGBuilder {
 
 // RAGContext 表示拼接好的提词上下文反馈
 type RAGContext struct {
-	Context     string   `json:"context"`
-	TokenCount  int      `json:"token_count"`
-	TokenBudget int      `json:"token_budget"`
-	Truncated   bool     `json:"truncated"`
+	Context     string `json:"context"`
+	TokenCount  int    `json:"token_count"`
+	TokenBudget int    `json:"token_budget"`
+	Truncated   bool   `json:"truncated"`
 }
 
 // BuildContext 控制 Token 预算，按智能标点回退截断块
 func (b *RAGBuilder) BuildContext(ctx context.Context, query string, tokenBudget int, opts models.SearchOptions) (*RAGContext, error) {
 	opts.TopK = 50
-	
+
 	// v1.1 若提供缓存，利用引擎包装好的 SearchWithCache，在此保持向后兼容暂利用 Search
 	results, err := b.searchEngine.Search(ctx, query, opts)
 	if err != nil {
@@ -91,7 +91,7 @@ func smartTruncate(text string, remainingTokens int) string {
 		return text
 	}
 	subStr := text[:maxChars]
-	
+
 	lastPunc := -1
 	delims := []string{"。", ".", "！", "!", "？", "?", "\n"}
 	for _, d := range delims {
@@ -101,10 +101,10 @@ func smartTruncate(text string, remainingTokens int) string {
 			lastPunc = idx + len(d)
 		}
 	}
-	
+
 	if lastPunc > 0 {
 		return subStr[:lastPunc] + " [片段截断...]"
 	}
-	
+
 	return subStr + "..."
 }

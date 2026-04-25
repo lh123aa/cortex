@@ -160,10 +160,10 @@ func TestHNSW_Search(t *testing.T) {
 
 	// Add test vectors
 	vecs := [][]float32{
-		{1.0, 0.0, 0.0},   // vec1
-		{0.0, 1.0, 0.0},   // vec2
-		{0.9, 0.1, 0.0},   // vec3 - close to vec1
-		{0.0, 0.9, 0.1},   // vec4 - close to vec2
+		{1.0, 0.0, 0.0}, // vec1
+		{0.0, 1.0, 0.0}, // vec2
+		{0.9, 0.1, 0.0}, // vec3 - close to vec1
+		{0.0, 0.9, 0.1}, // vec4 - close to vec2
 	}
 
 	for i, v := range vecs {

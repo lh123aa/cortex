@@ -14,12 +14,12 @@ import (
 
 // Config holds all configuration for Cortex
 type Config struct {
-	Cortex     CortexConfig     `mapstructure:"cortex"`
-	Embedding  EmbeddingConfig  `mapstructure:"embedding"`
-	Index      IndexConfig      `mapstructure:"index"`
-	Search     SearchConfig     `mapstructure:"search"`
-	Backup     BackupConfig     `mapstructure:"backup"`
-	Vector     VectorConfig     `mapstructure:"vector"`
+	Cortex    CortexConfig    `mapstructure:"cortex"`
+	Embedding EmbeddingConfig `mapstructure:"embedding"`
+	Index     IndexConfig     `mapstructure:"index"`
+	Search    SearchConfig    `mapstructure:"search"`
+	Backup    BackupConfig    `mapstructure:"backup"`
+	Vector    VectorConfig    `mapstructure:"vector"`
 }
 
 // CortexConfig holds core Cortex settings
@@ -32,8 +32,8 @@ type CortexConfig struct {
 // EmbeddingConfig holds embedding provider settings
 type EmbeddingConfig struct {
 	Provider string       `mapstructure:"provider"`
-	Ollama   OllamaConfig  `mapstructure:"ollama"`
-	ONNX     ONNXConfig    `mapstructure:"onnx"`
+	Ollama   OllamaConfig `mapstructure:"ollama"`
+	ONNX     ONNXConfig   `mapstructure:"onnx"`
 }
 
 // OllamaConfig holds Ollama-specific settings
@@ -59,8 +59,8 @@ type IndexConfig struct {
 
 // SearchConfig holds search settings
 type SearchConfig struct {
-	CacheTTL     string `mapstructure:"cache_ttl"`
-	DefaultTopK  int    `mapstructure:"default_top_k"`
+	CacheTTL    string `mapstructure:"cache_ttl"`
+	DefaultTopK int    `mapstructure:"default_top_k"`
 }
 
 // BackupConfig holds backup settings
@@ -73,10 +73,10 @@ type BackupConfig struct {
 
 // VectorConfig 向量相关配置
 type VectorConfig struct {
-	Compression string `mapstructure:"compression"` // none/pq
-	Dimension  int    `mapstructure:"dimension"`    // 原始向量维度 (默认768)
-	PQDim      int    `mapstructure:"pq_dim"`      // PQ压缩后维度 (默认64)
-	CodebookSize int  `mapstructure:"codebook_size"` // 码本大小 (默认256)
+	Compression  string `mapstructure:"compression"`   // none/pq
+	Dimension    int    `mapstructure:"dimension"`     // 原始向量维度 (默认768)
+	PQDim        int    `mapstructure:"pq_dim"`        // PQ压缩后维度 (默认64)
+	CodebookSize int    `mapstructure:"codebook_size"` // 码本大小 (默认256)
 }
 
 // UsePQ 是否启用 PQ 压缩
@@ -86,9 +86,9 @@ func (v *VectorConfig) UsePQ() bool {
 
 // ConfigWatcher 配置变更监听器
 type ConfigWatcher struct {
-	viper  *viper.Viper
-	mu     sync.RWMutex
-	done   chan struct{}
+	viper    *viper.Viper
+	mu       sync.RWMutex
+	done     chan struct{}
 	onChange func(*Config) // 配置变更回调
 }
 
@@ -191,9 +191,9 @@ func WatchConfig(onChange func(*Config)) error {
 	}
 
 	watcher = &ConfigWatcher{
-		viper:     v,
-		done:      make(chan struct{}),
-		onChange:  onChange,
+		viper:    v,
+		done:     make(chan struct{}),
+		onChange: onChange,
 	}
 	mu.Unlock()
 

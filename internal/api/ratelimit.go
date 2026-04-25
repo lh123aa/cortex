@@ -10,11 +10,11 @@ import (
 
 // RateLimiter 基于令牌桶算法的限流器
 type RateLimiter struct {
-	rate       int           // 每秒产生的令牌数
-	burst      int           // 桶的容量
+	rate       int // 每秒产生的令牌数
+	burst      int // 桶的容量
 	mu         sync.Mutex
-	tokens     float64       // 当前令牌数
-	lastUpdate time.Time     // 上次更新时间
+	tokens     float64   // 当前令牌数
+	lastUpdate time.Time // 上次更新时间
 }
 
 // NewRateLimiter 创建一个新的限流器
@@ -171,9 +171,9 @@ type RateLimitConfig struct {
 func NewRateLimitConfig() *RateLimitConfig {
 	return &RateLimitConfig{
 		Enabled: true,
-		Rate:   100,  // 每秒 100 个请求
-		Burst:  200,  // 最多突发 200 个请求
-		PerIP:  true,  // 默认按 IP 限流
+		Rate:    100,  // 每秒 100 个请求
+		Burst:   200,  // 最多突发 200 个请求
+		PerIP:   true, // 默认按 IP 限流
 		PerUser: false,
 	}
 }

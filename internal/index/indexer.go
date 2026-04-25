@@ -34,8 +34,8 @@ func NewIndexer(s storage.Storage, em embedding.EmbeddingProvider, workers int) 
 	}
 	ckMap := make(map[string]chunker.Chunker)
 	mk, _ := chunker.NewMarkdownChunker(chunker.ChunkConfig{
-		MinChars:         50,
-		MaxTokens:        512,
+		MinChars:          50,
+		MaxTokens:         512,
 		IncludeBreadcrumb: true,
 	})
 	ckMap["md"] = mk

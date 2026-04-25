@@ -18,29 +18,29 @@ import (
 
 // MemoryHandler 记忆系统 API 处理
 type MemoryHandler struct {
-	storage  storage.Storage
-	engine   *search.HybridSearchEngine
-	rag      *rag.RAGBuilder
-	em       embedding.EmbeddingProvider
-	chunker  chunker.Chunker
-	logger   *zap.Logger
+	storage storage.Storage
+	engine  *search.HybridSearchEngine
+	rag     *rag.RAGBuilder
+	em      embedding.EmbeddingProvider
+	chunker chunker.Chunker
+	logger  *zap.Logger
 }
 
 // NewMemoryHandler 创建记忆处理器
 func NewMemoryHandler(s storage.Storage, se *search.HybridSearchEngine, em embedding.EmbeddingProvider, logger *zap.Logger) *MemoryHandler {
 	// 使用文本 chunker 用于记忆内容分块
 	tk, _ := chunker.NewTextChunker(chunker.ChunkConfig{
-		MinChars:   50,
+		MinChars:  50,
 		MaxTokens: 512,
 	})
 
 	return &MemoryHandler{
-		storage:  s,
-		engine:   se,
-		rag:      rag.NewRAGBuilder(se),
-		em:       em,
-		chunker:  tk,
-		logger:   logger,
+		storage: s,
+		engine:  se,
+		rag:     rag.NewRAGBuilder(se),
+		em:      em,
+		chunker: tk,
+		logger:  logger,
 	}
 }
 
@@ -318,8 +318,8 @@ func (h *MemoryHandler) GetMemoryContext(c *gin.Context) {
 	}
 
 	opts := models.SearchOptions{
-		TopK: 50,
-		Mode: "hybrid",
+		TopK:   50,
+		Mode:   "hybrid",
 		UserID: userID,
 	}
 
@@ -332,10 +332,10 @@ func (h *MemoryHandler) GetMemoryContext(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"query":        q,
-		"context":       rc.Context,
-		"token_count":   rc.TokenCount,
-		"token_budget":  rc.TokenBudget,
-		"truncated":     rc.Truncated,
+		"context":      rc.Context,
+		"token_count":  rc.TokenCount,
+		"token_budget": rc.TokenBudget,
+		"truncated":    rc.Truncated,
 	})
 }
 

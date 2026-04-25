@@ -63,9 +63,9 @@ func IsRetryable(err error, cfg *RetryConfig) bool {
 
 // EmbedError Embedding 操作错误详情
 type EmbedError struct {
-	Provider string
-	Op       string // "embed" | "embed_batch"
-	Err      error
+	Provider  string
+	Op        string // "embed" | "embed_batch"
+	Err       error
 	Retryable bool
 	Timestamp time.Time
 }
@@ -82,8 +82,8 @@ func (e *EmbedError) Unwrap() error {
 func NewEmbedError(provider, op string, err error, retryable bool) *EmbedError {
 	return &EmbedError{
 		Provider:  provider,
-		Op:       op,
-		Err:      err,
+		Op:        op,
+		Err:       err,
 		Retryable: retryable,
 		Timestamp: time.Now(),
 	}
@@ -106,8 +106,8 @@ func WrapRetryableError(err error, provider, op string) *EmbedError {
 	}
 	return &EmbedError{
 		Provider:  provider,
-		Op:       op,
-		Err:      err,
+		Op:        op,
+		Err:       err,
 		Retryable: retryable,
 		Timestamp: time.Now(),
 	}

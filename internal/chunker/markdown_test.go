@@ -6,8 +6,8 @@ import (
 
 func TestMarkdownChunker_Chunk(t *testing.T) {
 	config := ChunkConfig{
-		MinChars:         10,
-		MaxTokens:        500,
+		MinChars:          10,
+		MaxTokens:         500,
 		IncludeBreadcrumb: true,
 	}
 

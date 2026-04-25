@@ -13,16 +13,16 @@ import (
 // APIKeyAuth API Key 认证中间件
 // 使用哈希存储密钥，防止内存泄漏后密钥被直接利用
 type APIKeyAuth struct {
-	headerName   string
-	queryName    string
-	validKeyHashes map[string]bool  // 存储哈希而非原始密钥
-	mu           sync.RWMutex
+	headerName     string
+	queryName      string
+	validKeyHashes map[string]bool // 存储哈希而非原始密钥
+	mu             sync.RWMutex
 }
 
 func NewAPIKeyAuth(headerName, queryName string) *APIKeyAuth {
 	return &APIKeyAuth{
-		headerName:   headerName,
-		queryName:    queryName,
+		headerName:     headerName,
+		queryName:      queryName,
 		validKeyHashes: make(map[string]bool),
 	}
 }

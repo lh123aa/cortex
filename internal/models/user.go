@@ -6,7 +6,7 @@ import "time"
 type User struct {
 	ID           string    `json:"id"`
 	Username     string    `json:"username"`
-	PasswordHash string    `json:"-"` // 不返回给客户端
+	PasswordHash string    `json:"-"`    // 不返回给客户端
 	Role         string    `json:"role"` // admin/user
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -24,7 +24,7 @@ const (
 type APIKey struct {
 	ID        string    `json:"id"`
 	UserID    string    `json:"user_id"`
-	KeyHash   string    `json:"-"` // 不返回给客户端
+	KeyHash   string    `json:"-"`    // 不返回给客户端
 	Name      string    `json:"name"` // key 名称，如 "我的电脑"
 	LastUsed  time.Time `json:"last_used_at,omitempty"`
 	CreatedAt time.Time `json:"created_at"`

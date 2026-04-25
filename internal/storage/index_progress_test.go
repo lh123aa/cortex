@@ -30,16 +30,16 @@ func TestSaveAndGetIndexProgress(t *testing.T) {
 	defer cleanup()
 
 	progress := &models.IndexProgress{
-		RootPath:     "/test/path",
-		LastFilePath: "/test/path/file3.md",
+		RootPath:      "/test/path",
+		LastFilePath:  "/test/path/file3.md",
 		LastFileIndex: 5,
-		TotalFiles:   100,
-		IndexedFiles: 50,
+		TotalFiles:    100,
+		IndexedFiles:  50,
 		IndexedChunks: 200,
-		FailedFiles:  2,
-		Status:      "running",
-		StartedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		FailedFiles:   2,
+		Status:        "running",
+		StartedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	// Save progress
@@ -78,14 +78,14 @@ func TestSaveIndexProgress_Update(t *testing.T) {
 
 	// Save initial progress
 	progress := &models.IndexProgress{
-		RootPath:     "/test/path",
-		LastFilePath: "/test/path/file1.md",
+		RootPath:      "/test/path",
+		LastFilePath:  "/test/path/file1.md",
 		LastFileIndex: 1,
-		TotalFiles:   100,
-		IndexedFiles: 10,
-		Status:      "running",
-		StartedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		TotalFiles:    100,
+		IndexedFiles:  10,
+		Status:        "running",
+		StartedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	err := db.SaveIndexProgress(progress)
@@ -137,27 +137,27 @@ func TestGetIndexProgress_OnlyReturnsRunning(t *testing.T) {
 
 	// Save a completed progress
 	completed := &models.IndexProgress{
-		RootPath:     "/completed/path",
+		RootPath:      "/completed/path",
 		LastFileIndex: 100,
-		TotalFiles:   100,
-		IndexedFiles: 100,
-		Status:       "completed",
-		StartedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-		CompletedAt: time.Now(),
+		TotalFiles:    100,
+		IndexedFiles:  100,
+		Status:        "completed",
+		StartedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+		CompletedAt:   time.Now(),
 	}
 
 	db.SaveIndexProgress(completed)
 
 	// Save a running progress
 	running := &models.IndexProgress{
-		RootPath:     "/running/path",
+		RootPath:      "/running/path",
 		LastFileIndex: 50,
-		TotalFiles:   100,
-		IndexedFiles: 50,
-		Status:       "running",
-		StartedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		TotalFiles:    100,
+		IndexedFiles:  50,
+		Status:        "running",
+		StartedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	db.SaveIndexProgress(running)
@@ -182,13 +182,13 @@ func TestCompleteIndexProgress(t *testing.T) {
 
 	// Save running progress
 	progress := &models.IndexProgress{
-		RootPath:     "/to/complete",
+		RootPath:      "/to/complete",
 		LastFileIndex: 100,
-		TotalFiles:   100,
-		IndexedFiles: 100,
-		Status:       "running",
-		StartedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		TotalFiles:    100,
+		IndexedFiles:  100,
+		Status:        "running",
+		StartedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	db.SaveIndexProgress(progress)
@@ -216,13 +216,13 @@ func TestFailIndexProgress(t *testing.T) {
 
 	// Save running progress
 	progress := &models.IndexProgress{
-		RootPath:     "/to/fail",
+		RootPath:      "/to/fail",
 		LastFileIndex: 50,
-		TotalFiles:   100,
-		IndexedFiles: 50,
-		Status:       "running",
-		StartedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		TotalFiles:    100,
+		IndexedFiles:  50,
+		Status:        "running",
+		StartedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	db.SaveIndexProgress(progress)
@@ -251,13 +251,13 @@ func TestListIndexProgress(t *testing.T) {
 	// Create multiple progress entries
 	for i := 0; i < 5; i++ {
 		progress := &models.IndexProgress{
-			RootPath:     "/test/path" + string(rune('0'+i)),
+			RootPath:      "/test/path" + string(rune('0'+i)),
 			LastFileIndex: i * 10,
-			TotalFiles:   100,
-			IndexedFiles: i * 10,
-			Status:       "running",
-			StartedAt:   time.Now(),
-			UpdatedAt:   time.Now().Add(time.Duration(i) * time.Minute), // different times
+			TotalFiles:    100,
+			IndexedFiles:  i * 10,
+			Status:        "running",
+			StartedAt:     time.Now(),
+			UpdatedAt:     time.Now().Add(time.Duration(i) * time.Minute), // different times
 		}
 		db.SaveIndexProgress(progress)
 	}
@@ -287,13 +287,13 @@ func TestListIndexProgress_Pagination(t *testing.T) {
 	// Create 10 progress entries
 	for i := 0; i < 10; i++ {
 		progress := &models.IndexProgress{
-			RootPath:     "/paginated/" + string(rune('0'+i)),
+			RootPath:      "/paginated/" + string(rune('0'+i)),
 			LastFileIndex: i,
-			TotalFiles:   100,
-			IndexedFiles: i,
-			Status:       "running",
-			StartedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
+			TotalFiles:    100,
+			IndexedFiles:  i,
+			Status:        "running",
+			StartedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
 		}
 		db.SaveIndexProgress(progress)
 	}
@@ -335,13 +335,13 @@ func TestDeleteIndexProgress(t *testing.T) {
 
 	// Save progress
 	progress := &models.IndexProgress{
-		ID:           0, // auto-increment
-		RootPath:     "/to/delete",
+		ID:            0, // auto-increment
+		RootPath:      "/to/delete",
 		LastFileIndex: 50,
-		TotalFiles:   100,
-		Status:       "running",
-		StartedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		TotalFiles:    100,
+		Status:        "running",
+		StartedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	db.SaveIndexProgress(progress)
@@ -372,16 +372,16 @@ func TestIndexProgress_CRUD_Integration(t *testing.T) {
 
 	// Create
 	progress := &models.IndexProgress{
-		RootPath:     "/integration/test",
-		LastFilePath: "/integration/test/file.md",
+		RootPath:      "/integration/test",
+		LastFilePath:  "/integration/test/file.md",
 		LastFileIndex: 0,
-		TotalFiles:   50,
-		IndexedFiles: 0,
+		TotalFiles:    50,
+		IndexedFiles:  0,
 		IndexedChunks: 0,
-		FailedFiles:  0,
-		Status:       "running",
-		StartedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		FailedFiles:   0,
+		Status:        "running",
+		StartedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	err := db.SaveIndexProgress(progress)
@@ -436,19 +436,19 @@ func TestIndexProgress_Model(t *testing.T) {
 	now := time.Now()
 
 	progress := &models.IndexProgress{
-		ID:             1,
-		RootPath:       "/test",
-		LastFilePath:   "/test/file.md",
-		LastFileIndex:  10,
-		TotalFiles:     100,
-		IndexedFiles:   50,
-		IndexedChunks:  200,
-		FailedFiles:    2,
-		Status:         "running",
-		StartedAt:      now,
-		UpdatedAt:      now,
-		CompletedAt:    time.Time{}, // zero time
-		ErrorMessage:   "",
+		ID:            1,
+		RootPath:      "/test",
+		LastFilePath:  "/test/file.md",
+		LastFileIndex: 10,
+		TotalFiles:    100,
+		IndexedFiles:  50,
+		IndexedChunks: 200,
+		FailedFiles:   2,
+		Status:        "running",
+		StartedAt:     now,
+		UpdatedAt:     now,
+		CompletedAt:   time.Time{}, // zero time
+		ErrorMessage:  "",
 	}
 
 	if progress.ID != 1 {
@@ -470,8 +470,8 @@ func TestIndexProgress_WithCompletedAt(t *testing.T) {
 	completedAt := now.Add(5 * time.Minute)
 
 	progress := &models.IndexProgress{
-		ID:           2,
-		RootPath:     "/completed",
+		ID:            2,
+		RootPath:      "/completed",
 		LastFileIndex: 100,
 		TotalFiles:    100,
 		IndexedFiles:  100,
@@ -491,8 +491,8 @@ func TestIndexProgress_WithCompletedAt(t *testing.T) {
 
 func TestIndexProgress_WithError(t *testing.T) {
 	progress := &models.IndexProgress{
-		ID:           3,
-		RootPath:     "/failed",
+		ID:            3,
+		RootPath:      "/failed",
 		LastFileIndex: 50,
 		TotalFiles:    100,
 		IndexedFiles:  50,

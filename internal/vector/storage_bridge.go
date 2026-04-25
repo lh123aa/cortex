@@ -10,11 +10,11 @@ import (
 
 // StorageBridge SQLite 和 HNSW 索引的桥接层
 type StorageBridge struct {
-	db        *sql.DB
-	hnsw      *HNSW
-	idToIdx   map[string]int
-	mu        sync.RWMutex
-	dim       int
+	db      *sql.DB
+	hnsw    *HNSW
+	idToIdx map[string]int
+	mu      sync.RWMutex
+	dim     int
 }
 
 // NewStorageBridge 创建新的存储桥接器

@@ -2,13 +2,13 @@ package storage
 
 import (
 	"database/sql"
-	"fmt"
 	_ "embed"
+	"fmt"
 	"log"
 	"path/filepath"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/lh123aa/cortex/internal/vector"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 //go:embed schema.sql
@@ -19,7 +19,7 @@ type SQLiteStorage struct {
 	hnsw     *vector.StorageBridge
 	useHNSW  bool
 	vecIndex *vector.VectorIndex // 向量索引管理器（用于持久化）
-	dbPath   string             // 数据库路径（用于计算向量索引路径）
+	dbPath   string              // 数据库路径（用于计算向量索引路径）
 }
 
 // NewSQLiteStorage 初始化并打开 SQLite 数据库
@@ -121,4 +121,3 @@ func (s *SQLiteStorage) Close() error {
 	}
 	return nil
 }
-

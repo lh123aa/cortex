@@ -39,9 +39,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"id":       user.ID,
-		"username": user.Username,
-		"role":     user.Role,
+		"id":         user.ID,
+		"username":   user.Username,
+		"role":       user.Role,
 		"created_at": user.CreatedAt,
 	})
 }
@@ -68,7 +68,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		"token":      token.Token,
 		"expires_in": token.ExpiresIn,
 		"user_id":    token.UserID,
-		"username":  token.Username,
+		"username":   token.Username,
 	})
 }
 
@@ -97,11 +97,11 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":        user.ID,
-		"username":  user.Username,
-		"role":      user.Role,
+		"id":         user.ID,
+		"username":   user.Username,
+		"role":       user.Role,
 		"created_at": user.CreatedAt,
-		"is_active": user.IsActive,
+		"is_active":  user.IsActive,
 	})
 }
 

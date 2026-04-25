@@ -9,19 +9,19 @@ import (
 
 // PQConfig Product Quantization 配置
 type PQConfig struct {
-	Dimension    int // 原始向量维度 (如 768)
+	Dimension     int // 原始向量维度 (如 768)
 	CompressedDim int // 压缩后维度 (如 64)
-	CodebookSize int // 码本大小 (通常 256)
-	Iterations   int // k-means 迭代次数
+	CodebookSize  int // 码本大小 (通常 256)
+	Iterations    int // k-means 迭代次数
 }
 
 // DefaultPQConfig 默认 PQ 配置
 func DefaultPQConfig() *PQConfig {
 	return &PQConfig{
-		Dimension:    768,
+		Dimension:     768,
 		CompressedDim: 64,
-		CodebookSize: 256,
-		Iterations:   20,
+		CodebookSize:  256,
+		Iterations:    20,
 	}
 }
 
@@ -244,7 +244,7 @@ func (pq *PQ) CodeSize() int {
 // CompressionRatio 返回压缩率
 func (pq *PQ) CompressionRatio() float64 {
 	originalSize := pq.cfg.Dimension * 4 // 4 bytes per float32
-	compressedSize := pq.subVectors * 1 // 1 byte per sub-vector
+	compressedSize := pq.subVectors * 1  // 1 byte per sub-vector
 	return float64(originalSize) / float64(compressedSize)
 }
 
@@ -296,20 +296,20 @@ func sqeuclidean(a, b []float32) float64 {
 
 // PQIndex 带 PQ 压缩的向量索引
 type PQIndex struct {
-	pq        *PQ
-	chunkIDs  []string
-	codes     [][]byte // 压缩后的向量码
-	idToIdx   map[string]int
-	mu        sync.RWMutex
+	pq       *PQ
+	chunkIDs []string
+	codes    [][]byte // 压缩后的向量码
+	idToIdx  map[string]int
+	mu       sync.RWMutex
 }
 
 // NewPQIndex 创建带 PQ 压缩的向量索引
 func NewPQIndex(cfg *PQConfig) *PQIndex {
 	return &PQIndex{
-		pq:      NewPQ(cfg),
+		pq:       NewPQ(cfg),
 		chunkIDs: make([]string, 0),
-		codes:   make([][]byte, 0),
-		idToIdx: make(map[string]int),
+		codes:    make([][]byte, 0),
+		idToIdx:  make(map[string]int),
 	}
 }
 
@@ -360,7 +360,7 @@ func (pqi *PQIndex) Search(query []float32, k int) ([]string, []float64) {
 
 	// 计算距离
 	type result struct {
-		id       string
+		id         string
 		approxDist float64 // 近似距离
 	}
 	results := make([]result, 0, len(pqi.chunkIDs))

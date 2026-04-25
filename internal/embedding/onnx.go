@@ -15,7 +15,7 @@ import (
 // ONNXEmbedding 调用本地 ONNX 模型推理服务器
 // 要求服务器实现 /v1/embeddings 接口（兼容 OpenAI API 格式）
 type ONNXEmbedding struct {
-	BaseURL  string
+	BaseURL string
 	Model   string
 	Dim     int
 	Timeout time.Duration

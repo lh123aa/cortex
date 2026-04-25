@@ -24,11 +24,11 @@ type Issue struct {
 
 // IterationResult represents one iteration
 type IterationResult struct {
-	Iteration      int       `json:"iteration"`
-	Timestamp      time.Time `json:"timestamp"`
-	IssuesFound    int       `json:"issues_found"`
-	IssuesFixed    int       `json:"issues_fixed"`
-	IssuesPending  int       `json:"issues_pending"`
+	Iteration     int       `json:"iteration"`
+	Timestamp     time.Time `json:"timestamp"`
+	IssuesFound   int       `json:"issues_found"`
+	IssuesFixed   int       `json:"issues_fixed"`
+	IssuesPending int       `json:"issues_pending"`
 	P0Fixed       int       `json:"p0_fixed"`
 	P1Fixed       int       `json:"p1_fixed"`
 	P2Fixed       int       `json:"p2_fixed"`
@@ -40,16 +40,16 @@ type IterationResult struct {
 
 // Change represents a code change
 type Change struct {
-	File     string `json:"file"`
-	Type     string `json:"type"` // fix/add/refactor
-	Desc     string `json:"description"`
-	Lines    int    `json:"lines_changed"`
+	File  string `json:"file"`
+	Type  string `json:"type"` // fix/add/refactor
+	Desc  string `json:"description"`
+	Lines int    `json:"lines_changed"`
 }
 
 // KnownIssues database of known issues
 var KnownIssues = []Issue{
 	// P0 Issues
-{ID: "P0-001", Severity: "P0", Component: "vector", File: "internal/vector/hnsw.go", Line: 347, Title: "HNSW搜索变量错误", Status: "fixed"},
+	{ID: "P0-001", Severity: "P0", Component: "vector", File: "internal/vector/hnsw.go", Line: 347, Title: "HNSW搜索变量错误", Status: "fixed"},
 	{ID: "P0-002", Severity: "P0", Component: "storage", File: "internal/storage/search.go", Line: 101, Title: "SQL语法错误", Status: "fixed"},
 	{ID: "P0-003", Severity: "P0", Component: "auth", File: "internal/auth/service.go", Line: 1, Title: "认证不持久化", Status: "fixed"},
 	{ID: "P0-004", Severity: "P0", Component: "storage", File: "internal/storage/crud.go", Line: 306, Title: "统计方法stub", Status: "fixed"},

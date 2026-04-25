@@ -6,7 +6,7 @@ type EmbeddingProvider interface {
 	EmbedBatch(texts []string) ([][]float32, error)
 	// Embed 单独提取
 	Embed(text string) ([]float32, error)
-	
+
 	Dimension() int
 	Name() string
 	Health() error
@@ -49,8 +49,12 @@ func (m *ProviderManager) EmbedBatch(texts []string) ([][]float32, error) {
 }
 
 func (m *ProviderManager) Dimension() int {
-	if m.primary != nil { return m.primary.Dimension() }
-	if m.fallback != nil { return m.fallback.Dimension() }
+	if m.primary != nil {
+		return m.primary.Dimension()
+	}
+	if m.fallback != nil {
+		return m.fallback.Dimension()
+	}
 	return 0
 }
 

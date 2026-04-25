@@ -36,7 +36,7 @@ func (b *BackupManager) CreateBackup() (string, error) {
 	if err := copyFile(b.dbPath, backupPath); err != nil {
 		return "", err
 	}
-	
+
 	// 同时备份一下存在可能未落盘的 wall log
 	if walInfo, err := os.Stat(b.dbPath + "-wal"); err == nil && !walInfo.IsDir() {
 		_ = copyFile(b.dbPath+"-wal", backupPath+"-wal")

@@ -16,7 +16,7 @@ type HybridSearchEngine struct {
 	embedding embedding.EmbeddingProvider
 	useCache  bool
 	cacheTTL  time.Duration
-	reranker  Reranker // 可选的重排序器
+	reranker  Reranker     // 可选的重排序器
 	l1Cache   *SearchCache // L1 内存缓存
 }
 

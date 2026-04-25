@@ -258,8 +258,8 @@ func TestValidateConfig_InvalidWorkers(t *testing.T) {
 
 func TestValidateConfig_InvalidTopK(t *testing.T) {
 	testCases := []struct {
-		name  string
-		topK  int
+		name string
+		topK int
 	}{
 		{"zero topK", 0},
 		{"negative topK", -1},
@@ -294,7 +294,7 @@ func TestValidateConfig_InvalidTopK(t *testing.T) {
 func TestConfig_Struct(t *testing.T) {
 	cfg := Config{
 		Cortex: CortexConfig{
-			DBPath:  "/tmp/db.db",
+			DBPath:   "/tmp/db.db",
 			LogLevel: "debug",
 		},
 		Embedding: EmbeddingConfig{
@@ -346,7 +346,7 @@ func TestConfig_Struct(t *testing.T) {
 
 func TestCortexConfig_Struct(t *testing.T) {
 	cfg := CortexConfig{
-		DBPath:  "/custom/path.db",
+		DBPath:   "/custom/path.db",
 		LogLevel: "warn",
 	}
 
@@ -476,7 +476,7 @@ search:
 	// Update partial
 	updates := map[string]interface{}{
 		"search.default_top_k": 50,
-		"index.workers":       8,
+		"index.workers":        8,
 	}
 
 	err = UpdatePartial(updates)

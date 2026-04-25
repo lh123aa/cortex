@@ -170,12 +170,12 @@ func TestSearchResult(t *testing.T) {
 		Score: 0.87,
 		Rank:  1,
 		Chunk: &models.Chunk{
-			ID:           "chunk-test",
-			DocumentID:   "doc-test",
-			HeadingPath:  "Introduction",
-			Content:      "This is test content",
-			ContentRaw:   "This is test content",
-			TokenCount:   6,
+			ID:          "chunk-test",
+			DocumentID:  "doc-test",
+			HeadingPath: "Introduction",
+			Content:     "This is test content",
+			ContentRaw:  "This is test content",
+			TokenCount:  6,
 		},
 	}
 

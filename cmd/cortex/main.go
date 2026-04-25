@@ -25,10 +25,10 @@ import (
 )
 
 var (
-	cfgPath    string
-	logLevel   string
-	topK       int
-	mode       string
+	cfgPath     string
+	logLevel    string
+	topK        int
+	mode        string
 	tokenBudget int
 )
 
@@ -260,8 +260,8 @@ func runSearch(cmd *cobra.Command, args []string) {
 
 	query := args[0]
 	opts := models.SearchOptions{
-		TopK: topK,
-		Mode: mode,
+		TopK:   topK,
+		Mode:   mode,
 		UserID: "", // CLI mode - no user isolation
 	}
 
@@ -316,8 +316,8 @@ func runContext(cmd *cobra.Command, args []string) {
 
 	query := args[0]
 	opts := models.SearchOptions{
-		TopK: 20,
-		Mode: "hybrid",
+		TopK:   20,
+		Mode:   "hybrid",
 		UserID: "", // CLI mode - no user isolation
 	}
 

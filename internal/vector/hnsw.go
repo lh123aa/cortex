@@ -10,33 +10,33 @@ import (
 
 // HNSW 配置参数
 type Config struct {
-	MaxLayers    int     // 最大层数，默认为 16
-	EfConstruction int   // 构建时的动态列表大小，默认为 200
-	M            int     // 底层连接数，默认为 32
-	ML           float64 // 层间因子，默认为 1/log(32) ≈ 0.216
+	MaxLayers      int     // 最大层数，默认为 16
+	EfConstruction int     // 构建时的动态列表大小，默认为 200
+	M              int     // 底层连接数，默认为 32
+	ML             float64 // 层间因子，默认为 1/log(32) ≈ 0.216
 }
 
 // DefaultConfig 返回默认配置
 func DefaultConfig() *Config {
 	return &Config{
-		MaxLayers:     16,
+		MaxLayers:      16,
 		EfConstruction: 200,
-		M:             32,
-		ML:           1 / math.Log(32),
+		M:              32,
+		ML:             1 / math.Log(32),
 	}
 }
 
 // HNSW 索引结构
 type HNSW struct {
 	cfg        *Config
-	vectors    [][]float32   // 存储所有向量
-	ids        []string      // 向量对应的 ID
-	neighbors  [][][]int     // 邻居节点: neighbors[layer][node_id] -> []neighbors
-	enterPoint int           // 入口点
-	mu         sync.RWMutex  // 并发控制
-	dim        int           // 向量维度
-	count      int           // 向量数量
-	maxLevel   int           // 当前最大层
+	vectors    [][]float32  // 存储所有向量
+	ids        []string     // 向量对应的 ID
+	neighbors  [][][]int    // 邻居节点: neighbors[layer][node_id] -> []neighbors
+	enterPoint int          // 入口点
+	mu         sync.RWMutex // 并发控制
+	dim        int          // 向量维度
+	count      int          // 向量数量
+	maxLevel   int          // 当前最大层
 }
 
 // NewHNSW 创建新的 HNSW 索引
@@ -321,7 +321,7 @@ func (h *HNSW) Search(query []float32, k int) ([]string, []float64) {
 
 // searchResult 搜索结果
 type searchResult struct {
-	id  int
+	id   int
 	dist float64
 }
 

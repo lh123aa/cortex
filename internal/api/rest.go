@@ -61,22 +61,22 @@ func parsePositiveInt(s string) (int, error) {
 
 // RESTServer Gin-based HTTP API server
 type RESTServer struct {
-	engine  *search.HybridSearchEngine
-	rag     *rag.RAGBuilder
-	storage storage.Storage
-	logger  *zap.Logger
-	router  *gin.Engine
-	health  *HealthChecker
-	memory  *MemoryHandler // 记忆系统处理器
-	httpServer *HTTPServer   // 用于 graceful shutdown
+	engine     *search.HybridSearchEngine
+	rag        *rag.RAGBuilder
+	storage    storage.Storage
+	logger     *zap.Logger
+	router     *gin.Engine
+	health     *HealthChecker
+	memory     *MemoryHandler // 记忆系统处理器
+	httpServer *HTTPServer    // 用于 graceful shutdown
 
 	// Auth
-	authService   *auth.AuthService
+	authService    *auth.AuthService
 	authMiddleware *AuthMiddleware
 	auth           *APIKeyAuth // 旧的 API Key 认证 (兼容)
-	authEnabled   bool
-	authKeys      map[string]string // key -> name mapping for audit
-	authMu        sync.RWMutex
+	authEnabled    bool
+	authKeys       map[string]string // key -> name mapping for audit
+	authMu         sync.RWMutex
 }
 
 func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, em embedding.EmbeddingProvider, log *zap.Logger) *RESTServer {
@@ -84,21 +84,21 @@ func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, em embeddi
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(TimeoutMiddleware(DefaultTimeout)) // 全局超时控制
-	r.Use(DefaultRateLimitMiddleware())       // 全局限流
+	r.Use(DefaultRateLimitMiddleware())      // 全局限流
 
 	mh := NewMemoryHandler(st, se, em, log)
 
 	s := &RESTServer{
-		engine:   se,
-		rag:      rag.NewRAGBuilder(se),
-		storage:  st,
-		logger:   log,
-		router:   r,
-		health:   NewHealthChecker(st, em),
-		memory:   mh,
-		auth:     NewAPIKeyAuth("X-API-Key", "api_key"),
+		engine:      se,
+		rag:         rag.NewRAGBuilder(se),
+		storage:     st,
+		logger:      log,
+		router:      r,
+		health:      NewHealthChecker(st, em),
+		memory:      mh,
+		auth:        NewAPIKeyAuth("X-API-Key", "api_key"),
 		authEnabled: false,
-		authKeys: make(map[string]string),
+		authKeys:    make(map[string]string),
 	}
 	s.registerRoutes()
 	return s
@@ -110,23 +110,23 @@ func NewRESTServerWithAuth(se *search.HybridSearchEngine, st storage.Storage, em
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(TimeoutMiddleware(DefaultTimeout)) // 全局超时控制
-	r.Use(DefaultRateLimitMiddleware())       // 全局限流
+	r.Use(DefaultRateLimitMiddleware())      // 全局限流
 
 	mh := NewMemoryHandler(st, se, em, log)
 
 	s := &RESTServer{
-		engine:   se,
-		rag:      rag.NewRAGBuilder(se),
-		storage:  st,
-		logger:   log,
-		router:   r,
-		health:   NewHealthChecker(st, em),
-		memory:   mh,
+		engine:         se,
+		rag:            rag.NewRAGBuilder(se),
+		storage:        st,
+		logger:         log,
+		router:         r,
+		health:         NewHealthChecker(st, em),
+		memory:         mh,
 		authService:    authService,
 		authMiddleware: NewAuthMiddleware(authService),
 		auth:           NewAPIKeyAuth("X-API-Key", "api_key"),
-		authEnabled: true,
-		authKeys: make(map[string]string),
+		authEnabled:    true,
+		authKeys:       make(map[string]string),
 	}
 	s.registerRoutes()
 	return s
@@ -388,12 +388,12 @@ func (s *RESTServer) handleSearch(c *gin.Context) {
 			path = doc.Path
 		}
 		enriched[i] = gin.H{
-			"rank":          i + 1,
-			"score":         r.Score,
-			"path":          path,
-			"section":       r.Chunk.HeadingPath,
-			"content_raw":   r.Chunk.ContentRaw,
-			"token_count":   r.Chunk.TokenCount,
+			"rank":        i + 1,
+			"score":       r.Score,
+			"path":        path,
+			"section":     r.Chunk.HeadingPath,
+			"content_raw": r.Chunk.ContentRaw,
+			"token_count": r.Chunk.TokenCount,
 		}
 	}
 
@@ -489,9 +489,9 @@ func (s *RESTServer) handleStats(c *gin.Context) {
 	vectorsCount, _ := s.storage.GetVectorsCount(userID)
 	c.JSON(200, gin.H{
 		"documents_count": docsCount,
-		"chunks_count":     chunksCount,
-		"vectors_count":    vectorsCount,
-		"version":          "dev",
+		"chunks_count":    chunksCount,
+		"vectors_count":   vectorsCount,
+		"version":         "dev",
 	})
 }
 

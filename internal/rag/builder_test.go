@@ -75,10 +75,10 @@ func TestRAGBuilder_BuildContext_Truncation(t *testing.T) {
 		results: []*models.SearchResult{
 			{
 				Chunk: &models.Chunk{
-					ID:          "chunk-large",
-					Content:     "This is a very long chunk content that should be truncated when the token budget is small.",
-					ContentRaw:  "This is a very long chunk content that should be truncated when the token budget is small.",
-					TokenCount:  20,
+					ID:         "chunk-large",
+					Content:    "This is a very long chunk content that should be truncated when the token budget is small.",
+					ContentRaw: "This is a very long chunk content that should be truncated when the token budget is small.",
+					TokenCount: 20,
 				},
 				Score: 0.9,
 			},

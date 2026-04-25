@@ -330,7 +330,7 @@ type BM25Reranker struct {
 // NewBM25Reranker 创建 BM25 重排序器
 func NewBM25Reranker() *BM25Reranker {
 	return &BM25Reranker{
-		k1: 1.5, // term frequency saturation
+		k1: 1.5,  // term frequency saturation
 		b:  0.75, // document length normalization
 	}
 }

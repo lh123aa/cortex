@@ -9,9 +9,9 @@ import (
 
 // MockStorage 用于测试的内存存储
 type MockStorage struct {
-	users    map[string]*models.User
-	tokens   map[string]*models.AuthToken
-	apiKeys  map[string]*models.APIKey
+	users   map[string]*models.User
+	tokens  map[string]*models.AuthToken
+	apiKeys map[string]*models.APIKey
 }
 
 func NewMockStorage() *MockStorage {
@@ -158,7 +158,7 @@ func TestUserModel(t *testing.T) {
 		PasswordHash: "hashed_password",
 		Role:         models.RoleUser,
 		IsActive:     true,
-		CreatedAt:   time.Now(),
+		CreatedAt:    time.Now(),
 	}
 
 	if user.Role != "user" {

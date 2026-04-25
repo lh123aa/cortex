@@ -10,7 +10,7 @@ import (
 // VectorIndex 向量索引管理器，支持 HNSW 和持久化
 type VectorIndex struct {
 	hnsw      *HNSW
-	chunkIDs  []string  // chunk_id -> index 的映射
+	chunkIDs  []string // chunk_id -> index 的映射
 	idToIdx   map[string]int
 	mu        sync.RWMutex
 	indexPath string
@@ -19,9 +19,9 @@ type VectorIndex struct {
 // NewVectorIndex 创建新的向量索引管理器
 func NewVectorIndex(cfg *Config) *VectorIndex {
 	return &VectorIndex{
-		hnsw:    NewHNSW(cfg),
+		hnsw:     NewHNSW(cfg),
 		chunkIDs: make([]string, 0),
-		idToIdx: make(map[string]int),
+		idToIdx:  make(map[string]int),
 	}
 }
 

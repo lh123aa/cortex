@@ -11,9 +11,9 @@ import (
 
 // HealthStatus 健康状态
 type HealthStatus struct {
-	Status     string            `json:"status"`
-	Timestamp  time.Time         `json:"timestamp"`
-	Checks     map[string]Check  `json:"checks,omitempty"`
+	Status    string           `json:"status"`
+	Timestamp time.Time        `json:"timestamp"`
+	Checks    map[string]Check `json:"checks,omitempty"`
 }
 
 // Check 单个检查项

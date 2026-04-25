@@ -19,13 +19,13 @@ type EmbedResult struct {
 }
 
 type OllamaEmbedding struct {
-	BaseURL     string
-	Model       string
-	CacheDim    int
-	Timeout     time.Duration
-	MaxRetries  int           // 最大重试次数
+	BaseURL    string
+	Model      string
+	CacheDim   int
+	Timeout    time.Duration
+	MaxRetries int           // 最大重试次数
 	RetryDelay time.Duration // 基础重试延迟
-	client      *http.Client  // HTTP 连接池复用
+	client     *http.Client  // HTTP 连接池复用
 }
 
 func NewOllamaEmbedding(baseURL, model string, dim int) *OllamaEmbedding {
@@ -35,12 +35,12 @@ func NewOllamaEmbedding(baseURL, model string, dim int) *OllamaEmbedding {
 		IdleConnTimeout:     90 * time.Second,
 	}
 	return &OllamaEmbedding{
-		BaseURL:     baseURL,
-		Model:       model,
-		CacheDim:    dim,
-		Timeout:     30 * time.Second,
-		MaxRetries:  3,           // 默认 3 次重试
-		RetryDelay:  100 * time.Millisecond, // 默认 100ms
+		BaseURL:    baseURL,
+		Model:      model,
+		CacheDim:   dim,
+		Timeout:    30 * time.Second,
+		MaxRetries: 3,                      // 默认 3 次重试
+		RetryDelay: 100 * time.Millisecond, // 默认 100ms
 		client: &http.Client{
 			Transport: transport,
 			Timeout:   30 * time.Second,

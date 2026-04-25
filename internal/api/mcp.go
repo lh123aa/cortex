@@ -15,7 +15,7 @@ import (
 
 const (
 	MCPProtocolVersion = "2025-06-18"
-	ServerName        = "cortex"
+	ServerName         = "cortex"
 )
 
 // Tool input schemas
@@ -35,7 +35,7 @@ type MCPServer struct {
 	rag     *rag.RAGBuilder
 	storage storage.Storage
 	logger  *zap.Logger
-	userID  string  // 用户隔离：当前 MCP 会话的 userID
+	userID  string // 用户隔离：当前 MCP 会话的 userID
 }
 
 // SetUserID 设置 MCP 服务器的用户上下文
