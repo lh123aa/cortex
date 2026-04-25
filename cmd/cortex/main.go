@@ -15,6 +15,7 @@ import (
 	"github.com/lh123aa/cortex/internal/embedding"
 	"github.com/lh123aa/cortex/internal/index"
 	"github.com/lh123aa/cortex/internal/log"
+	"github.com/lh123aa/cortex/internal/metrics"
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/search"
 	"github.com/lh123aa/cortex/internal/storage"
@@ -179,12 +180,12 @@ func initEmbedding(cfg *config.Config, logger *zap.Logger) (embedding.EmbeddingP
 	return nil, fmt.Errorf("no embedding provider configured")
 }
 
-func initIndexer(st storage.Storage, emb embedding.EmbeddingProvider, logger *zap.Logger) (*index.Indexer, error) {
-	idx, err := index.NewIndexer(st, emb)
+func initIndexer(st storage.Storage, emb embedding.EmbeddingProvider, cfg *config.Config, logger *zap.Logger) (*index.Indexer, error) {
+	idx, err := index.NewIndexer(st, emb, cfg.Index.Workers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init indexer: %w", err)
 	}
-	logger.Info("indexer initialized")
+	logger.Info("indexer initialized", zap.Int("workers", cfg.Index.Workers))
 	return idx, nil
 }
 
@@ -212,7 +213,7 @@ func runIndex(cmd *cobra.Command, args []string) {
 		logger.Fatal("failed to init embedding", zap.Error(err))
 	}
 
-	idx, err := initIndexer(st, emb, logger)
+	idx, err := initIndexer(st, emb, cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to init indexer", zap.Error(err))
 	}
@@ -397,8 +398,8 @@ func runServe(cmd *cobra.Command, args []string) {
 		logger.Fatal("failed to init search engine", zap.Error(err))
 	}
 
-	// 创建认证服务（用于 API 认证）
-	authService := auth.NewAuthServiceWithDefaults()
+	// 创建认证服务（使用持久化存储）
+	authService := auth.NewAuthServiceWithStorage(st)
 
 	// 根据配置决定是否启用认证
 	var restServer *api.RESTServer
@@ -411,12 +412,17 @@ func runServe(cmd *cobra.Command, args []string) {
 
 	logger.Info("starting REST API server", zap.String("addr", ":8080"))
 
+	// 启动 Prometheus metrics 服务器
+	metricsServer := metrics.StartMetricsServer(":9090")
+	logger.Info("metrics server started", zap.String("addr", ":9090"))
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		<-sigChan
-		logger.Info("shutting down REST server...")
+		logger.Info("shutting down servers...")
+		metrics.ShutdownMetricsServer(metricsServer, 5*time.Second)
 		os.Exit(0)
 	}()
 

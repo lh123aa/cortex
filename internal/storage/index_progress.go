@@ -2,7 +2,6 @@ package storage
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/lh123aa/cortex/internal/models"
@@ -44,7 +43,8 @@ func (s *SQLiteStorage) GetIndexProgress(rootPath string) (*models.IndexProgress
 	`, rootPath)
 
 	var p models.IndexProgress
-	var completedAt, errorMsg sql.NullTime
+	var completedAt sql.NullTime
+	var errorMsg sql.NullString
 	var lastFilePath sql.NullString
 	var lastFileIndex, totalFiles, indexedFiles, indexedChunks, failedFiles sql.NullInt64
 
@@ -104,7 +104,8 @@ func (s *SQLiteStorage) ListIndexProgress(limit, offset int) ([]*models.IndexPro
 	var results []*models.IndexProgress
 	for rows.Next() {
 		var p models.IndexProgress
-		var completedAt, errorMsg sql.NullTime
+		var completedAt sql.NullTime
+		var errorMsg sql.NullString
 		var lastFilePath sql.NullString
 		var lastFileIndex, totalFiles, indexedFiles, indexedChunks, failedFiles sql.NullInt64
 

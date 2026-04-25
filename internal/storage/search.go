@@ -5,7 +5,6 @@ import (
 	"sort"
 
 	"github.com/lh123aa/cortex/internal/models"
-	"github.com/lh123aa/cortex/internal/vector"
 )
 
 // FTSSearch 进行基于 FTS5 的全文关键词检索 (BM25)
@@ -99,7 +98,7 @@ func (s *SQLiteStorage) vectorSearchHNSW(queryVector []float32, userID string, t
 			SELECT c.id, c.document_id, c.heading_path, c.content, c.content_raw, d.user_id
 			FROM chunks c
 			JOIN documents d ON c.document_id = d.id
-			WHERE c.id IN (''' + joinStrings(chunkIDs) + ''')
+			WHERE c.id IN ('` + joinStrings(chunkIDs) + `')
 		`
 		rows, err := s.db.Query(q)
 		if err != nil {

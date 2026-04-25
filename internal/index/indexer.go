@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,8 +27,11 @@ type Indexer struct {
 	pool      *ants.Pool
 }
 
-// NewIndexer 初始化索引器
-func NewIndexer(s storage.Storage, em embedding.EmbeddingProvider) (*Indexer, error) {
+// NewIndexer 初始化索引器（workers 从配置读取，默认 8）
+func NewIndexer(s storage.Storage, em embedding.EmbeddingProvider, workers int) (*Indexer, error) {
+	if workers <= 0 {
+		workers = 8 // 默认值
+	}
 	ckMap := make(map[string]chunker.Chunker)
 	mk, _ := chunker.NewMarkdownChunker(chunker.ChunkConfig{
 		MinChars:         50,
@@ -91,8 +95,8 @@ func NewIndexer(s storage.Storage, em embedding.EmbeddingProvider) (*Indexer, er
 	ckMap["ps1"] = tk
 	// md 保持使用 MarkdownChunker（更好的 AST 解析）
 
-	// P2-2: 初始化 goroutine pool（默认 4 个 worker）
-	p, err := ants.NewPool(4, ants.WithPreAlloc(false))
+	// P2-2: 初始化 goroutine pool（默认 8 个 worker，提升吞吐量）
+	p, err := ants.NewPool(workers, ants.WithPreAlloc(false))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create worker pool: %w", err)
 	}
@@ -111,6 +115,12 @@ type IndexResult struct {
 	Skipped  int
 	Failed   int
 	Duration int64
+}
+
+type fileResult struct {
+	indexed bool
+	skipped bool
+	err     error
 }
 
 // IndexDirectoryWithCheckpoint 遍历执行整个文件夹（支持断点恢复，用户隔离）
@@ -154,7 +164,7 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 	if startIndex >= len(allFiles) {
 		// 已经全部处理完成
 		result.Indexed = progress.IndexedFiles
-		result.Skipped = progress.Skipped
+		result.Skipped = 0 // IndexProgress 不跟踪 Skipped
 		result.Failed = progress.FailedFiles
 		idx.storage.CompleteIndexProgress(rootPath)
 		return result, nil
@@ -261,11 +271,6 @@ func (idx *Indexer) IndexDirectory(rootPath string, userID string) (*IndexResult
 	result.Total = len(files)
 
 	// 第二阶段 — 使用 goroutine pool 并发处理
-	type fileResult struct {
-		indexed bool
-		skipped bool
-		err     error
-	}
 	resultCh := make(chan fileResult, len(files))
 	var wg sync.WaitGroup
 
@@ -404,23 +409,23 @@ func (idx *Indexer) indexFileInternalWithUser(path string, userID string) (bool,
 	}
 
 	// 设置 userID 和 documentID
-	for i, c := range chunks {
+	for _, c := range chunks {
 		c.UserID = userID
 		c.DocumentID = docID
 	}
 
 	// 转换为向量
 	texts := make([]string, len(chunks))
-	for i, c := range chunks {
-		texts[i] = c.ContentRaw
+	for _, c := range chunks {
+		texts = append(texts, c.ContentRaw)
 	}
 
 	// 进行Embedding
 	if idx.embedding != nil {
 		embeddings, err := idx.embedding.EmbedBatch(texts)
 		if err == nil {
-			for i, c := range chunks {
-				c.Embedding = embeddings[i]
+			for j, c := range chunks {
+				c.Embedding = embeddings[j]
 				c.EmbeddingModel = idx.embedding.Name()
 			}
 		}
@@ -507,7 +512,6 @@ func (ii *IncrementalIndexer) Sync() (added, updated, removed, total int, err er
 	}
 
 	currentFiles := make(map[string]bool)
-	var changed bool
 
 	for _, path := range files {
 		currentFiles[path] = true
@@ -536,7 +540,6 @@ func (ii *IncrementalIndexer) Sync() (added, updated, removed, total int, err er
 				} else {
 					added++
 				}
-				changed = true
 
 				ii.mu.Lock()
 				ii.states[path] = &FileState{
@@ -557,7 +560,6 @@ func (ii *IncrementalIndexer) Sync() (added, updated, removed, total int, err er
 			err := ii.indexer.storage.DeleteDocumentByPath(path, ii.userID)
 			if err == nil {
 				removed++
-				changed = true
 				delete(ii.states, path)
 			}
 		}

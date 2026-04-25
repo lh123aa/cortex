@@ -93,3 +93,43 @@ type IndexResponse struct {
 	Duration int64    `json:"duration_ms"`
 	Errors   []string `json:"errors,omitempty"`
 }
+
+// Memory 记忆条目（用于非文件内容的直接写入）
+type Memory struct {
+	ID          string    `json:"id"`
+	UserID      string    `json:"user_id"`
+	Content     string    `json:"content"`        // 记忆内容
+	Summary     string    `json:"summary"`       // 自动生成的摘要
+	Tags        []string  `json:"tags"`           // 标签
+	Source      string    `json:"source"`         // 来源 (e.g., "conversation", "manual")
+	SourceID    string    `json:"source_id"`     // 来源ID (e.g., conversation_id)
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// MemoryRequest 写入记忆请求
+type MemoryRequest struct {
+	Content string   `json:"content" binding:"required,min=1"`
+	Summary string   `json:"summary"`
+	Tags    []string `json:"tags"`
+	Source  string   `json:"source"`
+}
+
+// MemoryResponse 记忆响应
+type MemoryResponse struct {
+	ID        string   `json:"id"`
+	Content   string   `json:"content"`
+	Summary   string   `json:"summary"`
+	Tags      []string `json:"tags"`
+	Source    string   `json:"source"`
+	CreatedAt string   `json:"created_at"`
+}
+
+// MemorySearchResult 记忆搜索结果
+type MemorySearchResult struct {
+	ID       string  `json:"id"`
+	Content  string  `json:"content"`
+	Summary  string  `json:"summary"`
+	Score    float64 `json:"score"`
+	Source   string  `json:"source"`
+}

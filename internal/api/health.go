@@ -2,11 +2,9 @@ package api
 
 import (
 	"context"
-	"net/http"
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/lh123aa/cortex/internal/embedding"
 	"github.com/lh123aa/cortex/internal/storage"
 )
@@ -43,7 +41,7 @@ func NewHealthChecker(st storage.Storage, em embedding.EmbeddingProvider) *Healt
 // CheckStorage 检查存储是否可用
 func (hc *HealthChecker) CheckStorage() Check {
 	start := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	_, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	// 尝试一个简单的查询（使用空 userID 进行健康检查）
@@ -74,7 +72,7 @@ func (hc *HealthChecker) CheckEmbedding() Check {
 	}
 
 	start := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// Health check 通常不应该真正调用 Embed，只能检查连通性

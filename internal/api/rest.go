@@ -53,10 +53,12 @@ type RESTServer struct {
 	logger  *zap.Logger
 	router  *gin.Engine
 	health  *HealthChecker
+	memory  *MemoryHandler // 记忆系统处理器
 
 	// Auth
 	authService   *auth.AuthService
 	authMiddleware *AuthMiddleware
+	auth           *APIKeyAuth // 旧的 API Key 认证 (兼容)
 	authEnabled   bool
 	authKeys      map[string]string // key -> name mapping for audit
 	authMu        sync.RWMutex
@@ -67,6 +69,8 @@ func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, em embeddi
 	r := gin.New()
 	r.Use(gin.Recovery())
 
+	mh := NewMemoryHandler(st, se, em, log)
+
 	s := &RESTServer{
 		engine:   se,
 		rag:      rag.NewRAGBuilder(se),
@@ -74,6 +78,8 @@ func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, em embeddi
 		logger:   log,
 		router:   r,
 		health:   NewHealthChecker(st, em),
+		memory:   mh,
+		auth:     NewAPIKeyAuth("X-API-Key", "api_key"),
 		authEnabled: false,
 		authKeys: make(map[string]string),
 	}
@@ -87,6 +93,8 @@ func NewRESTServerWithAuth(se *search.HybridSearchEngine, st storage.Storage, em
 	r := gin.New()
 	r.Use(gin.Recovery())
 
+	mh := NewMemoryHandler(st, se, em, log)
+
 	s := &RESTServer{
 		engine:   se,
 		rag:      rag.NewRAGBuilder(se),
@@ -94,8 +102,10 @@ func NewRESTServerWithAuth(se *search.HybridSearchEngine, st storage.Storage, em
 		logger:   log,
 		router:   r,
 		health:   NewHealthChecker(st, em),
+		memory:   mh,
 		authService:    authService,
 		authMiddleware: NewAuthMiddleware(authService),
+		auth:           NewAPIKeyAuth("X-API-Key", "api_key"),
 		authEnabled: true,
 		authKeys: make(map[string]string),
 	}
@@ -177,6 +187,13 @@ func (s *RESTServer) registerRoutes() {
 
 		// Stats
 		protected.GET("/stats", s.handleStats)
+
+		// Memory (记忆系统)
+		protected.POST("/memory", s.memory.WriteMemory)
+		protected.POST("/memory/batch", s.memory.WriteMemoryBatch)
+		protected.GET("/memory/search", s.memory.SearchMemory)
+		protected.GET("/memory/context", s.memory.GetMemoryContext)
+		protected.DELETE("/memory/:id", s.memory.DeleteMemory)
 	}
 
 	// Admin routes (也受保护，用于密钥管理)
@@ -217,7 +234,10 @@ func (s *RESTServer) handleRegister(c *gin.Context) {
 		return
 	}
 
-	user, err := s.authService.Register(req.Username, req.Password)
+	user, err := s.authService.Register(&models.RegisterRequest{
+		Username: req.Username,
+		Password: req.Password,
+	})
 	if err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
@@ -246,9 +266,19 @@ func (s *RESTServer) handleLogin(c *gin.Context) {
 		return
 	}
 
-	token, user, err := s.authService.Login(req.Username, req.Password)
+	token, err := s.authService.Login(&models.LoginRequest{
+		Username: req.Username,
+		Password: req.Password,
+	})
 	if err != nil {
 		c.JSON(401, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Login returns token, we need to get user from token
+	user, err := s.authService.GetUserByToken(token.Token)
+	if err != nil {
+		c.JSON(401, gin.H{"error": "login failed"})
 		return
 	}
 

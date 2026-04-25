@@ -121,6 +121,34 @@ type Storage interface {
 	// DeleteUser 删除用户
 	DeleteUser(id string) error
 
+	// ========== Token 操作 ==========
+
+	// SaveToken 保存认证 token
+	SaveToken(token *models.AuthToken) error
+
+	// GetToken 获取 token
+	GetToken(token string) (*models.AuthToken, error)
+
+	// DeleteToken 删除 token
+	DeleteToken(token string) error
+
+	// DeleteExpiredTokens 删除过期 tokens
+	DeleteExpiredTokens() (int, error)
+
+	// ========== API Key 操作 ==========
+
+	// SaveAPIKey 保存 API Key
+	SaveAPIKey(apiKey *models.APIKey) error
+
+	// GetAPIKeyByHash 根据 hash 获取 API Key
+	GetAPIKeyByHash(keyHash string) (*models.APIKey, error)
+
+	// DeleteAPIKey 删除 API Key
+	DeleteAPIKey(keyHash string) error
+
+	// UpdateAPIKeyLastUsed 更新 API Key 最后使用时间
+	UpdateAPIKeyLastUsed(keyHash string) error
+
 	// ========== 系统操作 ==========
 
 	// Close 关闭数据库连接

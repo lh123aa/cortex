@@ -13,13 +13,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-// FileState 文件状态追踪（用于增量同步）
-type FileState struct {
-	ModTime     time.Time
-	ContentHash string
-	IndexedAt   time.Time
-}
-
 // IncrementalWatcher 增量索引监视器
 type IncrementalWatcher struct {
 	watcher     *fsnotify.Watcher

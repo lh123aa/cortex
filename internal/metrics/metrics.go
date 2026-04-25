@@ -75,7 +75,7 @@ var (
 	// SearchByMode search requests by mode (vector/fts/hybrid)
 	SearchByMode = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "cortex",
-		Name:      "search_total",
+		Name:      "search_mode_total",
 		Help:      "Total search requests by mode",
 	}, []string{"mode"})
 

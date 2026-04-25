@@ -192,8 +192,8 @@ func (h *HNSW) insertAtLevel(nodeID int, vector []float32, level int) {
 		// 获取当前最近但最远的候选
 		current, d := candidates.pop()
 
-		// 获取与当前候选的距离
-		currentDist := cosineDistance(vector, h.vectors[current])
+		// 获取与当前候选的距离 (声明但未使用，实际使用 candidates 中的 d)
+		_ = cosineDistance(vector, h.vectors[current])
 
 		// 检查是否需要终止
 		if d > candidates.getWorst() && candidates.Len() >= ef {
@@ -344,10 +344,10 @@ func (h *HNSW) searchLayer(query []float32, entryPoint int, ef int, level int) [
 		result.push(current, currentDist)
 
 		// 遍历邻居
-		if level >= len(h.neighbors) || entryPoint >= len(h.neighbors[level]) {
+		if level >= len(h.neighbors) || current >= len(h.neighbors[level]) {
 			continue
 		}
-		for _, neighbor := range h.neighbors[level][entryPoint] {
+		for _, neighbor := range h.neighbors[level][current] {
 			if neighbor >= len(h.vectors) || visited[neighbor] {
 				continue
 			}

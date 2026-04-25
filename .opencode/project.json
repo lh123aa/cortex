@@ -1,0 +1,44 @@
+{
+  "name": "cortex",
+  "version": "2.0.0",
+  "description": "Cortex AI Agent 知识库系统 - 本地向量数据库与RAG系统",
+  "project_type": "knowledge_base",
+  "language": "Go",
+  "triggers": [
+    "cortex",
+    "索引文档",
+    "搜索知识库",
+    "记忆管理",
+    "AI知识库",
+    "向量搜索",
+    "混合搜索"
+  ],
+  "skills": [
+    {
+      "name": "cortex",
+      "path": ".opencode/skills/cortex",
+      "description": "Cortex AI知识库系统主技能"
+    }
+  ],
+  "entry_points": {
+    "index": "go run cmd/cortex/main.go index",
+    "search": "go run cmd/cortex/main.go search",
+    "serve": "go run cmd/cortex/main.go serve",
+    "context": "go run cmd/cortex/main.go context"
+  },
+  "dependencies": {
+    "ollama": "localhost:11434",
+    "sqlite": "./data/cortex.db"
+  },
+  "ports": {
+    "api": 8080,
+    "metrics": 9090,
+    "ollama": 11434
+  },
+  "metrics": {
+    "search_total": "cortex_search_total",
+    "search_duration": "cortex_search_duration_seconds",
+    "cache_hits": "cortex_search_cache_hits_total",
+    "vectors_total": "cortex_vectors_total"
+  }
+}

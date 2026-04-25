@@ -1,8 +1,11 @@
 package storage
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/lh123aa/cortex/internal/models"
@@ -123,22 +126,11 @@ func (s *SQLiteStorage) GetCacheStats() (total int, expired int, avgHits float64
 }
 
 // hashQuery 生成查询的 hash（包含 user_id 以实现用户隔离缓存）
+// 使用 SHA256 哈希，确保分布均匀
 func hashQuery(query, userID, mode string, topK int) string {
-	// 简单的 hash 实现，包含 user_id 以实现用户隔离
-	data := userID + "|" + query + "|" + mode + "|" + string(rune(topK))
-	hash := 0
-	for i, c := range data {
-		hash = hash*31 + int(c) + i
-	}
-	if hash < 0 {
-		hash = -hash
-	}
-	// 使用 query 的前30字符以缩短 hash 长度
-	queryPrefix := query
-	if len(queryPrefix) > 30 {
-		queryPrefix = queryPrefix[:30]
-	}
-	return string(rune(hash%1000000)) + "_" + queryPrefix
+	data := fmt.Sprintf("%s|%s|%s|%d", userID, query, mode, topK)
+	hash := sha256.Sum256([]byte(data))
+	return hex.EncodeToString(hash[:])[:32]
 }
 
 func min(a, b int) int {

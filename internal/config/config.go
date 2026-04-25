@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
@@ -23,8 +24,9 @@ type Config struct {
 
 // CortexConfig holds core Cortex settings
 type CortexConfig struct {
-	DBPath  string `mapstructure:"db_path"`
-	LogLevel string `mapstructure:"log_level"`
+	DBPath      string `mapstructure:"db_path"`
+	LogLevel    string `mapstructure:"log_level"`
+	AuthEnabled bool   `mapstructure:"auth_enabled"`
 }
 
 // EmbeddingConfig holds embedding provider settings
@@ -110,7 +112,7 @@ func Load(configPath string) (*Config, error) {
 	viper.SetDefault("index.max_tokens", 512)
 	viper.SetDefault("index.overlap_tokens", 64)
 	viper.SetDefault("index.min_chars", 50)
-	viper.SetDefault("index.workers", 4)
+	viper.SetDefault("index.workers", 8) // 优化：从 4 提升到 8，提升索引吞吐量
 	viper.SetDefault("search.cache_ttl", "5m")
 	viper.SetDefault("search.default_top_k", 10)
 	viper.SetDefault("backup.enabled", true)
@@ -209,11 +211,9 @@ func (w *ConfigWatcher) watch() {
 		select {
 		case <-w.done:
 			return
-		case event, ok := <-w.viper.WatchConfig():
-			if !ok {
-				return
-			}
-			w.handleChange(event)
+		case <-time.After(1 * time.Second):
+			// 简单轮询检查配置变更 (Viper 的 WatchConfig 不返回 channel)
+			// 实际触发由 OnConfigChange 回调处理
 		}
 	}
 }
@@ -223,10 +223,6 @@ func (w *ConfigWatcher) handleChange(event fsnotify.Event) {
 	if event.Op != fsnotify.Write {
 		return
 	}
-
-	mu.RLock()
-	currentCfg := cfg
-	mu.RUnlock()
 
 	newCfg := &Config{}
 	if err := w.viper.Unmarshal(newCfg); err != nil {

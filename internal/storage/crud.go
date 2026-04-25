@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/lh123aa/cortex/internal/models"
 )
@@ -301,4 +302,187 @@ func (s *SQLiteStorage) GetVectorsCountAnyUser() (int, error) {
 	var count int
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM vectors`).Scan(&count)
 	return count, err
+}
+
+// SaveUser 保存用户到数据库
+func (s *SQLiteStorage) SaveUser(user *models.User) error {
+	query := `
+		INSERT OR REPLACE INTO users
+		(id, username, password_hash, role, created_at, is_active)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`
+	_, err := s.db.Exec(query,
+		user.ID, user.Username, user.PasswordHash, user.Role, user.CreatedAt, user.IsActive,
+	)
+	return err
+}
+
+// GetUserByID 根据 ID 获取用户
+func (s *SQLiteStorage) GetUserByID(id string) (*models.User, error) {
+	row := s.db.QueryRow(`
+		SELECT id, username, password_hash, role, created_at, is_active
+		FROM users WHERE id = ?`,
+		id)
+	var user models.User
+	err := row.Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.IsActive)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &user, err
+}
+
+// GetUserByUsername 根据用户名获取用户
+func (s *SQLiteStorage) GetUserByUsername(username string) (*models.User, error) {
+	row := s.db.QueryRow(`
+		SELECT id, username, password_hash, role, created_at, is_active
+		FROM users WHERE username = ?`,
+		username)
+	var user models.User
+	err := row.Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.IsActive)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &user, err
+}
+
+// DeleteUser 删除用户
+func (s *SQLiteStorage) DeleteUser(id string) error {
+	_, err := s.db.Exec(`DELETE FROM users WHERE id = ?`, id)
+	return err
+}
+
+// DeleteUserData 删除用户的所有数据
+func (s *SQLiteStorage) DeleteUserData(userID string) error {
+	// 删除用户的文档、chunks、向量等
+	// 由于外键级联删除，主要删除文档即可
+	docs, err := s.ListDocuments(userID, 10000, 0)
+	if err != nil {
+		return err
+	}
+	for _, doc := range docs {
+		if err := s.DeleteDocument(doc.ID, userID); err != nil {
+			return err
+		}
+	}
+	// 删除用户的缓存
+	if err := s.InvalidateUserSearchCache(userID); err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetChunksCount 获取分块数量（用户隔离）
+func (s *SQLiteStorage) GetChunksCount(userID string) (int, error) {
+	var count int
+	if userID == "" {
+		err := s.db.QueryRow(`SELECT COUNT(*) FROM chunks`).Scan(&count)
+		return count, err
+	}
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM chunks WHERE user_id = ?`, userID).Scan(&count)
+	return count, err
+}
+
+// GetVectorsCount 获取向量数量（用户隔离）
+func (s *SQLiteStorage) GetVectorsCount(userID string) (int, error) {
+	var count int
+	if userID == "" {
+		err := s.db.QueryRow(`SELECT COUNT(*) FROM vectors`).Scan(&count)
+		return count, err
+	}
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM vectors WHERE user_id = ?`, userID).Scan(&count)
+	return count, err
+}
+
+// ========== Token 操作 ==========
+
+// SaveToken 保存认证 token
+func (s *SQLiteStorage) SaveToken(token *models.AuthToken) error {
+	query := `
+		INSERT OR REPLACE INTO auth_tokens
+		(token, user_id, username, expires_at)
+		VALUES (?, ?, ?, datetime(expires_at, 'unixepoch'))
+	`
+	expiresAt := time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
+	_, err := s.db.Exec(query, token.Token, token.UserID, token.Username, expiresAt)
+	return err
+}
+
+// GetToken 获取 token
+func (s *SQLiteStorage) GetToken(token string) (*models.AuthToken, error) {
+	row := s.db.QueryRow(`
+		SELECT token, user_id, username, expires_at, created_at
+		FROM auth_tokens
+		WHERE token = ? AND expires_at > datetime('now')`,
+		token)
+	var authToken models.AuthToken
+	var expiresAt time.Time
+	err := row.Scan(&authToken.Token, &authToken.UserID, &authToken.Username, &expiresAt, &authToken.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	authToken.ExpiresIn = int64(time.Until(expiresAt).Seconds())
+	return &authToken, nil
+}
+
+// DeleteToken 删除 token
+func (s *SQLiteStorage) DeleteToken(token string) error {
+	_, err := s.db.Exec(`DELETE FROM auth_tokens WHERE token = ?`, token)
+	return err
+}
+
+// DeleteExpiredTokens 删除过期 tokens
+func (s *SQLiteStorage) DeleteExpiredTokens() (int, error) {
+	result, err := s.db.Exec(`DELETE FROM auth_tokens WHERE expires_at <= datetime('now')`)
+	if err != nil {
+		return 0, err
+	}
+	rows, _ := result.RowsAffected()
+	return int(rows), nil
+}
+
+// ========== API Key 操作 ==========
+
+// SaveAPIKey 保存 API Key
+func (s *SQLiteStorage) SaveAPIKey(apiKey *models.APIKey) error {
+	query := `
+		INSERT OR REPLACE INTO api_keys
+		(id, user_id, key_hash, name, last_used_at, created_at, expires_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`
+	_, err := s.db.Exec(query,
+		apiKey.ID, apiKey.UserID, apiKey.KeyHash, apiKey.Name,
+		apiKey.LastUsed, apiKey.CreatedAt, apiKey.ExpiresAt,
+	)
+	return err
+}
+
+// GetAPIKeyByHash 根据 hash 获取 API Key
+func (s *SQLiteStorage) GetAPIKeyByHash(keyHash string) (*models.APIKey, error) {
+	row := s.db.QueryRow(`
+		SELECT id, user_id, key_hash, name, last_used_at, created_at, expires_at
+		FROM api_keys
+		WHERE key_hash = ?`,
+		keyHash)
+	var apiKey models.APIKey
+	err := row.Scan(&apiKey.ID, &apiKey.UserID, &apiKey.KeyHash, &apiKey.Name,
+		&apiKey.LastUsed, &apiKey.CreatedAt, &apiKey.ExpiresAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &apiKey, err
+}
+
+// DeleteAPIKey 删除 API Key
+func (s *SQLiteStorage) DeleteAPIKey(keyHash string) error {
+	_, err := s.db.Exec(`DELETE FROM api_keys WHERE key_hash = ?`, keyHash)
+	return err
+}
+
+// UpdateAPIKeyLastUsed 更新 API Key 最后使用时间
+func (s *SQLiteStorage) UpdateAPIKeyLastUsed(keyHash string) error {
+	_, err := s.db.Exec(`UPDATE api_keys SET last_used_at = datetime('now') WHERE key_hash = ?`, keyHash)
+	return err
 }
