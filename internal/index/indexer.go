@@ -416,8 +416,8 @@ func (idx *Indexer) indexFileInternalWithUser(path string, userID string) (bool,
 
 	// 转换为向量
 	texts := make([]string, len(chunks))
-	for _, c := range chunks {
-		texts = append(texts, c.ContentRaw)
+	for i, c := range chunks {
+		texts[i] = c.ContentRaw
 	}
 
 	// 进行Embedding

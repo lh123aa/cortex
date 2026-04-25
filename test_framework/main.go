@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 )
@@ -158,9 +157,6 @@ func main() {
 
 func simulateIteration(iter int, result *IterationResult) int {
 	fixedCount := 0
-
-	// Simulate systematic fixing based on priority and iteration
-	fixOrder := []string{"P0-001", "P0-002", "P0-003", "P0-004"}
 
 	// P0 issues get fixed in first 4 iterations
 	if iter == 1 || iter == 2 {

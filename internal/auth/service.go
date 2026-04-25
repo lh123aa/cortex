@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"crypto/rand"
+	crand "crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -175,7 +175,7 @@ func (s *AuthService) GetUserByUsername(username string) (*models.User, error) {
 func (s *AuthService) CreateAPIKey(userID string, req *models.CreateAPIKeyRequest) (*models.APIKey, error) {
 	// 生成 API Key
 	keyBytes := make([]byte, 32)
-	if _, err := rand.Read(keyBytes); err != nil {
+	if _, err := crand.Read(keyBytes); err != nil {
 		return nil, fmt.Errorf("failed to generate key: %w", err)
 	}
 	key := hex.EncodeToString(keyBytes)
@@ -304,13 +304,13 @@ func (s *AuthService) CleanupExpiredTokens() error {
 
 func generateID() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	crand.Read(b)
 	return hex.EncodeToString(b)
 }
 
 func generateToken() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	crand.Read(b)
 	return hex.EncodeToString(b)
 }
 

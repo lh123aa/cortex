@@ -3,6 +3,7 @@ package storage
 import (
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/lh123aa/cortex/internal/models"
 )
@@ -93,14 +94,19 @@ func (s *SQLiteStorage) vectorSearchHNSW(queryVector []float32, userID string, t
 
 	// 批量获取 chunks 和 documents 来过滤 user_id
 	if len(chunkIDs) > 0 {
-		// 批量获取 chunks（包含 document_id）
+		// 构建参数化查询（防止 SQL 注入）
 		q := `
 			SELECT c.id, c.document_id, c.heading_path, c.content, c.content_raw, d.user_id
 			FROM chunks c
 			JOIN documents d ON c.document_id = d.id
-			WHERE c.id IN ('` + joinStrings(chunkIDs) + `')
+			WHERE c.id IN (?` + strings.Repeat(",?", len(chunkIDs)-1) + `)
 		`
-		rows, err := s.db.Query(q)
+		// 将 chunkIDs 作为参数传递
+		args := make([]interface{}, len(chunkIDs))
+		for i, id := range chunkIDs {
+			args[i] = id
+		}
+		rows, err := s.db.Query(q, args...)
 		if err != nil {
 			return nil, err
 		}
