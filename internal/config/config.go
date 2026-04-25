@@ -286,51 +286,97 @@ func applyUpdate(cfg *Config, updates map[string]interface{}) {
 	for key, value := range updates {
 		switch key {
 		case "cortex.db_path":
-			cfg.Cortex.DBPath, _ = value.(string)
+			if v, ok := value.(string); ok {
+				cfg.Cortex.DBPath = v
+			}
 		case "cortex.log_level":
-			cfg.Cortex.LogLevel, _ = value.(string)
+			if v, ok := value.(string); ok {
+				cfg.Cortex.LogLevel = v
+			}
 		case "cortex.auth_enabled":
-			cfg.Cortex.AuthEnabled, _ = value.(bool)
+			if v, ok := value.(bool); ok {
+				cfg.Cortex.AuthEnabled = v
+			}
 		case "embedding.provider":
-			cfg.Embedding.Provider, _ = value.(string)
+			if v, ok := value.(string); ok {
+				cfg.Embedding.Provider = v
+			}
 		case "embedding.ollama.base_url":
-			cfg.Embedding.Ollama.BaseURL, _ = value.(string)
+			if v, ok := value.(string); ok {
+				cfg.Embedding.Ollama.BaseURL = v
+			}
 		case "embedding.ollama.model":
-			cfg.Embedding.Ollama.Model, _ = value.(string)
+			if v, ok := value.(string); ok {
+				cfg.Embedding.Ollama.Model = v
+			}
 		case "embedding.onnx.base_url":
-			cfg.Embedding.ONNX.BaseURL, _ = value.(string)
+			if v, ok := value.(string); ok {
+				cfg.Embedding.ONNX.BaseURL = v
+			}
 		case "embedding.onnx.model":
-			cfg.Embedding.ONNX.Model, _ = value.(string)
+			if v, ok := value.(string); ok {
+				cfg.Embedding.ONNX.Model = v
+			}
 		case "embedding.onnx.dim":
-			cfg.Embedding.ONNX.Dim, _ = value.(int)
+			if v, ok := value.(int); ok {
+				cfg.Embedding.ONNX.Dim = v
+			}
 		case "index.max_tokens":
-			cfg.Index.MaxTokens, _ = value.(int)
+			if v, ok := value.(int); ok {
+				cfg.Index.MaxTokens = v
+			}
 		case "index.overlap_tokens":
-			cfg.Index.OverlapTokens, _ = value.(int)
+			if v, ok := value.(int); ok {
+				cfg.Index.OverlapTokens = v
+			}
 		case "index.min_chars":
-			cfg.Index.MinChars, _ = value.(int)
+			if v, ok := value.(int); ok {
+				cfg.Index.MinChars = v
+			}
 		case "index.workers":
-			cfg.Index.Workers, _ = value.(int)
+			if v, ok := value.(int); ok {
+				cfg.Index.Workers = v
+			}
 		case "search.cache_ttl":
-			cfg.Search.CacheTTL, _ = value.(string)
+			if v, ok := value.(string); ok {
+				cfg.Search.CacheTTL = v
+			}
 		case "search.default_top_k":
-			cfg.Search.DefaultTopK, _ = value.(int)
+			if v, ok := value.(int); ok {
+				cfg.Search.DefaultTopK = v
+			}
 		case "backup.enabled":
-			cfg.Backup.Enabled, _ = value.(bool)
+			if v, ok := value.(bool); ok {
+				cfg.Backup.Enabled = v
+			}
 		case "backup.dir":
-			cfg.Backup.Dir, _ = value.(string)
+			if v, ok := value.(string); ok {
+				cfg.Backup.Dir = v
+			}
 		case "backup.max_backups":
-			cfg.Backup.MaxBackups, _ = value.(int)
+			if v, ok := value.(int); ok {
+				cfg.Backup.MaxBackups = v
+			}
 		case "backup.auto_backup":
-			cfg.Backup.AutoBackup, _ = value.(bool)
+			if v, ok := value.(bool); ok {
+				cfg.Backup.AutoBackup = v
+			}
 		case "vector.compression":
-			cfg.Vector.Compression, _ = value.(string)
+			if v, ok := value.(string); ok {
+				cfg.Vector.Compression = v
+			}
 		case "vector.dimension":
-			cfg.Vector.Dimension, _ = value.(int)
+			if v, ok := value.(int); ok {
+				cfg.Vector.Dimension = v
+			}
 		case "vector.pq_dim":
-			cfg.Vector.PQDim, _ = value.(int)
+			if v, ok := value.(int); ok {
+				cfg.Vector.PQDim = v
+			}
 		case "vector.codebook_size":
-			cfg.Vector.CodebookSize, _ = value.(int)
+			if v, ok := value.(int); ok {
+				cfg.Vector.CodebookSize = v
+			}
 		}
 	}
 }

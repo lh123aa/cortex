@@ -89,7 +89,8 @@ func (c *SearchCache) ItemCount() int {
 }
 
 func (c *SearchCache) generateKey(query string, opts models.SearchOptions) string {
-	data := fmt.Sprintf("q=%s_top=%d_mode=%s", query, opts.TopK, opts.Mode)
+	// P1-1: 添加 userID 到缓存键，防止不同用户获取他人缓存（安全漏洞）
+	data := fmt.Sprintf("q=%s_top=%d_mode=%s_user=%s", query, opts.TopK, opts.Mode, opts.UserID)
 	h := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(h[:])
 }

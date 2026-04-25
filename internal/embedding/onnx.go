@@ -92,6 +92,7 @@ func (o *ONNXEmbedding) EmbedBatchWithContext(ctx context.Context, texts []strin
 	results := make([][]float32, len(texts))
 	errors := make([]error, 0)
 	var mu sync.Mutex
+	var wg sync.WaitGroup
 
 	sem := make(chan struct{}, 4)
 
@@ -102,8 +103,10 @@ func (o *ONNXEmbedding) EmbedBatchWithContext(ctx context.Context, texts []strin
 			return results, ctx.Err()
 		}
 
+		wg.Add(1)
 		go func(idx int, txt string) {
 			defer func() { <-sem }()
+			defer wg.Done()
 
 			var emb []float32
 			var err error
@@ -127,10 +130,8 @@ func (o *ONNXEmbedding) EmbedBatchWithContext(ctx context.Context, texts []strin
 		}(i, text)
 	}
 
-	// Wait all goroutines
-	for i := 0; i < cap(sem); i++ {
-		sem <- struct{}{}
-	}
+	// Wait all goroutines using WaitGroup (not semaphore drain)
+	wg.Wait()
 
 	if len(errors) > 0 {
 		errMsgs := make([]string, len(errors))
