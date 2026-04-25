@@ -170,6 +170,18 @@ func TestHNSW_Search(t *testing.T) {
 		h.Add(string(rune('0'+i)), v)
 	}
 
+	// Debug: check neighbor structure
+	h.mu.RLock()
+	t.Logf("maxLevel=%d, count=%d", h.maxLevel, h.count)
+	for level := 0; level <= h.maxLevel && level < 3; level++ {
+		if level < len(h.neighbors) {
+			for node := 0; node < len(h.neighbors[level]) && node < 5; node++ {
+				t.Logf("neighbors[%d][%d] = %v", level, node, h.neighbors[level][node])
+			}
+		}
+	}
+	h.mu.RUnlock()
+
 	// Search for vector close to vec1
 	ids, _ := h.Search([]float32{1.0, 0.1, 0.0}, 2)
 

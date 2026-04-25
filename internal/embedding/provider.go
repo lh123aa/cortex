@@ -55,8 +55,13 @@ func (m *ProviderManager) Dimension() int {
 }
 
 func (m *ProviderManager) Name() string {
-	if m.primary != nil { return m.primary.Name() }
-	if m.fallback != nil { return m.fallback.Name() }
+	// 返回当前活跃 provider 的名称（与 Embed/Batch 行为一致）
+	if m.primary != nil && m.primary.Health() == nil {
+		return m.primary.Name()
+	}
+	if m.fallback != nil {
+		return m.fallback.Name()
+	}
 	return "none"
 }
 

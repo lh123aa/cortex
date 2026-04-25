@@ -116,7 +116,13 @@ func (o *OllamaEmbedding) embedOnce(ctx context.Context, text string) ([]float32
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
-	resp, err := o.client.Do(httpReq)
+	// 确保 client 不为 nil
+	client := o.client
+	if client == nil {
+		client = http.DefaultClient
+	}
+
+	resp, err := client.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}

@@ -50,33 +50,33 @@ type Change struct {
 // KnownIssues database of known issues
 var KnownIssues = []Issue{
 	// P0 Issues
-	{id: "P0-001", Severity: "P0", Component: "vector", File: "internal/vector/hnsw.go", Line: 347, Title: "HNSW搜索变量错误", Status: "fixed"},
-	{id: "P0-002", Severity: "P0", Component: "storage", File: "internal/storage/search.go", Line: 101, Title: "SQL语法错误", Status: "fixed"},
-	{id: "P0-003", Severity: "P0", Component: "auth", File: "internal/auth/service.go", Line: 1, Title: "认证不持久化", Status: "fixed"},
-	{id: "P0-004", Severity: "P0", Component: "storage", File: "internal/storage/crud.go", Line: 306, Title: "统计方法stub", Status: "fixed"},
+{ID: "P0-001", Severity: "P0", Component: "vector", File: "internal/vector/hnsw.go", Line: 347, Title: "HNSW搜索变量错误", Status: "fixed"},
+	{ID: "P0-002", Severity: "P0", Component: "storage", File: "internal/storage/search.go", Line: 101, Title: "SQL语法错误", Status: "fixed"},
+	{ID: "P0-003", Severity: "P0", Component: "auth", File: "internal/auth/service.go", Line: 1, Title: "认证不持久化", Status: "fixed"},
+	{ID: "P0-004", Severity: "P0", Component: "storage", File: "internal/storage/crud.go", Line: 306, Title: "统计方法stub", Status: "fixed"},
 
 	// P1 Issues
-	{id: "P1-001", Severity: "P1", Component: "search", File: "internal/search/engine.go", Line: 1, Title: "L1缓存未集成", Status: "found"},
-	{id: "P1-002", Severity: "P1", Component: "config", File: "internal/config/config.go", Line: 203, Title: "Config热重载失效", Status: "found"},
-	{id: "P1-003", Severity: "P1", Component: "api", File: "internal/api/memory.go", Line: 321, Title: "记忆删除不失效缓存", Status: "found"},
-	{id: "P1-004", Severity: "P1", Component: "main", File: "cmd/cortex/main.go", Line: 154, Title: "Embedding维度硬编码", Status: "found"},
-	{id: "P1-005", Severity: "P1", Component: "api", File: "internal/api/auth_middleware.go", Line: 136, Title: "用户上下文nil风险", Status: "found"},
+	{ID: "P1-001", Severity: "P1", Component: "search", File: "internal/search/engine.go", Line: 1, Title: "L1缓存未集成", Status: "found"},
+	{ID: "P1-002", Severity: "P1", Component: "config", File: "internal/config/config.go", Line: 203, Title: "Config热重载失效", Status: "found"},
+	{ID: "P1-003", Severity: "P1", Component: "api", File: "internal/api/memory.go", Line: 321, Title: "记忆删除不失效缓存", Status: "found"},
+	{ID: "P1-004", Severity: "P1", Component: "main", File: "cmd/cortex/main.go", Line: 154, Title: "Embedding维度硬编码", Status: "found"},
+	{ID: "P1-005", Severity: "P1", Component: "api", File: "internal/api/auth_middleware.go", Line: 136, Title: "用户上下文nil风险", Status: "found"},
 
 	// P2 Issues
-	{id: "P2-001", Severity: "P2", Component: "search", File: "internal/search/reranker.go", Line: 1, Title: "重排序器是占位符", Status: "found"},
-	{id: "P2-002", Severity: "P2", Component: "api", File: "internal/api/memory.go", Line: 247, Title: "记忆搜索效率低", Status: "found"},
-	{id: "P2-003", Severity: "P2", Component: "api", File: "internal/api/memory.go", Line: 155, Title: "批量记忆无并发", Status: "found"},
-	{id: "P2-004", Severity: "P2", Component: "api", File: "internal/api/rest.go", Title: "无API限流", Status: "found"},
-	{id: "P2-005", Severity: "P2", Component: "api", File: "internal/api/rest.go", Title: "无请求超时", Status: "found"},
-	{id: "P2-006", Severity: "P2", Component: "log", File: "internal/log/logger.go", Title: "日志无结构化", Status: "found"},
+	{ID: "P2-001", Severity: "P2", Component: "search", File: "internal/search/reranker.go", Line: 1, Title: "重排序器是占位符", Status: "found"},
+	{ID: "P2-002", Severity: "P2", Component: "api", File: "internal/api/memory.go", Line: 247, Title: "记忆搜索效率低", Status: "found"},
+	{ID: "P2-003", Severity: "P2", Component: "api", File: "internal/api/memory.go", Line: 155, Title: "批量记忆无并发", Status: "found"},
+	{ID: "P2-004", Severity: "P2", Component: "api", File: "internal/api/rest.go", Title: "无API限流", Status: "found"},
+	{ID: "P2-005", Severity: "P2", Component: "api", File: "internal/api/rest.go", Title: "无请求超时", Status: "found"},
+	{ID: "P2-006", Severity: "P2", Component: "log", File: "internal/log/logger.go", Title: "日志无结构化", Status: "found"},
 
 	// P3 Issues
-	{id: "P3-001", Severity: "P3", Component: "test", File: "internal/", Title: "缺少单元测试", Status: "found"},
-	{id: "P3-002", Severity: "P3", Component: "test", File: "internal/", Title: "缺少集成测试", Status: "found"},
-	{id: "P3-003", Severity: "P3", Component: "main", File: "cmd/cortex/main.go", Title: "无Graceful Shutdown", Status: "found"},
-	{id: "P3-004", Severity: "P3", Component: "api", File: "internal/api/health.go", Title: "健康检查简单", Status: "found"},
-	{id: "P3-005", Severity: "P3", Component: "docker", File: "Dockerfile", Title: "Docker可优化", Status: "found"},
-	{id: "P3-006", Severity: "P3", Component: "ci", File: ".github/workflows/", Title: "无CI/CD", Status: "found"},
+	{ID: "P3-001", Severity: "P3", Component: "test", File: "internal/", Title: "缺少单元测试", Status: "found"},
+	{ID: "P3-002", Severity: "P3", Component: "test", File: "internal/", Title: "缺少集成测试", Status: "found"},
+	{ID: "P3-003", Severity: "P3", Component: "main", File: "cmd/cortex/main.go", Title: "无Graceful Shutdown", Status: "found"},
+	{ID: "P3-004", Severity: "P3", Component: "api", File: "internal/api/health.go", Title: "健康检查简单", Status: "found"},
+	{ID: "P3-005", Severity: "P3", Component: "docker", File: "Dockerfile", Title: "Docker可优化", Status: "found"},
+	{ID: "P3-006", Severity: "P3", Component: "ci", File: ".github/workflows/", Title: "无CI/CD", Status: "found"},
 }
 
 func main() {

@@ -119,6 +119,16 @@ func l2Distance(a, b []float32) float64 {
 	return math.Sqrt(sum)
 }
 
+// isZeroVector 检查向量是否为零向量（已删除标记）
+func isZeroVector(v []float32) bool {
+	for _, val := range v {
+		if val != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // Add 向索引添加向量
 func (h *HNSW) Add(id string, vector []float32) {
 	h.mu.Lock()
@@ -138,10 +148,17 @@ func (h *HNSW) Add(id string, vector []float32) {
 	h.ids = append(h.ids, id)
 	h.count++
 
-	// 如果是第一个节点，直接设置为入口点
+	// 如果是第一个节点，初始化第0层邻居（自连接）
 	if nodeID == 0 {
 		h.enterPoint = 0
 		h.maxLevel = h.randomLevel()
+		// 初始化邻居结构
+		for i := 0; i <= h.maxLevel; i++ {
+			h.neighbors = append(h.neighbors, nil)
+			h.neighbors[i] = make([][]int, 0)
+		}
+		// 在第0层添加自连接（node 0 连接到自己）
+		h.neighbors[0] = append(h.neighbors[0], []int{0})
 		return
 	}
 
@@ -227,6 +244,12 @@ func (h *HNSW) insertAtLevel(nodeID int, vector []float32, level int) {
 		connections = append(connections, id)
 	}
 
+	// Fallback: 如果没有找到任何连接，至少连接到入口点
+	// 这是HNSW正确工作的关键
+	if len(connections) == 0 && ep != nodeID {
+		connections = append(connections, ep)
+	}
+
 	// 添加双向连接
 	for _, neighbor := range connections {
 		// 添加 neighbor -> nodeID 的连接
@@ -277,14 +300,23 @@ func (h *HNSW) Search(query []float32, k int) ([]string, []float64) {
 		results = results[:k]
 	}
 
-	ids := make([]string, len(results))
-	distances := make([]float64, len(results))
+	// 过滤已删除的向量
+	var validIDs []string
+	var validDistances []float64
 	for i, r := range results {
-		ids[i] = h.ids[r.id]
-		distances[i] = r.dist
+		if r.id < len(h.vectors) && !isZeroVector(h.vectors[r.id]) {
+			validIDs = append(validIDs, h.ids[r.id])
+			validDistances = append(validDistances, results[i].dist)
+		}
 	}
 
-	return ids, distances
+	// 取前 k 个
+	if len(validIDs) > k {
+		validIDs = validIDs[:k]
+		validDistances = validDistances[:k]
+	}
+
+	return validIDs, validDistances
 }
 
 // searchResult 搜索结果
@@ -349,6 +381,20 @@ func (h *HNSW) searchLayer(query []float32, entryPoint int, ef int, level int) [
 		return []searchResult{}
 	}
 
+	// 如果入口点已被删除，使用下一个有效节点
+	if isZeroVector(h.vectors[entryPoint]) {
+		for i := 0; i < len(h.vectors); i++ {
+			if !isZeroVector(h.vectors[i]) {
+				entryPoint = i
+				break
+			}
+		}
+		// 如果所有节点都被删除，返回空
+		if isZeroVector(h.vectors[entryPoint]) {
+			return []searchResult{}
+		}
+	}
+
 	visited := make(map[int]bool)
 	candidates := &priorityQueue{}
 	result := &priorityQueue{}
@@ -371,6 +417,10 @@ func (h *HNSW) searchLayer(query []float32, entryPoint int, ef int, level int) [
 		}
 		for _, neighbor := range h.neighbors[level][current] {
 			if neighbor >= len(h.vectors) || visited[neighbor] {
+				continue
+			}
+			// 跳过已删除的向量
+			if isZeroVector(h.vectors[neighbor]) {
 				continue
 			}
 			visited[neighbor] = true
