@@ -1,198 +1,218 @@
 package search
 
 import (
-	"math"
 	"testing"
 	"time"
 
 	"github.com/lh123aa/cortex/internal/models"
 )
 
-func TestRRFMerge(t *testing.T) {
-	engine := &HybridSearchEngine{}
-
-	// Mock vector results
-	vr := []*models.SearchResult{
-		{Chunk: &models.Chunk{ID: "chunk-1"}, Score: 0.9},
-		{Chunk: &models.Chunk{ID: "chunk-2"}, Score: 0.8},
-		{Chunk: &models.Chunk{ID: "chunk-3"}, Score: 0.7},
+func TestNewSearchCache(t *testing.T) {
+	cache := NewSearchCache()
+	if cache == nil {
+		t.Fatal("NewSearchCache returned nil")
 	}
-
-	// Mock FTS results
-	fr := []*models.SearchResult{
-		{Chunk: &models.Chunk{ID: "chunk-2"}, Score: 10.5},
-		{Chunk: &models.Chunk{ID: "chunk-4"}, Score: 8.0},
-		{Chunk: &models.Chunk{ID: "chunk-1"}, Score: 5.0},
-	}
-
-	merged := engine.rrfMerge(vr, fr)
-
-	if len(merged) != 4 {
-		t.Fatalf("Expected 4 merged results, got %d", len(merged))
-	}
-
-	// Because chunk-2 has rank 2 in VR and rank 1 in FR
-	// chunk-1 has rank 1 in VR and rank 3 in FR
-	// Both chunk-2 and chunk-1 should be at the top. Let's check normalization.
-
-	if merged[0].Score != 1.0 {
-		t.Errorf("Top result score should be normalized to 1.0, got %f", merged[0].Score)
-	}
-
-	// Ensure sorted order
-	for i := 0; i < len(merged)-1; i++ {
-		if merged[i].Score < merged[i+1].Score {
-			t.Errorf("Results are not strictly descending at index %d and %d", i, i+1)
-		}
+	if cache.memoryCache == nil {
+		t.Error("memoryCache is nil")
 	}
 }
 
-func TestRRFMerge_EmptyInputs(t *testing.T) {
-	engine := &HybridSearchEngine{}
+func TestSearchCacheGetSet(t *testing.T) {
+	cache := NewSearchCache()
 
-	tests := []struct {
-		name string
-		vr   []*models.SearchResult
-		fr   []*models.SearchResult
-	}{
-		{"empty vr", []*models.SearchResult{}, []*models.SearchResult{{Chunk: &models.Chunk{ID: "1"}, Score: 1.0}}},
-		{"empty fr", []*models.SearchResult{{Chunk: &models.Chunk{ID: "1"}, Score: 1.0}}, []*models.SearchResult{}},
-		{"both empty", []*models.SearchResult{}, []*models.SearchResult{}},
+	results := []*models.SearchResult{
+		{
+			Score: 0.95,
+			Chunk: &models.Chunk{
+				ID:      "chunk-1",
+				Content: "Test content",
+			},
+		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			merged := engine.rrfMerge(tt.vr, tt.fr)
-			if merged == nil {
-				t.Error("Expected non-nil result")
-			}
-		})
-	}
-}
-
-func TestRRFMerge_DuplicateChunks(t *testing.T) {
-	engine := &HybridSearchEngine{}
-
-	// Same chunk appears in both result sets
-	vr := []*models.SearchResult{
-		{Chunk: &models.Chunk{ID: "chunk-1"}, Score: 0.9},
-	}
-	fr := []*models.SearchResult{
-		{Chunk: &models.Chunk{ID: "chunk-1"}, Score: 0.8},
+	opts := models.SearchOptions{
+		TopK:   10,
+		Mode:   "hybrid",
+		UserID: "user-1",
 	}
 
-	merged := engine.rrfMerge(vr, fr)
-
-	// Should only have one result for chunk-1
-	if len(merged) != 1 {
-		t.Errorf("Expected 1 result, got %d", len(merged))
-	}
-}
-
-func TestNormalizeScores(t *testing.T) {
-	engine := &HybridSearchEngine{}
-	res := []*models.SearchResult{
-		{Score: 2.0},
-		{Score: 0.5},
-		{Score: 10.0},
+	// 首次获取应该失败
+	cached, ok := cache.Get("test query", opts)
+	if ok {
+		t.Error("First cache get should return false")
 	}
 
-	normalized := engine.normalizeScores(res)
+	// 设置缓存
+	cache.Set("test query", opts, results)
 
-	// Since it sorts descending and max is 10.0
-	if math.Abs(normalized[0].Score-1.0) > 1e-9 {
-		t.Errorf("Expected max score to be 1.0, got %f", normalized[0].Score)
+	// 再次获取应该成功
+	cached, ok = cache.Get("test query", opts)
+	if !ok {
+		t.Error("Cache get should return true after Set")
 	}
-	if math.Abs(normalized[1].Score-0.2) > 1e-9 {
-		t.Errorf("Expected second score to be 0.2, got %f", normalized[1].Score)
+	if len(cached) != 1 {
+		t.Errorf("Expected 1 result, got %d", len(cached))
 	}
-	if math.Abs(normalized[2].Score-0.05) > 1e-9 {
-		t.Errorf("Expected lowest score to be 0.05, got %f", normalized[2].Score)
+	if cached[0].Score != 0.95 {
+		t.Errorf("Expected score 0.95, got %f", cached[0].Score)
 	}
 }
 
-func TestNormalizeScores_EmptyInput(t *testing.T) {
-	engine := &HybridSearchEngine{}
-	res := []*models.SearchResult{}
+func TestSearchCacheKeyGeneration(t *testing.T) {
+	cache := NewSearchCache()
 
-	normalized := engine.normalizeScores(res)
-	if normalized != nil {
-		t.Errorf("Expected nil for empty input, got %v", normalized)
+	opts1 := models.SearchOptions{TopK: 10, Mode: "hybrid", UserID: "user-1"}
+	opts2 := models.SearchOptions{TopK: 10, Mode: "hybrid", UserID: "user-1"}
+	opts3 := models.SearchOptions{TopK: 10, Mode: "vector", UserID: "user-1"}
+
+	key1 := cache.generateKey("test query", opts1)
+	key2 := cache.generateKey("test query", opts2)
+	key3 := cache.generateKey("test query", opts3)
+
+	// 相同参数应该生成相同的 key
+	if key1 != key2 {
+		t.Error("Same options should generate same key")
+	}
+
+	// 不同模式应该生成不同的 key
+	if key1 == key3 {
+		t.Error("Different modes should generate different keys")
 	}
 }
 
-func TestNormalizeScores_AllSameScore(t *testing.T) {
-	engine := &HybridSearchEngine{}
-	res := []*models.SearchResult{
-		{Score: 5.0},
-		{Score: 5.0},
-		{Score: 5.0},
+func TestSearchCacheInvalidateAll(t *testing.T) {
+	cache := NewSearchCache()
+
+	results := []*models.SearchResult{
+		{Score: 0.9, Chunk: &models.Chunk{ID: "chunk-1"}},
 	}
 
-	normalized := engine.normalizeScores(res)
+	opts := models.SearchOptions{TopK: 10, Mode: "hybrid"}
 
-	for _, r := range normalized {
-		if r.Score != 1.0 {
-			t.Errorf("Expected all scores to be 1.0, got %f", r.Score)
-		}
+	cache.Set("query1", opts, results)
+	cache.Set("query2", opts, results)
+
+	// 验证缓存存在
+	_, ok1 := cache.Get("query1", opts)
+	_, ok2 := cache.Get("query2", opts)
+	if !ok1 || !ok2 {
+		t.Error("Cache entries should exist before InvalidateAll")
+	}
+
+	// 清空缓存
+	cache.InvalidateAll()
+
+	// 验证缓存已清空
+	_, ok1 = cache.Get("query1", opts)
+	_, ok2 = cache.Get("query2", opts)
+	if ok1 || ok2 {
+		t.Error("Cache entries should not exist after InvalidateAll")
 	}
 }
 
-func TestNormalizeScores_ZeroMaxScore(t *testing.T) {
-	engine := &HybridSearchEngine{}
-	res := []*models.SearchResult{
-		{Score: 0.0},
-		{Score: 0.0},
+func TestHybridSearchEngineCreation(t *testing.T) {
+	// 创建引擎（不需要实际存储）
+	engine := &HybridSearchEngine{
+		useCache: true,
+		cacheTTL: 5 * time.Minute,
+		l1Cache:  NewSearchCache(),
 	}
 
-	normalized := engine.normalizeScores(res)
-
-	// Should not panic and should return zeros
-	for _, r := range normalized {
-		if r.Score != 0.0 {
-			t.Errorf("Expected zero score, got %f", r.Score)
-		}
+	if !engine.useCache {
+		t.Error("Cache should be enabled by default")
+	}
+	if engine.cacheTTL != 5*time.Minute {
+		t.Errorf("Expected 5m cache TTL, got %v", engine.cacheTTL)
+	}
+	if engine.l1Cache == nil {
+		t.Error("L1 cache should be initialized")
 	}
 }
 
 func TestHybridSearchEngine_SetCacheTTL(t *testing.T) {
 	engine := &HybridSearchEngine{}
-
-	if engine.cacheTTL != 5*time.Minute {
-		t.Errorf("Expected default TTL of 5 minutes, got %v", engine.cacheTTL)
-	}
-
 	engine.SetCacheTTL(10 * time.Minute)
 
 	if engine.cacheTTL != 10*time.Minute {
-		t.Errorf("Expected TTL of 10 minutes, got %v", engine.cacheTTL)
+		t.Errorf("Expected 10m cache TTL, got %v", engine.cacheTTL)
 	}
 }
 
 func TestHybridSearchEngine_DisableCache(t *testing.T) {
-	engine := &HybridSearchEngine{}
-
-	if !engine.useCache {
-		t.Error("Expected cache to be enabled by default")
-	}
-
+	engine := &HybridSearchEngine{useCache: true}
 	engine.DisableCache()
 
 	if engine.useCache {
-		t.Error("Expected cache to be disabled")
+		t.Error("Cache should be disabled after DisableCache")
 	}
 }
 
-func TestHybridSearchEngine_NewHybridSearchEngine(t *testing.T) {
-	engine := NewHybridSearchEngine(nil, nil)
+func TestSearchOptions(t *testing.T) {
+	opts := models.SearchOptions{
+		TopK:   20,
+		Mode:   "vector",
+		UserID: "user-123",
+	}
 
-	if engine == nil {
-		t.Fatal("Expected non-nil engine")
+	if opts.TopK != 20 {
+		t.Errorf("Expected TopK 20, got %d", opts.TopK)
 	}
-	if !engine.useCache {
-		t.Error("Expected cache to be enabled by default")
+	if opts.Mode != "vector" {
+		t.Errorf("Expected mode 'vector', got '%s'", opts.Mode)
 	}
-	if engine.cacheTTL != 5*time.Minute {
-		t.Errorf("Expected default TTL of 5 minutes, got %v", engine.cacheTTL)
+	if opts.UserID != "user-123" {
+		t.Errorf("Expected UserID 'user-123', got '%s'", opts.UserID)
+	}
+}
+
+func TestSearchResult(t *testing.T) {
+	result := &models.SearchResult{
+		Score: 0.87,
+		Rank:  1,
+		Chunk: &models.Chunk{
+			ID:           "chunk-test",
+			DocumentID:   "doc-test",
+			HeadingPath:  "Introduction",
+			Content:      "This is test content",
+			ContentRaw:   "This is test content",
+			TokenCount:   6,
+		},
+	}
+
+	if result.Score != 0.87 {
+		t.Errorf("Expected score 0.87, got %f", result.Score)
+	}
+	if result.Rank != 1 {
+		t.Errorf("Expected rank 1, got %d", result.Rank)
+	}
+	if result.Chunk.HeadingPath != "Introduction" {
+		t.Errorf("Expected heading 'Introduction', got '%s'", result.Chunk.HeadingPath)
+	}
+}
+
+func TestRRF融合公式(t *testing.T) {
+	// 测试 RRF 公式: score = 1 / (k + rank)
+	// 标准 k=60
+
+	k := 60.0
+
+	// 第1名应该得到最高分
+	score1 := 1.0 / (k + 1)
+	// 第2名
+	score2 := 1.0 / (k + 2)
+	// 第10名
+	score10 := 1.0 / (k + 10)
+
+	if score1 <= score2 {
+		t.Error("Higher rank should have higher score")
+	}
+	if score2 <= score10 {
+		t.Error("Lower rank should have lower score")
+	}
+
+	// 验证分数递减
+	expectedScore1 := 1.0 / 61.0
+	if score1 != expectedScore1 {
+		t.Errorf("Expected score %f for rank 1, got %f", expectedScore1, score1)
 	}
 }

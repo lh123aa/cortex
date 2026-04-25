@@ -28,7 +28,21 @@ func (s *RESTServer) Router() *gin.Engine {
 
 // ListenAndServe starts the HTTP server
 func (s *RESTServer) ListenAndServe(addr string) error {
-	return s.router.Run(addr)
+	s.httpServer = &HTTPServer{
+		Server: &http.Server{
+			Addr:    addr,
+			Handler: s.router,
+		},
+	}
+	return s.httpServer.ListenAndServe()
+}
+
+// Shutdown gracefully shuts down the REST server
+func (s *RESTServer) Shutdown(ctx context.Context) error {
+	if s.httpServer == nil {
+		return nil
+	}
+	return s.httpServer.Shutdown(ctx)
 }
 
 // Shutdown gracefully shuts down the server
@@ -54,6 +68,7 @@ type RESTServer struct {
 	router  *gin.Engine
 	health  *HealthChecker
 	memory  *MemoryHandler // 记忆系统处理器
+	httpServer *HTTPServer   // 用于 graceful shutdown
 
 	// Auth
 	authService   *auth.AuthService
@@ -68,6 +83,8 @@ func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, em embeddi
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(TimeoutMiddleware(DefaultTimeout)) // 全局超时控制
+	r.Use(DefaultRateLimitMiddleware())       // 全局限流
 
 	mh := NewMemoryHandler(st, se, em, log)
 
@@ -92,6 +109,8 @@ func NewRESTServerWithAuth(se *search.HybridSearchEngine, st storage.Storage, em
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(TimeoutMiddleware(DefaultTimeout)) // 全局超时控制
+	r.Use(DefaultRateLimitMiddleware())       // 全局限流
 
 	mh := NewMemoryHandler(st, se, em, log)
 

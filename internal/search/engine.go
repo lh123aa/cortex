@@ -17,6 +17,7 @@ type HybridSearchEngine struct {
 	useCache  bool
 	cacheTTL  time.Duration
 	reranker  Reranker // 可选的重排序器
+	l1Cache   *SearchCache // L1 内存缓存
 }
 
 // NewHybridSearchEngine 初始化搜索引擎
@@ -26,6 +27,7 @@ func NewHybridSearchEngine(s storage.Storage, emb embedding.EmbeddingProvider) *
 		embedding: emb,
 		useCache:  true, // 默认启用缓存
 		cacheTTL:  5 * time.Minute,
+		l1Cache:   NewSearchCache(), // 初始化 L1 缓存
 	}
 }
 
@@ -44,8 +46,14 @@ func (s *HybridSearchEngine) DisableCache() {
 	s.useCache = false
 }
 
+// GetL1Cache 获取 L1 缓存实例
+func (s *HybridSearchEngine) GetL1Cache() *SearchCache {
+	return s.l1Cache
+}
+
 // Search 执行整体搜索与融合逻辑
 // v2.2: 添加用户隔离支持
+// v2.3: 添加 L1 + L2 两级缓存
 func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts models.SearchOptions) ([]*models.SearchResult, error) {
 	start := time.Now()
 	metrics.SearchTotal.Inc()
@@ -53,10 +61,24 @@ func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts mode
 
 	userID := opts.UserID
 
-	// 1. 尝试从缓存获取（用户隔离缓存）
+	// 1. 尝试从 L1 内存缓存获取（最快）
+	if s.useCache && s.l1Cache != nil {
+		if cached, ok := s.l1Cache.Get(query, opts); ok {
+			metrics.SearchCacheHits.Inc()
+			metrics.SearchDuration.Observe(time.Since(start).Seconds())
+			metrics.SearchResultsReturned.Observe(float64(len(cached)))
+			return cached, nil
+		}
+	}
+
+	// 2. 尝试从 L2 SQLite 缓存获取（用户隔离）
 	if s.useCache {
 		if cached, ok := s.storage.GetCachedSearch(query, userID, opts.Mode, opts.TopK); ok {
 			metrics.SearchCacheHits.Inc()
+			// 写入 L1 缓存供下次快速访问
+			if s.l1Cache != nil {
+				s.l1Cache.Set(query, opts, cached)
+			}
 			metrics.SearchDuration.Observe(time.Since(start).Seconds())
 			metrics.SearchResultsReturned.Observe(float64(len(cached)))
 			return cached, nil
@@ -117,9 +139,14 @@ func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts mode
 		finalResults[i].Rank = i + 1
 	}
 
-	// 9. 写入缓存（用户隔离缓存）
+	// 9. 写入两级缓存
 	if s.useCache && len(finalResults) > 0 {
+		// 写入 L2 SQLite 缓存
 		s.storage.SetCachedSearch(query, userID, opts.Mode, opts.TopK, finalResults, s.cacheTTL)
+		// 写入 L1 内存缓存
+		if s.l1Cache != nil {
+			s.l1Cache.Set(query, opts, finalResults)
+		}
 	}
 
 	// 10. 记录指标
@@ -131,7 +158,12 @@ func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts mode
 
 // InvalidateCache 使缓存失效（文档更新时调用）
 func (s *HybridSearchEngine) InvalidateCache() {
+	// 清空 L2 缓存
 	s.storage.InvalidateSearchCache()
+	// 清空 L1 缓存
+	if s.l1Cache != nil {
+		s.l1Cache.InvalidateAll()
+	}
 }
 
 // InvalidateUserCache 使某个用户的缓存失效

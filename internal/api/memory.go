@@ -372,6 +372,11 @@ func (h *MemoryHandler) DeleteMemory(c *gin.Context) {
 		return
 	}
 
+	// 删除后失效缓存，避免搜索返回已删除记忆
+	if err := h.storage.InvalidateSearchCache(); err != nil {
+		h.logger.Warn("failed to invalidate search cache after memory deletion", zap.Error(err))
+	}
+
 	c.JSON(200, gin.H{"message": "memory deleted"})
 }
 

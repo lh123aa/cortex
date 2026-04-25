@@ -386,7 +386,6 @@ func runServe(cmd *cobra.Command, args []string) {
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}
-	defer st.Close()
 
 	emb, err := initEmbedding(cfg, logger)
 	if err != nil {
@@ -416,20 +415,35 @@ func runServe(cmd *cobra.Command, args []string) {
 	metricsServer := metrics.StartMetricsServer(":9090")
 	logger.Info("metrics server started", zap.String("addr", ":9090"))
 
+	// Graceful Shutdown 通道
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	go func() {
-		<-sigChan
-		logger.Info("shutting down servers...")
-		metrics.ShutdownMetricsServer(metricsServer, 5*time.Second)
-		os.Exit(0)
-	}()
+	// 等待信号
+	sig := <-sigChan
+	logger.Info("received shutdown signal", zap.String("signal", sig.String()))
 
-	if err := restServer.ListenAndServe(":8080"); err != nil {
-		logger.Error("REST server error", zap.Error(err))
-		os.Exit(1)
+	// 创建 shutdown context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 关闭 REST server（接受新请求但等待现有请求完成）
+	logger.Info("shutting down REST server...")
+	if err := restServer.Shutdown(ctx); err != nil {
+		logger.Warn("REST server shutdown error", zap.Error(err))
 	}
+
+	// 关闭 metrics server
+	logger.Info("shutting down metrics server...")
+	if err := metrics.ShutdownMetricsServer(metricsServer, 5*time.Second); err != nil {
+		logger.Warn("metrics server shutdown error", zap.Error(err))
+	}
+
+	// 关闭 storage（保存所有未决数据）
+	logger.Info("closing storage...")
+	st.Close()
+
+	logger.Info("graceful shutdown complete")
 }
 
 func runStatus(cmd *cobra.Command, args []string) {
