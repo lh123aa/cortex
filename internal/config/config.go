@@ -386,8 +386,8 @@ func ValidateConfig(c *Config) error {
 	if c.Cortex.DBPath == "" {
 		return fmt.Errorf("cortex.db_path is required")
 	}
-	if c.Embedding.Provider != "ollama" && c.Embedding.Provider != "onnx" {
-		return fmt.Errorf("embedding.provider must be 'ollama' or 'onnx'")
+	if c.Embedding.Provider != "ollama" && c.Embedding.Provider != "onnx" && c.Embedding.Provider != "none" {
+		return fmt.Errorf("embedding.provider must be 'ollama', 'onnx', or 'none'")
 	}
 	if c.Index.Workers <= 0 || c.Index.Workers > 32 {
 		return fmt.Errorf("index.workers must be between 1 and 32")

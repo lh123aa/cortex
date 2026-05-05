@@ -173,6 +173,11 @@ func initEmbedding(cfg *config.Config, logger *zap.Logger) (embedding.EmbeddingP
 		)
 	}
 
+	if cfg.Embedding.Provider == "none" {
+		logger.Info("embedding provider disabled, search will use FTS-only mode")
+		return nil, nil
+	}
+
 	if primary != nil {
 		return embedding.NewProviderManager(primary, nil), nil
 	}
@@ -363,11 +368,21 @@ func runMCP(cmd *cobra.Command, args []string) {
 		logger.Fatal("failed to init search engine", zap.Error(err))
 	}
 
-	mcpServer := api.NewMCPServer(se, st, logger)
+	mcpServer := api.NewMCPServer(se, st, emb, logger)
 
 	logger.Info("starting MCP server",
 		zap.String("protocol", api.MCPProtocolVersion),
 	)
+
+	// Graceful Shutdown 通道
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigChan
+		logger.Info("received shutdown signal, stopping MCP server", zap.String("signal", sig.String()))
+		os.Exit(0)
+	}()
 
 	if err := mcpServer.Run(); err != nil {
 		logger.Error("MCP server error", zap.Error(err))

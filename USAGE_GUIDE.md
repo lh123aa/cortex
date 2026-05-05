@@ -16,7 +16,9 @@ go build -o cortex ./cmd/cortex
 go install ./cmd/cortex
 ```
 
-### 1.2 启动 Ollama（已安装则跳过）
+### 1.2 配置 Embedding 服务
+
+**方案 A：Ollama（推荐，支持语义搜索）**
 
 ```bash
 # 安装 Ollama (macOS/Linux)
@@ -30,6 +32,10 @@ ollama serve
 # 下载 embedding 模型 (另一个终端)
 ollama pull nomic-embed-text
 ```
+
+**方案 B：零依赖模式（无需外部服务）**
+
+配置 `~/.cortex/config.yaml` 中设置 `embedding.provider: none`，系统自动降级为 FTS5 全文搜索。
 
 ### 1.3 索引文档
 
@@ -156,12 +162,30 @@ Cortex 提供 MCP Server，可用于 AI Agent 集成：
 # 启动 MCP 服务器 (stdio 模式)
 ./cortex mcp
 
-# 可用工具:
-# - cortex_search: 语义搜索
-# - cortex_context: RAG 上下文组装
+# 可用工具 (5个):
+# - cortex_search           混合搜索 (向量 + FTS)
+# - cortex_context          RAG 上下文组装
+# - cortex_memory_write     写入记忆条目
+# - cortex_memory_search    搜索记忆条目
+# - cortex_memory_delete    删除记忆条目
 ```
 
-在 AI Agent 中配置 MCP 端点为 `stdio` 模式即可使用。
+### OpenCode 集成配置
+
+在 OpenCode 的 MCP 配置中添加：
+
+```json
+{
+  "mcpServers": {
+    "cortex": {
+      "command": "cortex.exe",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+启动后 Agent 可自动调用上述 5 个工具进行知识库检索和记忆管理。
 
 ---
 
@@ -175,7 +199,7 @@ cortex:
   log_level: info
 
 embedding:
-  provider: ollama  # or "onnx"
+  provider: ollama  # ollama | onnx | none (FTS5-only, 无需外部服务)
   ollama:
     base_url: http://localhost:11434
     model: nomic-embed-text
@@ -211,7 +235,10 @@ search:
 A: 增加 workers 数量，或使用更快的 embedding 模型。
 
 ### Q: Ollama 连接失败？
-A: 确保 Ollama 服务正在运行 (`ollama serve`)，且模型已下载 (`ollama list`)。
+A: 确保 Ollama 服务正在运行 (`ollama serve`)，且模型已下载 (`ollama list`)。如需跳过 Embedding，可设置 `embedding.provider: none`，系统会自动启用 FTS5 全文搜索。
+
+### Q: 不想安装 Ollama 能用吗？
+A: 可以。在 `~/.cortex/config.yaml` 中设置 `embedding.provider: none`，Cortex 将以 FTS5-only 模式运行，无需任何外部服务。
 
 ### Q: 如何查看索引状态？
 A: `curl http://localhost:8080/v1/stats`

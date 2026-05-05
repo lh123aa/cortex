@@ -6,15 +6,22 @@
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/lh123aa/cortex?style=flat-square)](https://github.com/lh123aa/cortex/stargazers)
 [![Code Quality](https://img.shields.io/badge/Code%20Quality-100%25-brightgreen?style=flat-square)]()
-[![Version](https://img.shields.io/badge/Version-2.1-blue?style=flat-square)]()
+[![Version](https://img.shields.io/badge/Version-2.2-blue?style=flat-square)]()
 
 [English](./README.md) · [快速开始](#-快速开始) · [文档](./docs) · [讨论](https://github.com/lh123aa/cortex/discussions)
 
 ---
 
-## ✨ v2.1 新特性
+## ✨ v2.2 新特性
 
-### 🔥 生产环境修复 (2026-04-25)
+### 🧠 MCP 记忆工具 (2026-05-05)
+
+- ✅ **5 个 MCP 工具** — `cortex_search` / `cortex_context` / `cortex_memory_write` / `cortex_memory_search` / `cortex_memory_delete`
+- ✅ **嵌入式零依赖模式** — `embedding.provider: none`，无需 Ollama，FTS5 全文搜索
+- ✅ **MCP 优雅关闭** — Signal 处理，Ctrl+C 安全退出
+- ✅ **MCP 单元测试** — 11 个测试用例，覆盖全部工具边界条件
+
+### 🔥 v2.1 生产环境修复 (2026-04-25)
 
 - ✅ **L1+L2 两级缓存** — 内存缓存(L1) + SQLite缓存(L2)，搜索速度提升 10x
 - ✅ **Graceful Shutdown** — 优雅关闭，30s 内处理完现有请求
@@ -86,11 +93,18 @@ curl "http://localhost:8080/v1/memory/context?q=用户有什么偏好"
 
 ### 🔌 MCP 原生支持
 
-专为 AI Agent 设计，MCP 协议开箱即用：
+专为 AI Agent 设计，MCP 协议开箱即用，提供 5 个工具：
 
 ```bash
 # 启动 MCP 服务器
 cortex mcp
+
+# MCP 工具列表:
+# - cortex_search          混合搜索 (向量 + BM25)
+# - cortex_context         RAG 上下文组装
+# - cortex_memory_write    写入记忆条目
+# - cortex_memory_search   搜索记忆条目
+# - cortex_memory_delete   删除记忆条目
 ```
 
 ### 🔍 混合搜索，精准召回
@@ -334,7 +348,7 @@ index:
   workers: 8
 
 embedding:
-  provider: ollama
+  provider: ollama   # ollama | onnx | none (FTS5-only, 无需外部服务)
   ollama:
     base_url: http://localhost:11434
     model: nomic-embed-text

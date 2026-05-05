@@ -2,9 +2,13 @@ package api
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
+	"github.com/lh123aa/cortex/internal/chunker"
+	"github.com/lh123aa/cortex/internal/embedding"
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/rag"
 	"github.com/lh123aa/cortex/internal/search"
@@ -29,11 +33,28 @@ type ContextArgs struct {
 	TokenBudget int    `json:"token_budget,omitempty" jsonschema:"description=Allowed max tokens"`
 }
 
+type MemoryWriteArgs struct {
+	Content string   `json:"content" jsonschema:"description=The memory content to store;required"`
+	Tags    []string `json:"tags,omitempty" jsonschema:"description=Optional tags for the memory"`
+	Source  string   `json:"source,omitempty" jsonschema:"description=Optional source identifier"`
+	Summary string   `json:"summary,omitempty" jsonschema:"description=Optional summary, auto-generated if empty"`
+}
+
+type MemorySearchArgs struct {
+	Query string `json:"query" jsonschema:"description=The query to search memories;required"`
+	TopK  int    `json:"top_k,omitempty" jsonschema:"description=Number of results to return"`
+}
+
+type MemoryDeleteArgs struct {
+	ID string `json:"id" jsonschema:"description=The memory ID to delete;required"`
+}
+
 type MCPServer struct {
 	server  *mcp.Server
 	search  *search.HybridSearchEngine
 	rag     *rag.RAGBuilder
 	storage storage.Storage
+	memory  *MemoryHandler
 	logger  *zap.Logger
 	userID  string // 用户隔离：当前 MCP 会话的 userID
 }
@@ -44,11 +65,13 @@ func (s *MCPServer) SetUserID(userID string) {
 	s.userID = userID
 }
 
-func NewMCPServer(se *search.HybridSearchEngine, st storage.Storage, log *zap.Logger) *MCPServer {
+func NewMCPServer(se *search.HybridSearchEngine, st storage.Storage, em embedding.EmbeddingProvider, log *zap.Logger) *MCPServer {
+	mh := NewMemoryHandler(st, se, em, log)
 	s := &MCPServer{
 		search:  se,
 		rag:     rag.NewRAGBuilder(se),
 		storage: st,
+		memory:  mh,
 		logger:  log,
 	}
 
@@ -84,6 +107,24 @@ func (s *MCPServer) registerTools() {
 		Name:        "cortex_context",
 		Description: "Assemble relevant information within a specific token budget limit strictly",
 	}, s.handleContextTool)
+
+	// cortex_memory_write: 写入记忆
+	mcp.AddTool(s.server, &mcp.Tool{
+		Name:        "cortex_memory_write",
+		Description: "Write a memory entry to the cortex knowledge base for persistent storage",
+	}, s.handleMemoryWriteTool)
+
+	// cortex_memory_search: 搜索记忆
+	mcp.AddTool(s.server, &mcp.Tool{
+		Name:        "cortex_memory_search",
+		Description: "Search memory entries in the cortex knowledge base",
+	}, s.handleMemorySearchTool)
+
+	// cortex_memory_delete: 删除记忆
+	mcp.AddTool(s.server, &mcp.Tool{
+		Name:        "cortex_memory_delete",
+		Description: "Delete a memory entry from the cortex knowledge base by its ID",
+	}, s.handleMemoryDeleteTool)
 }
 
 func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
@@ -129,6 +170,142 @@ func (s *MCPServer) handleContextTool(ctx context.Context, req *mcp.CallToolRequ
 	ans := fmt.Sprintf("Context Built (%d / %d tokens)\n========\n%s", c.TokenCount, c.TokenBudget, c.Context)
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{&mcp.TextContent{Text: ans}},
+	}, nil, nil
+}
+
+func (s *MCPServer) handleMemoryWriteTool(ctx context.Context, req *mcp.CallToolRequest, args MemoryWriteArgs) (*mcp.CallToolResult, any, error) {
+	if args.Content == "" {
+		return nil, nil, fmt.Errorf("content is required")
+	}
+
+	userID := s.userID
+
+	contentHash := sha256.Sum256([]byte(args.Content))
+	memoryID := hex.EncodeToString(contentHash[:16])
+
+	summary := args.Summary
+	if summary == "" && len(args.Content) > 100 {
+		summary = args.Content[:100] + "..."
+	} else if summary == "" {
+		summary = args.Content
+	}
+
+	tk, err := chunker.NewTextChunker(chunker.ChunkConfig{
+		MinChars:  50,
+		MaxTokens: 512,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create chunker: %w", err)
+	}
+
+	chunks, err := tk.Chunk(args.Content, fmt.Sprintf("memory://%s", memoryID))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to chunk memory: %w", err)
+	}
+
+	if len(chunks) > 0 {
+		texts := make([]string, len(chunks))
+		for i, chunk := range chunks {
+			texts[i] = chunk.ContentRaw
+		}
+		if s.memory.em != nil {
+			if embeddings, err := s.memory.em.EmbedBatch(texts); err == nil {
+				for i, chunk := range chunks {
+					chunk.Embedding = embeddings[i]
+					if s.memory.em != nil {
+						chunk.EmbeddingModel = s.memory.em.Name()
+					}
+				}
+			}
+		}
+	}
+
+	doc := &models.Document{
+		ID:          memoryID,
+		UserID:      userID,
+		Path:        fmt.Sprintf("memory://%s", memoryID),
+		FileType:    "memory",
+		ContentHash: hex.EncodeToString(contentHash[:]),
+		ChunkCount:  len(chunks),
+		Status:      "indexed",
+	}
+	if err := s.storage.SaveDocument(doc); err != nil {
+		return nil, nil, fmt.Errorf("failed to save memory: %w", err)
+	}
+
+	for _, chunk := range chunks {
+		chunk.UserID = userID
+		chunk.DocumentID = memoryID
+	}
+	if err := s.storage.SaveChunks(chunks); err != nil {
+		return nil, nil, fmt.Errorf("failed to save memory chunks: %w", err)
+	}
+
+	result := fmt.Sprintf("Memory written successfully:\nID: %s\nSummary: %s\nTags: %v\nSource: %s",
+		memoryID, summary, args.Tags, args.Source)
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: result}},
+	}, nil, nil
+}
+
+func (s *MCPServer) handleMemorySearchTool(ctx context.Context, req *mcp.CallToolRequest, args MemorySearchArgs) (*mcp.CallToolResult, any, error) {
+	if args.Query == "" {
+		return nil, nil, fmt.Errorf("query is required")
+	}
+
+	topK := args.TopK
+	if topK <= 0 {
+		topK = 10
+	}
+
+	opts := models.SearchOptions{
+		TopK:   topK,
+		Mode:   "hybrid",
+		UserID: s.userID,
+	}
+
+	results, err := s.search.Search(ctx, args.Query, opts)
+	if err != nil {
+		return nil, nil, fmt.Errorf("memory search failed: %w", err)
+	}
+
+	var sb strings.Builder
+	count := 0
+	for _, r := range results {
+		doc, _ := s.storage.GetDocumentByID(r.Chunk.DocumentID, s.userID)
+		if doc == nil || doc.FileType != "memory" {
+			continue
+		}
+		count++
+		sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nID: %s\nContent: %s\n---\n",
+			count, r.Score, doc.ID, truncateText(r.Chunk.ContentRaw, 300)))
+	}
+
+	if count == 0 {
+		sb.WriteString("No memory entries found.")
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: sb.String()}},
+	}, nil, nil
+}
+
+func (s *MCPServer) handleMemoryDeleteTool(ctx context.Context, req *mcp.CallToolRequest, args MemoryDeleteArgs) (*mcp.CallToolResult, any, error) {
+	if args.ID == "" {
+		return nil, nil, fmt.Errorf("id is required")
+	}
+
+	if err := s.storage.DeleteDocumentByPath(fmt.Sprintf("memory://%s", args.ID), s.userID); err != nil {
+		return nil, nil, fmt.Errorf("failed to delete memory: %w", err)
+	}
+
+	if err := s.storage.InvalidateSearchCache(); err != nil {
+		s.logger.Warn("failed to invalidate search cache after memory deletion", zap.Error(err))
+	}
+
+	result := fmt.Sprintf("Memory deleted successfully:\nID: %s", args.ID)
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: result}},
 	}, nil, nil
 }
 
