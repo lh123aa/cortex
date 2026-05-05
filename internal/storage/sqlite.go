@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/lh123aa/cortex/internal/vector"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 //go:embed schema.sql
@@ -24,7 +24,7 @@ type SQLiteStorage struct {
 
 // NewSQLiteStorage 初始化并打开 SQLite 数据库
 func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
-	db, err := sql.Open("sqlite3", dbPath+"?_fk=1&cache=shared") // 启动外键支持
+	db, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)") // 启动外键支持
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}

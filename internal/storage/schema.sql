@@ -67,7 +67,7 @@ CREATE INDEX IF NOT EXISTS idx_documents_user ON documents(user_id);
 
 -- 分块表 (Chunks)（新增 user_id 列）
 CREATE TABLE IF NOT EXISTS chunks (
-    id TEXT PRIMARY KEY,
+    id TEXT NOT NULL UNIQUE,
     rowid INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL DEFAULT '',
     document_id TEXT NOT NULL,
