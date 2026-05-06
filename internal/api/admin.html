@@ -51,6 +51,17 @@
   </div>
 
   <div class="card">
+    <h2 style="font-size:1rem;margin-bottom:0.8rem;">🧠 记忆管理</h2>
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
+      <input type="text" id="memInput" placeholder="输入要记住的内容..." style="flex:1;">
+      <button onclick="writeMemory()" style="white-space:nowrap;">写入记忆</button>
+    </div>
+    <input type="text" id="memSearchInput" placeholder="搜索记忆..." onkeydown="if(event.key==='Enter')searchMemory()">
+    <button onclick="searchMemory()">搜索记忆</button>
+    <div class="result" id="memResult">记忆数据将显示在这里</div>
+  </div>
+
+  <div class="card">
     <h2 style="font-size:1rem;margin-bottom:0.8rem;">🔗 快捷链接</h2>
     <p style="font-size:0.85rem;line-height:2;">
       <a href="/health" style="color:#7B61FF;">/health</a> ·
@@ -85,6 +96,27 @@ async function doSearch() {
   } catch(e) {
     el.textContent = 'Error: ' + e.message;
   }
+}
+async function writeMemory() {
+  const input = document.getElementById('memInput');
+  const el = document.getElementById('memResult');
+  if(!input.value) return;
+  try {
+    const r = await fetch('/v1/memory', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:input.value})});
+    const d = await r.json();
+    el.textContent = '✅ Written: ' + JSON.stringify(d);
+    input.value = '';
+  } catch(e) { el.textContent = 'Error: ' + e.message; }
+}
+async function searchMemory() {
+  const q = document.getElementById('memSearchInput').value;
+  const el = document.getElementById('memResult');
+  if(!q) { el.textContent = '请输入搜索词'; return; }
+  try {
+    const r = await fetch('/v1/memory/search?q='+encodeURIComponent(q));
+    const d = await r.json();
+    el.textContent = JSON.stringify(d, null, 2);
+  } catch(e) { el.textContent = 'Error: ' + e.message; }
 }
 loadStatus();
 </script>

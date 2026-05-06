@@ -123,10 +123,12 @@ func (c *MarkdownChunker) Chunk(content string, path string) ([]*models.Chunk, e
 
 func (c *MarkdownChunker) buildChunk(rawText string, tokenCount int, path string, docIDHash string, heading string, level int) *models.Chunk {
 	trimmed := strings.TrimSpace(rawText)
-	contentWrapped := trimmed
+	// 中文分词优化
+	contentForSearch := OptimizeForChineseSearch(trimmed)
+	contentWrapped := contentForSearch
 	if c.config.IncludeBreadcrumb {
 		breadcrumb := fmt.Sprintf("Section: [%s] > %s\n\n", path, heading)
-		contentWrapped = breadcrumb + trimmed
+		contentWrapped = breadcrumb + contentForSearch
 	}
 
 	chID := generateID(path, trimmed)
@@ -136,7 +138,7 @@ func (c *MarkdownChunker) buildChunk(rawText string, tokenCount int, path string
 		HeadingPath:  heading,
 		HeadingLevel: level,
 		Content:      contentWrapped,
-		ContentRaw:   trimmed,
+		ContentRaw:   contentForSearch,
 		TokenCount:   tokenCount,
 	}
 }

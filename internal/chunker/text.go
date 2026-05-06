@@ -149,10 +149,12 @@ func (c *TextChunker) detectHeading(section string) (string, int) {
 // buildChunk 创建 Chunk
 func (c *TextChunker) buildChunk(rawText string, tokenCount int, path string, docIDHash string, heading string, level int) *models.Chunk {
 	trimmed := strings.TrimSpace(rawText)
-	contentWrapped := trimmed
+	// 中文分词优化：对中文文本预分词，提升 FTS5 搜索质量
+	contentForSearch := OptimizeForChineseSearch(trimmed)
+	contentWrapped := contentForSearch
 	if c.config.IncludeBreadcrumb {
 		breadcrumb := fmt.Sprintf("File: %s | %s\n\n", path, heading)
-		contentWrapped = breadcrumb + trimmed
+		contentWrapped = breadcrumb + contentForSearch
 	}
 
 	chID := generateID(path, trimmed)
@@ -162,7 +164,7 @@ func (c *TextChunker) buildChunk(rawText string, tokenCount int, path string, do
 		HeadingPath:  heading,
 		HeadingLevel: level,
 		Content:      contentWrapped,
-		ContentRaw:   trimmed,
+		ContentRaw:   contentForSearch,
 		TokenCount:   tokenCount,
 	}
 }
