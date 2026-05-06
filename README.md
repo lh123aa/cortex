@@ -209,11 +209,13 @@
 - ✅ **6 个 MCP 工具** — 新增 `cortex_memory_delete_batch` 批量删除
 - ✅ **11 个 Storage 子接口** — DocumentStore / Searcher / CacheStore / UserStore 等
 - ✅ **索引排除规则** — 自动跳过 `node_modules/.git/.opencode/` 等噪声目录
-- ✅ **Web 管理界面** — `/admin` 嵌入式单页 (Go embed)
+- ✅ **Web 管理界面** — `/admin` 嵌入式单页 (Go embed)，已接线可用
 - ✅ **Docker 多阶段构建** — 镜像从 500MB → 30MB
 - ✅ **CLI JSON 输出** — `--json` 标志支持结构化输出
 - ✅ **MCP 错误码标准化** — 统一 `IsError` 协议响应
-- ✅ **暴力破解防护 / 分页搜索 / Grafana 监控模板 / Release 自动化**
+- ✅ **暴力破解防护** — `/auth` 端点 IP 级令牌桶限流 (5 req/s)
+- ✅ **二进制优化** — `-ldflags="-s -w"` 压缩至 **35.8 MB**
+- ✅ **分页搜索 / Grafana 监控模板 / Release 自动化**
 - ✅ 详见 [ITERATION_PLAN.md](./ITERATION_PLAN.md)
 
 ### 🔥 v2.3 迭代升级 (2026-05-06)
@@ -433,7 +435,7 @@ go test ./...                     # 109 个测试
 | 搜索延迟 P95 | < 100ms |
 | 缓存命中率 | > 60%（L1+L2 两级） |
 | 索引吞吐量 | > 100 files/min |
-| 测试覆盖率 | 109 个单元测试 + 30 项集成测试（53/53 迭代完成） |
+| 测试覆盖率 | 109 个单元测试 + 30 项集成测试（60 项迭代修复完成） |
 
 ---
 
