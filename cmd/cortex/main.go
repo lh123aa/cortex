@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,6 +36,26 @@ var (
 	dedupMode   string
 	dedupThreshold float64
 )
+
+// highlightText 高亮文本中的匹配关键词（ANSI 黄色标记）
+func highlightText(text, query string) string {
+	if query == "" || text == "" {
+		return text
+	}
+	terms := strings.Fields(query)
+	result := text
+	for _, term := range terms {
+		if len(term) < 2 {
+			continue
+		}
+		result = strings.ReplaceAll(result, term, "\033[33m"+term+"\033[0m")
+		upper := strings.ToUpper(term)
+		if upper != term {
+			result = strings.ReplaceAll(result, upper, "\033[33m"+upper+"\033[0m")
+		}
+	}
+	return result
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "cortex",
@@ -334,11 +355,12 @@ func runSearch(cmd *cobra.Command, args []string) {
 	for i, r := range results {
 		fmt.Printf("%d. [Score: %.4f] %s\n", i+1, r.Score, r.Chunk.HeadingPath)
 		fmt.Printf("   %s\n", r.Chunk.DocumentID)
-		if len(r.Chunk.ContentRaw) > 200 {
-			fmt.Printf("   %s...\n\n", r.Chunk.ContentRaw[:200])
-		} else {
-			fmt.Printf("   %s\n\n", r.Chunk.ContentRaw)
+		content := r.Chunk.ContentRaw
+		if len(content) > 200 {
+			content = content[:200] + "..."
 		}
+		content = highlightText(content, query)
+		fmt.Printf("   %s\n\n", content)
 	}
 }
 

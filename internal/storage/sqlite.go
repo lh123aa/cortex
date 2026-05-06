@@ -53,12 +53,16 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 		s.logWarn("failed to init index_progress table", zap.Error(err))
 	}
 
-	// 数据库迁移：为旧表添加 content_hash + minhash_sig 列 + 索引
-	if _, err := s.db.Exec(`ALTER TABLE chunks ADD COLUMN content_hash TEXT DEFAULT ''`); err != nil {
-		s.logWarn("migration: add content_hash column (may already exist)", zap.Error(err))
+	// 数据库迁移：检查并添加缺失的列（无警告）
+	if !s.hasColumn("chunks", "content_hash") {
+		if _, err := s.db.Exec(`ALTER TABLE chunks ADD COLUMN content_hash TEXT DEFAULT ''`); err != nil {
+			s.logWarn("migration: failed to add content_hash column", zap.Error(err))
+		}
 	}
-	if _, err := s.db.Exec(`ALTER TABLE chunks ADD COLUMN minhash_sig BLOB DEFAULT NULL`); err != nil {
-		s.logWarn("migration: add minhash_sig column (may already exist)", zap.Error(err))
+	if !s.hasColumn("chunks", "minhash_sig") {
+		if _, err := s.db.Exec(`ALTER TABLE chunks ADD COLUMN minhash_sig BLOB DEFAULT NULL`); err != nil {
+			s.logWarn("migration: failed to add minhash_sig column", zap.Error(err))
+		}
 	}
 	if _, err := s.db.Exec(`CREATE INDEX IF NOT EXISTS idx_chunks_hash ON chunks(content_hash)`); err != nil {
 		s.logWarn("migration: create idx_chunks_hash index", zap.Error(err))
@@ -145,6 +149,29 @@ func (s *SQLiteStorage) SetVectorIndex(idx *vector.VectorIndex) {
 func initSchema(db *sql.DB) error {
 	_, err := db.Exec(embeddedSchemaSQL)
 	return err
+}
+
+// hasColumn 检查 SQLite 表中是否存在指定列
+func (s *SQLiteStorage) hasColumn(table, col string) bool {
+	rows, err := s.db.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull int
+		var dflt sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return false
+		}
+		if name == col {
+			return true
+		}
+	}
+	return false
 }
 
 // Close 关闭连接
