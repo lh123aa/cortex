@@ -155,7 +155,7 @@ func (h *AuthHandler) CreateAPIKey(c *gin.Context) {
 	// 注意：这里返回完整的 key（一次性显示）
 	c.JSON(http.StatusCreated, gin.H{
 		"id":         apiKey.ID,
-		"key":        apiKey.KeyHash, // 完整 key 只在创建时返回
+		"key":        apiKey.RawKey, // 完整 key 只在创建时返回
 		"name":       apiKey.Name,
 		"created_at": apiKey.CreatedAt,
 		"expires_at": apiKey.ExpiresAt,

@@ -198,8 +198,8 @@ func (s *AuthService) CreateAPIKey(userID string, req *models.CreateAPIKeyReques
 		return nil, fmt.Errorf("failed to save api key: %w", err)
 	}
 
-	// 返回完整 key（只返回一次）
-	apiKey.KeyHash = key // 临时存储完整 key 用于返回
+	// 返回完整 key（只返回一次），使用独立的 RawKey 字段
+	apiKey.RawKey = key
 	return apiKey, nil
 }
 

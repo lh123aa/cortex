@@ -220,7 +220,10 @@ func (h *HNSW) insertAtLevel(nodeID int, vector []float32, level int) {
 			break
 		}
 
-		// 遍历邻居
+		// 遍历邻居（含边界检查）
+		if h.neighbors[level][current] == nil {
+			continue
+		}
 		for _, neighbor := range h.neighbors[level][current] {
 			if neighbor >= len(h.vectors) || neighbor >= len(h.neighbors[level]) {
 				continue
@@ -411,8 +414,11 @@ func (h *HNSW) searchLayer(query []float32, entryPoint int, ef int, level int) [
 
 		result.push(current, currentDist)
 
-		// 遍历邻居
+		// 遍历邻居（含并发安全边界检查）
 		if level >= len(h.neighbors) || current >= len(h.neighbors[level]) {
+			continue
+		}
+		if h.neighbors[level][current] == nil {
 			continue
 		}
 		for _, neighbor := range h.neighbors[level][current] {

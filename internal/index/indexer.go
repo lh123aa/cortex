@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/lh123aa/cortex/internal/chunker"
@@ -175,10 +176,16 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 	resultCh := make(chan fileResult, len(filesToProcess))
 	var wg sync.WaitGroup
 
+	// 使用原子计数器替代直接竞争 progress 字段
+	var atomicIndexed atomic.Int32
+	var atomicSkipped atomic.Int32
+	var atomicFailed atomic.Int32
+
 	for i, file := range filesToProcess {
 		wg.Add(1)
 		// 闭包捕获 userID
 		currentUserID := userID
+		fileIdx := i
 		err := idx.pool.Submit(func() {
 			defer wg.Done()
 			indexed, skipped, err := idx.indexFileInternalWithUser(file, currentUserID)
@@ -189,31 +196,13 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 			resultCh <- fileResult{err: fmt.Errorf("pool submit error: %w", err)}
 		}
 
-		// 每 10 个文件保存一次进度
-		if (i+1)%10 == 0 || i == len(filesToProcess)-1 {
-			progress.LastFileIndex = startIndex + i + 1
+		// 每 10 个文件保存一次进度（仅保存位置，不 drain resultCh）
+		if (fileIdx+1)%10 == 0 || fileIdx == len(filesToProcess)-1 {
+			progress.LastFileIndex = startIndex + fileIdx + 1
 			progress.LastFilePath = file
 			progress.UpdatedAt = time.Now()
-
-			// 汇总当前结果
-			for j := 0; j < len(resultCh); j++ {
-				select {
-				case res := <-resultCh:
-					if res.indexed {
-						result.Indexed++
-						progress.IndexedFiles++
-					}
-					if res.skipped {
-						result.Skipped++
-					}
-					if res.err != nil {
-						result.Failed++
-						progress.FailedFiles++
-					}
-				default:
-					break
-				}
-			}
+			progress.IndexedFiles = progress.IndexedFiles + int(atomicIndexed.Load())
+			progress.FailedFiles = progress.FailedFiles + int(atomicFailed.Load())
 
 			if err := idx.storage.SaveIndexProgress(progress); err != nil {
 				log.Printf("Warning: failed to save index progress: %v", err)
@@ -221,6 +210,7 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 		}
 	}
 
+	// 等所有 goroutine 完成后收集结果
 	go func() {
 		wg.Wait()
 		close(resultCh)
@@ -228,18 +218,23 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 
 	for res := range resultCh {
 		if res.indexed {
-			result.Indexed++
-			progress.IndexedFiles++
+			atomicIndexed.Add(1)
 		}
 		if res.skipped {
-			result.Skipped++
+			atomicSkipped.Add(1)
 		}
 		if res.err != nil {
-			result.Failed++
-			progress.FailedFiles++
+			atomicFailed.Add(1)
 		}
 		metrics.IndexTotal.Inc()
 	}
+
+	// 汇总最终结果
+	result.Indexed = int(atomicIndexed.Load())
+	result.Skipped = int(atomicSkipped.Load())
+	result.Failed = int(atomicFailed.Load())
+	progress.IndexedFiles += result.Indexed
+	progress.FailedFiles += result.Failed
 
 	// 标记完成
 	progress.Status = "completed"
@@ -322,6 +317,16 @@ func (idx *Indexer) indexFileInternal(path string) (bool, bool, error) {
 
 // indexFileInternalWithUser 实际索引逻辑（用户隔离）
 func (idx *Indexer) indexFileInternalWithUser(path string, userID string) (bool, bool, error) {
+	// 检查文件大小，防止 OOM（限制 100MB）
+	info, err := os.Stat(path)
+	if err != nil {
+		return false, false, fmt.Errorf("failed to stat file %s: %w", path, err)
+	}
+	const maxFileSize int64 = 100 * 1024 * 1024 // 100MB
+	if info.Size() > maxFileSize {
+		return false, true, fmt.Errorf("file too large (%d bytes, max %d bytes): %s", info.Size(), maxFileSize, path)
+	}
+
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return false, false, err

@@ -101,12 +101,9 @@ func (a *APIKeyAuth) OptionalMiddleware() gin.HandlerFunc {
 }
 
 func (a *APIKeyAuth) getKeyFromRequest(c *gin.Context) string {
-	// Try header first
-	if key := c.GetHeader(a.headerName); key != "" {
-		return key
-	}
-	// Then query parameter
-	return c.Query(a.queryName)
+	// 仅从 Header 获取 API Key，不接受 URL 查询参数
+	// URL 参数方式会导致 key 出现在访问日志、浏览器历史和 Referer 头中
+	return c.GetHeader(a.headerName)
 }
 
 func (a *APIKeyAuth) isValidKey(key string) bool {

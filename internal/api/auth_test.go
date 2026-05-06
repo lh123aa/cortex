@@ -117,7 +117,7 @@ func TestAPIKeyAuth_Middleware_ValidKey(t *testing.T) {
 	}
 }
 
-func TestAPIKeyAuth_Middleware_ValidKeyQuery(t *testing.T) {
+func TestAPIKeyAuth_Middleware_QueryParamRejected(t *testing.T) {
 	auth := NewAPIKeyAuth("X-API-Key", "api_key")
 	auth.AddKey("valid-key")
 
@@ -127,14 +127,14 @@ func TestAPIKeyAuth_Middleware_ValidKeyQuery(t *testing.T) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// Request with valid key in query param
+	// URL query param auth is removed for security (key leaks in logs/referers)
 	req := httptest.NewRequest("GET", "/test?api_key=valid-key", nil)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", w.Code)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Expected 401 (query param removed for security), got %d", w.Code)
 	}
 }
 

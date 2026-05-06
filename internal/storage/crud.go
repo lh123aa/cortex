@@ -472,10 +472,10 @@ func (s *SQLiteStorage) SaveToken(token *models.AuthToken) error {
 	query := `
 		INSERT OR REPLACE INTO auth_tokens
 		(token, user_id, username, expires_at)
-		VALUES (?, ?, ?, datetime(expires_at, 'unixepoch'))
+		VALUES (?, ?, ?, ?)
 	`
 	expiresAt := time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
-	_, err := s.db.Exec(query, token.Token, token.UserID, token.Username, expiresAt)
+	_, err := s.db.Exec(query, token.Token, token.UserID, token.Username, expiresAt.Unix())
 	return err
 }
 

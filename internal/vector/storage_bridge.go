@@ -2,7 +2,9 @@ package vector
 
 import (
 	"database/sql"
+	"encoding/binary"
 	"fmt"
+	"math"
 	"sync"
 
 	_ "modernc.org/sqlite"
@@ -122,7 +124,11 @@ func (s *StorageBridge) Count() int {
 }
 
 // Float32FromBytes 从字节切片读取 float32 (小端序)
+// 使用 math.Float32frombits 正确解释 IEEE 754 位模式
 func Float32FromBytes(b []byte) float32 {
-	bits := uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
-	return float32(bits)
+	if len(b) < 4 {
+		return 0
+	}
+	bits := binary.LittleEndian.Uint32(b)
+	return math.Float32frombits(bits)
 }

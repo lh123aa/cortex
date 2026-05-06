@@ -24,7 +24,8 @@ const (
 type APIKey struct {
 	ID        string    `json:"id"`
 	UserID    string    `json:"user_id"`
-	KeyHash   string    `json:"-"`    // 不返回给客户端
+	KeyHash   string    `json:"-"`    // 哈希值，存储用，不返回给客户端
+	RawKey    string    `json:"-"`    // 原始 Key，仅在创建时一次性使用，不序列化
 	Name      string    `json:"name"` // key 名称，如 "我的电脑"
 	LastUsed  time.Time `json:"last_used_at,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
