@@ -124,6 +124,28 @@ type fileResult struct {
 	err     error
 }
 
+// 默认排除目录：这些目录的内容通常不产生有意义的搜索语义
+var defaultExcludeDirs = map[string]bool{
+	"node_modules": true,
+	".git":         true,
+	".opencode":    true,
+	".svn":         true,
+	"__pycache__":  true,
+	".cache":       true,
+	"vendor":       true,
+	"dist":         true,
+	"build":        true,
+	".next":        true,
+	"coverage":     true,
+	".idea":        true,
+	".vscode":      true,
+}
+
+// isExcludedDir 检查目录是否应被排除
+func isExcludedDir(name string) bool {
+	return defaultExcludeDirs[name]
+}
+
 // IndexDirectoryWithCheckpoint 遍历执行整个文件夹（支持断点恢复，用户隔离）
 func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string) (*IndexResult, error) {
 	start := time.Now()
@@ -151,7 +173,13 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 	// 第一阶段 — 收集所有文件路径
 	var allFiles []string
 	err = filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			if isExcludedDir(info.Name()) {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		allFiles = append(allFiles, path)
@@ -260,7 +288,13 @@ func (idx *Indexer) IndexDirectory(rootPath string, userID string) (*IndexResult
 	// P2-2: 第一阶段 — 收集所有文件路径
 	var files []string
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			if isExcludedDir(info.Name()) {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		files = append(files, path)
@@ -509,7 +543,13 @@ func (ii *IncrementalIndexer) ScanDirectory() ([]string, error) {
 	// 路径规范化
 	ii.rootPath = filepath.Clean(ii.rootPath)
 	err := filepath.Walk(ii.rootPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			if isExcludedDir(info.Name()) {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		files = append(files, path)

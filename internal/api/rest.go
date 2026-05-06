@@ -425,7 +425,7 @@ func (s *RESTServer) handleContext(c *gin.Context) {
 	}
 
 	opts := models.SearchOptions{TopK: 50, Mode: "hybrid", UserID: userID}
-	rc, err := s.rag.BuildContext(context.Background(), q, budget, opts)
+	rc, err := s.rag.BuildContext(c.Request.Context(), q, budget, opts)
 	if err != nil {
 		s.logger.Error("RAG context build failed", zap.Error(err))
 		c.JSON(500, gin.H{"error": err.Error()})
