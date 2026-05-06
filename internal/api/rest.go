@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lh123aa/cortex/internal/auth"
@@ -169,14 +170,71 @@ func (s *RESTServer) ListAPIKeys() []string {
 	return names
 }
 
+// ipRateLimiter 简单的 IP 级速率限制（令牌桶）
+// 每个 IP 最多 rate 次/秒，burst 为最大突发
+func ipRateLimiter(rate int, burst int) gin.HandlerFunc {
+	type client struct {
+		tokens    int
+		lastCheck time.Time
+	}
+	var mu sync.Mutex
+	clients := make(map[string]*client)
+
+	// 定期清理过期客户端
+	go func() {
+		for {
+			time.Sleep(10 * time.Minute)
+			mu.Lock()
+			for ip, c := range clients {
+				if time.Since(c.lastCheck) > 10*time.Minute {
+					delete(clients, ip)
+				}
+			}
+			mu.Unlock()
+		}
+	}()
+
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		mu.Lock()
+		cl, exists := clients[ip]
+		now := time.Now()
+		if !exists {
+			clients[ip] = &client{tokens: burst - 1, lastCheck: now}
+			mu.Unlock()
+			c.Next()
+			return
+		}
+		// 补充令牌
+		elapsed := now.Sub(cl.lastCheck).Seconds()
+		cl.tokens += int(elapsed * float64(rate))
+		if cl.tokens > burst {
+			cl.tokens = burst
+		}
+		cl.lastCheck = now
+
+		if cl.tokens <= 0 {
+			mu.Unlock()
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+				"error": "too many requests, try again later",
+			})
+			return
+		}
+		cl.tokens--
+		mu.Unlock()
+		c.Next()
+	}
+}
+
 func (s *RESTServer) registerRoutes() {
 	// Health - 始终公开（增强版）
 	s.router.GET("/health", s.handleHealth)
 	s.router.GET("/health/ready", s.handleReady)
 	s.router.GET("/health/live", s.handleLive)
 
-	// Auth routes (注册/登录)
+	// Auth routes (注册/登录) — 添加暴力破解防护
 	authRoutes := s.router.Group("/auth")
+	authRoutes.Use(ipRateLimiter(5, 10)) // 每个 IP 5次/秒，最大突发10次
 	{
 		authRoutes.POST("/register", s.handleRegister)
 		authRoutes.POST("/login", s.handleLogin)
@@ -215,12 +273,16 @@ func (s *RESTServer) registerRoutes() {
 		protected.DELETE("/memory/:id", s.memory.DeleteMemory)
 	}
 
-	// Admin routes (也受保护，用于密钥管理)
+	// Admin routes (也受保护，用于密钥管理 + Web管理界面)
 	admin := s.router.Group("/admin")
 	admin.Use(authHandler)
 	{
 		admin.GET("/keys", s.handleListKeys)
 	}
+
+	// Web管理界面（无需认证）
+	adminHandler := NewAdminHandler(s)
+	adminHandler.RegisterRoutes(s.router)
 
 	// Internal: Index progress (受保护)
 	internal := s.router.Group("/internal")

@@ -32,7 +32,7 @@ var (
 
 // AuthService 认证服务
 type AuthService struct {
-	storage  storage.Storage
+	storage  storage.Storage // 兼容层：保持向后兼容
 	tokenExp time.Duration
 	tokenMu  sync.RWMutex
 	apiKeyMu sync.RWMutex
