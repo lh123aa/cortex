@@ -77,6 +77,7 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 		s.db.Exec(`ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP`)
 		s.db.Exec(`ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`)
 	}
+	// License 表由 schema.sql 自动创建（IF NOT EXISTS）
 
 	return s, nil
 }

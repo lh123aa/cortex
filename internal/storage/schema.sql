@@ -181,3 +181,18 @@ CREATE TABLE IF NOT EXISTS search_cache (
 );
 
 CREATE INDEX IF NOT EXISTS idx_search_cache_expires ON search_cache(expires_at);
+
+-- License 表（用于付费激活）
+CREATE TABLE IF NOT EXISTS licenses (
+    id TEXT PRIMARY KEY,
+    key TEXT UNIQUE NOT NULL,
+    tier TEXT NOT NULL,
+    user_id TEXT DEFAULT '',
+    max_users INTEGER DEFAULT 1,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    active BOOLEAN DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_licenses_key ON licenses(key);
+CREATE INDEX IF NOT EXISTS idx_licenses_user ON licenses(user_id);
