@@ -589,6 +589,20 @@ func runDedup(cmd *cobra.Command, args []string) {
 			fmt.Printf("✅ Vector dedup complete: removed %d / %d chunks (threshold=%.2f).\n", removed, candidates, dedupThreshold)
 		}
 
+	case "minhash":
+		if dedupThreshold < 0 || dedupThreshold > 1 {
+			logger.Fatal("threshold must be between 0.0 and 1.0")
+		}
+		removed, candidates, err := st.DedupByMinHash(dedupThreshold)
+		if err != nil {
+			logger.Fatal("minhash dedup failed", zap.Error(err))
+		}
+		if removed == 0 {
+			fmt.Printf("✅ No minhash duplicates found (threshold=%.2f, scanned %d chunks).\n", dedupThreshold, candidates)
+		} else {
+			fmt.Printf("✅ MinHash dedup complete: removed %d / %d chunks (threshold=%.2f).\n", removed, candidates, dedupThreshold)
+		}
+
 	default:
 		logger.Fatal("unknown dedup mode", zap.String("mode", dedupMode))
 	}

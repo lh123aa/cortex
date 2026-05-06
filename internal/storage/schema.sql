@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS chunks (
     user_id TEXT NOT NULL DEFAULT '',
     document_id TEXT NOT NULL,
     content_hash TEXT DEFAULT '',  -- sha256 内容哈希，用于去重
+    minhash_sig BLOB DEFAULT NULL,  -- MinHash 签名，用于近似去重
     heading_path TEXT,
     heading_level INTEGER,
     content TEXT NOT NULL,

@@ -53,10 +53,12 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 		s.logWarn("failed to init index_progress table", zap.Error(err))
 	}
 
-	// 数据库迁移：为旧表添加 content_hash 列 + 索引
+	// 数据库迁移：为旧表添加 content_hash + minhash_sig 列 + 索引
 	if _, err := s.db.Exec(`ALTER TABLE chunks ADD COLUMN content_hash TEXT DEFAULT ''`); err != nil {
-		// 列已存在时忽略错误
 		s.logWarn("migration: add content_hash column (may already exist)", zap.Error(err))
+	}
+	if _, err := s.db.Exec(`ALTER TABLE chunks ADD COLUMN minhash_sig BLOB DEFAULT NULL`); err != nil {
+		s.logWarn("migration: add minhash_sig column (may already exist)", zap.Error(err))
 	}
 	if _, err := s.db.Exec(`CREATE INDEX IF NOT EXISTS idx_chunks_hash ON chunks(content_hash)`); err != nil {
 		s.logWarn("migration: create idx_chunks_hash index", zap.Error(err))
@@ -308,4 +310,75 @@ func (s *SQLiteStorage) deleteChunksByIDs(ids []string) (int, error) {
 	}
 	n, _ := res.RowsAffected()
 	return int(n), nil
+}
+
+// DedupByMinHash 基于 MinHash 签名的近似去重
+// 扫描所有带 MinHash 签名的 chunks，Jaccard 相似度 >= threshold 则删除
+func (s *SQLiteStorage) DedupByMinHash(threshold float64) (removed int, candidates int, err error) {
+	rows, err := s.db.Query(`
+		SELECT c.id, c.minhash_sig, c.rowid
+		FROM chunks c
+		WHERE c.minhash_sig IS NOT NULL
+		ORDER BY c.rowid ASC
+	`)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to query minhash sigs: %w", err)
+	}
+	defer rows.Close()
+
+	type sigEntry struct {
+		ID    string
+		Sig   *vector.MinHash
+		RowID int64
+	}
+	var entries []sigEntry
+	for rows.Next() {
+		var id string
+		var data []byte
+		var rowID int64
+		if err := rows.Scan(&id, &data, &rowID); err != nil {
+			return removed, 0, fmt.Errorf("failed to scan: %w", err)
+		}
+		mh := vector.MinHashFromBytes(data)
+		if mh == nil {
+			continue
+		}
+		entries = append(entries, sigEntry{ID: id, Sig: mh, RowID: rowID})
+	}
+
+	// 两两比对，发现高相似度的 chunk
+	var toDelete []string
+	for i := 0; i < len(entries); i++ {
+		if entries[i].Sig == nil {
+			continue
+		}
+		for j := i + 1; j < len(entries); j++ {
+			if entries[j].Sig == nil {
+				continue
+			}
+			jaccard := entries[i].Sig.Jaccard(entries[j].Sig)
+			if jaccard >= threshold {
+				// 保留较早的（rowID 小的），删除较晚的
+				if entries[i].RowID < entries[j].RowID {
+					toDelete = append(toDelete, entries[j].ID)
+					entries[j].Sig = nil // 标记已处理
+				} else {
+					toDelete = append(toDelete, entries[i].ID)
+					entries[i].Sig = nil // 标记已处理
+					break
+				}
+			}
+		}
+	}
+
+	if len(toDelete) > 0 {
+		n, err := s.deleteChunksByIDs(toDelete)
+		if err != nil {
+			return 0, len(entries), fmt.Errorf("failed to delete: %w", err)
+		}
+		removed = n
+		s.InvalidateSearchCache()
+	}
+
+	return removed, len(entries), nil
 }

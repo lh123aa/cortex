@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lh123aa/cortex/internal/models"
+	"github.com/lh123aa/cortex/internal/vector"
 )
 
 // SaveDocument 保存或更新文档记录（用户隔离）
@@ -156,8 +157,8 @@ func (s *SQLiteStorage) SaveChunks(chunks []*models.Chunk) error {
 
 	stmtChunk, err := tx.Prepare(`
 		INSERT OR REPLACE INTO chunks
-		(id, user_id, document_id, content_hash, heading_path, heading_level, content, content_raw, line_start, line_end, char_start, char_end, token_count, embedding_model)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		(id, user_id, document_id, content_hash, minhash_sig, heading_path, heading_level, content, content_raw, line_start, line_end, char_start, char_end, token_count, embedding_model)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return err
@@ -174,7 +175,12 @@ func (s *SQLiteStorage) SaveChunks(chunks []*models.Chunk) error {
 
 	for _, c := range chunks {
 		// 1. chunks 表插入 (触发器会自动同步 FTS)
-		_, err := stmtChunk.Exec(c.ID, c.UserID, c.DocumentID, c.ContentHash, c.HeadingPath, c.HeadingLevel,
+		var minhashData []byte
+		if len(c.Embedding) > 0 {
+			mh := vector.NewMinHash(c.ContentRaw)
+			minhashData = mh.Bytes()
+		}
+		_, err := stmtChunk.Exec(c.ID, c.UserID, c.DocumentID, c.ContentHash, minhashData, c.HeadingPath, c.HeadingLevel,
 			c.Content, c.ContentRaw, c.LineStart, c.LineEnd, c.CharStart, c.CharEnd, c.TokenCount, c.EmbeddingModel)
 		if err != nil {
 			return err
