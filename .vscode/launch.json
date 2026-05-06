@@ -1,0 +1,43 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run MCP Server",
+      "type": "go",
+      "request": "launch",
+      "mode": "exec",
+      "program": "${workspaceFolder}/cmd/cortex",
+      "args": ["mcp"],
+      "env": {},
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run REST Server",
+      "type": "go",
+      "request": "launch",
+      "mode": "exec",
+      "program": "${workspaceFolder}/cmd/cortex",
+      "args": ["serve"],
+      "env": {},
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run Tests",
+      "type": "go",
+      "request": "launch",
+      "mode": "exec",
+      "program": "${workspaceFolder}",
+      "args": [],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Build Cortex",
+      "type": "go",
+      "request": "launch",
+      "mode": "exec",
+      "program": "${workspaceFolder}/cmd/cortex",
+      "args": [],
+      "console": "integratedTerminal"
+    }
+  ]
+}

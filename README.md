@@ -3,11 +3,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go" alt="Go">
+  <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
-  <img src="https://img.shields.io/badge/Version-2.2-blue?style=for-the-badge" alt="v2.2">
+  <img src="https://img.shields.io/badge/Version-2.3-blue?style=for-the-badge" alt="v2.3">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
-  <img src="https://img.shields.io/badge/Tests-114_passing-green?style=for-the-badge" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-109_total-green?style=for-the-badge" alt="Tests">
   <img src="https://img.shields.io/badge/MCP-Native-7B61FF?style=for-the-badge" alt="MCP">
   <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
   <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
@@ -47,7 +47,8 @@
   <br>
   <a href="./README.en.md">🌐 English Version</a> ·
   <a href="#-开发">🛠️ 开发</a> ·
-  <a href="./docs">📖 文档</a>
+  <a href="./TEST_REPORT.md">📋 测试报告</a> ·
+  <a href="./ITERATION_PLAN.md">📋 迭代计划</a>
 </p>
 
 ---
@@ -200,6 +201,14 @@
 
 ## ✨ 更新日志
 
+### 🔥 v2.3 迭代升级 (2026-05-06)
+
+- ✅ **7 个 P0 紧急 Bug 修复** — Float32FromBytes 位转换、索引进度竞争、HNSW 并发、API Key 泄露、Token 过期等
+- ✅ **10 项安全加固** — MCP 参数校验、密码策略增强、BM25 评分修正、ConfigWatcher 热加载、路径规范化
+- ✅ **12 项质量提升** — 缓存 LRU 改造、余弦相似度收敛、RRF k 值配置化、死代码清理、Prometheus 自定义 Registry
+- ✅ **CI/CD 全面升级** — Go 1.25 同步、govulncheck、测试覆盖率、Makefile 增强、VSCode 调试配置
+- ✅ **29 项优化总计** — 详见 [TEST_REPORT.md](./TEST_REPORT.md) 和 [ITERATION_PLAN.md](./ITERATION_PLAN.md)
+
 ### 🧠 v2.2 MCP 记忆工具 (2026-05-05)
 
 - ✅ **5 个 MCP 工具** — `cortex_search` / `cortex_context` / `cortex_memory_write` / `cortex_memory_search` / `cortex_memory_delete`
@@ -317,7 +326,7 @@ cortex search "如何实现 Go 并发"
 ```
 
 **技术栈：**
-- **语言**: Go 1.21+ — 单二进制跨平台（纯 Go，无 CGO）
+- **语言**: Go 1.25+ — 单二进制跨平台（纯 Go，无 CGO）
 - **存储**: SQLite + WAL — 零配置嵌入式存储
 - **向量**: HNSW — 高性能近似最近邻搜索
 - **嵌入**: Ollama / ONNX / None（FTS5-only）
@@ -395,7 +404,7 @@ git clone https://github.com/lh123aa/cortex.git
 cd cortex
 go build -o cortex ./cmd/cortex   # 纯 Go，无需 CGO
 ./cortex serve
-go test ./...                     # 114 个测试
+go test ./...                     # 109 个测试
 ```
 
 ---
@@ -408,7 +417,7 @@ go test ./...                     # 114 个测试
 | 搜索延迟 P95 | < 100ms |
 | 缓存命中率 | > 60%（L1+L2 两级） |
 | 索引吞吐量 | > 100 files/min |
-| 测试覆盖率 | 114 个单元测试 |
+| 测试覆盖率 | 109 个单元测试 + 30 项集成测试 |
 
 ---
 
@@ -448,7 +457,7 @@ go test ./...                     # 114 个测试
 ---
 
 <p align="center">
-  <strong>🧠 Cortex v2.2 — 让 AI Agent 拥有记忆</strong>
+  <strong>🧠 Cortex v2.3 — 让 AI Agent 拥有记忆</strong>
   <br>
   <sub>单二进制 · 零配置 · MCP 原生 · 完全本地 · MIT 开源</sub>
 </p>
