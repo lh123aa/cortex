@@ -434,7 +434,9 @@ func (idx *Indexer) indexFileInternalWithUser(path string, userID string) (bool,
 	// 进行Embedding
 	if idx.embedding != nil {
 		embeddings, err := idx.embedding.EmbedBatch(texts)
-		if err == nil {
+		if err != nil {
+			log.Printf("Warning: embedding failed for %s (indexing continues without vectors): %v", path, err)
+		} else {
 			for j, c := range chunks {
 				c.Embedding = embeddings[j]
 				c.EmbeddingModel = idx.embedding.Name()

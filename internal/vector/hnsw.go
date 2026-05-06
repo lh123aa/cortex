@@ -94,6 +94,25 @@ func normalize(v []float32) []float32 {
 	return result
 }
 
+// CosineSimilarity 计算余弦相似度 (0~1)
+func CosineSimilarity(a, b []float32) float64 {
+	if len(a) != len(b) {
+		return 0
+	}
+	var dotProd, normA, normB float64
+	for i := range a {
+		valA := float64(a[i])
+		valB := float64(b[i])
+		dotProd += valA * valB
+		normA += valA * valA
+		normB += valB * valB
+	}
+	if normA == 0 || normB == 0 {
+		return 0
+	}
+	return dotProd / (math.Sqrt(normA) * math.Sqrt(normB))
+}
+
 // cosineDistance 计算余弦距离 (1 - cosine_similarity)
 func cosineDistance(a, b []float32) float64 {
 	var dotProd, normA, normB float64

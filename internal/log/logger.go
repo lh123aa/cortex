@@ -1,6 +1,8 @@
 package log
 
 import (
+	"fmt"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -16,7 +18,10 @@ func init() {
 	cfg.OutputPaths = []string{"stderr"}
 	cfg.EncoderConfig.TimeKey = "time"
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	logger, _ := cfg.Build()
+	logger, err := cfg.Build()
+	if err != nil {
+		panic(fmt.Sprintf("failed to initialize global logger: %v", err))
+	}
 	Logger = logger
 }
 
@@ -25,7 +30,10 @@ func NewLogger(level zapcore.Level) *zap.Logger {
 	cfg := zap.NewProductionConfig()
 	cfg.Level = zap.NewAtomicLevelAt(level)
 	cfg.OutputPaths = []string{"stderr"}
-	logger, _ := cfg.Build()
+	logger, err := cfg.Build()
+	if err != nil {
+		panic(fmt.Sprintf("failed to create logger: %v", err))
+	}
 	return logger
 }
 

@@ -13,8 +13,8 @@ import (
 func StartMetricsServer(addr string) *http.Server {
 	mux := http.NewServeMux()
 
-	// 注册 Prometheus handler
-	mux.Handle("/metrics", promhttp.Handler())
+	// 注册 Prometheus handler（使用自定义 registry 便于生命周期管理）
+	mux.Handle("/metrics", promhttp.HandlerFor(Registry, promhttp.HandlerOpts{}))
 
 	// 健康检查
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

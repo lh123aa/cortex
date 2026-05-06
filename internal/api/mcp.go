@@ -22,6 +22,13 @@ const (
 	ServerName         = "cortex"
 )
 
+// 可通过 -ldflags 在构建时注入版本号
+var (
+	Version = "dev"
+	Commit  = "none"
+	Date    = "unknown"
+)
+
 // Tool input schemas
 // Note: jsonschema tag value is the description text (jsonschema-go v0.3.0 format).
 // Required fields are inferred from JSON tags: fields without "omitempty" are required.
@@ -77,12 +84,12 @@ func NewMCPServer(se *search.HybridSearchEngine, st storage.Storage, em embeddin
 		logger:  log,
 	}
 
-	// 实例化 MCP Server - v1.2.0 API
+	// 实例化 MCP Server
 	s.server = mcp.NewServer(&mcp.Implementation{
 		Name:    ServerName,
-		Version: "v1.0.0",
+		Version: Version,
 	}, &mcp.ServerOptions{
-		// v1.2.0: 没有 ProtocolVersion 字段，协议版本自动协商
+		// 协议版本自动协商
 	})
 
 	s.registerTools()

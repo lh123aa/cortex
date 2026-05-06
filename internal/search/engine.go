@@ -16,6 +16,7 @@ type HybridSearchEngine struct {
 	embedding embedding.EmbeddingProvider
 	useCache  bool
 	cacheTTL  time.Duration
+	rrfK      int          // RRF 常数（默认 60）
 	reranker  Reranker     // 可选的重排序器
 	l1Cache   *SearchCache // L1 内存缓存
 }
@@ -29,6 +30,15 @@ func NewHybridSearchEngine(s storage.Storage, emb embedding.EmbeddingProvider) *
 		cacheTTL:  5 * time.Minute,
 		l1Cache:   NewSearchCache(), // 初始化 L1 缓存
 	}
+}
+
+// SetRRFK 设置 RRF 常数（默认 60，推荐范围 30-100）
+// k 值越小，排名靠前的结果权重越高
+func (s *HybridSearchEngine) SetRRFK(k int) {
+	if k < 1 {
+		k = 60
+	}
+	s.rrfK = k
 }
 
 // SetReranker 设置重排序器
@@ -173,7 +183,10 @@ func (s *HybridSearchEngine) InvalidateUserCache(userID string) {
 
 // rrfMerge 倒数排名融合算法实现 (Reciprocal Rank Fusion)
 func (s *HybridSearchEngine) rrfMerge(vr []*models.SearchResult, fr []*models.SearchResult) []*models.SearchResult {
-	k := 60
+	k := s.rrfK
+	if k <= 0 {
+		k = 60
+	}
 	scoresMap := make(map[string]float64)
 	resultsMap := make(map[string]*models.SearchResult)
 

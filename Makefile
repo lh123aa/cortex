@@ -4,11 +4,16 @@ BINARY_NAME=cortex
 
 all: format test build
 
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
+DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS := -ldflags="-X github.com/lh123aa/cortex/internal/api.Version=$(VERSION) -X github.com/lh123aa/cortex/internal/api.Commit=$(COMMIT) -X github.com/lh123aa/cortex/internal/api.Date=$(DATE)"
+
 build:
 	@echo "Tidying dependencies..."
 	@go mod tidy
-	@echo "Building Cortex..."
-	@go build -o bin/$(BINARY_NAME) ./cmd/cortex/main.go
+	@echo "Building Cortex $(VERSION)..."
+	@go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/cortex/main.go
 
 test:
 	@echo "Running tests..."

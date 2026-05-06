@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -39,7 +40,9 @@ func (b *BackupManager) CreateBackup() (string, error) {
 
 	// 同时备份一下存在可能未落盘的 wall log
 	if walInfo, err := os.Stat(b.dbPath + "-wal"); err == nil && !walInfo.IsDir() {
-		_ = copyFile(b.dbPath+"-wal", backupPath+"-wal")
+		if err := copyFile(b.dbPath+"-wal", backupPath+"-wal"); err != nil {
+			log.Printf("Warning: failed to copy WAL file during backup: %v", err)
+		}
 	}
 
 	return backupPath, nil

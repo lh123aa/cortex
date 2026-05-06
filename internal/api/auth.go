@@ -2,7 +2,6 @@ package api
 
 import (
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/hex"
 	"net/http"
 	"sync"
@@ -112,8 +111,4 @@ func (a *APIKeyAuth) isValidKey(key string) bool {
 	return a.validKeyHashes[a.hashKey(key)]
 }
 
-// constantTimeCompare performs a constant-time comparison of two strings
-// to prevent timing attacks
-func constantTimeCompare(a, b string) bool {
-	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
-}
+

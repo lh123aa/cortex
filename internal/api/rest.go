@@ -373,7 +373,7 @@ func (s *RESTServer) handleSearch(c *gin.Context) {
 	}
 
 	opts := models.SearchOptions{TopK: topK, Mode: mode, UserID: userID}
-	results, err := s.engine.Search(context.Background(), q, opts)
+	results, err := s.engine.Search(c.Request.Context(), q, opts)
 	if err != nil {
 		s.logger.Error("search failed", zap.Error(err))
 		c.JSON(500, gin.H{"error": err.Error()})

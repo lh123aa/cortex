@@ -21,6 +21,7 @@ type SearchCache struct {
 	memoryCache *cache.Cache
 	mu          sync.Mutex
 	itemCount   int
+	insertOrder []string // 插入顺序跟踪，用于精确 LRU 淘汰
 }
 
 // NewSearchCache 创建带容量限制的搜索缓存
@@ -50,6 +51,7 @@ func (c *SearchCache) Set(query string, opts models.SearchOptions, results []*mo
 	// 检查是否已存在，避免重复计数
 	if _, found := c.memoryCache.Get(key); !found {
 		c.itemCount++
+		c.insertOrder = append(c.insertOrder, key)
 		// 如果超过最大条目数，清除最旧的条目
 		if c.itemCount > MaxCacheItems {
 			c.evictOldest(1000) // 清除1000个最旧的条目
@@ -59,18 +61,20 @@ func (c *SearchCache) Set(query string, opts models.SearchOptions, results []*mo
 	c.memoryCache.Set(key, results, cache.DefaultExpiration)
 }
 
-// evictOldest 清除最旧的 N 个缓存条目
+// evictOldest 按插入顺序清除最旧的 N 个缓存条目
 func (c *SearchCache) evictOldest(count int) {
-	items := c.memoryCache.Items()
 	evicted := 0
-	for key := range items {
-		if evicted >= count {
-			break
-		}
+	// 从插入顺序队列头部开始淘汰
+	deleteCount := count
+	if deleteCount > len(c.insertOrder) {
+		deleteCount = len(c.insertOrder)
+	}
+	for _, key := range c.insertOrder[:deleteCount] {
 		c.memoryCache.Delete(key)
 		c.itemCount--
 		evicted++
 	}
+	c.insertOrder = c.insertOrder[deleteCount:]
 }
 
 // InvalidateAll 粗暴缓存清空（遇到文档发生增量更替可调用）
@@ -79,6 +83,7 @@ func (c *SearchCache) InvalidateAll() {
 	defer c.mu.Unlock()
 	c.memoryCache.Flush()
 	c.itemCount = 0
+	c.insertOrder = nil
 }
 
 // ItemCount 返回当前缓存条目数（用于监控）

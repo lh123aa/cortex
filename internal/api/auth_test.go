@@ -315,29 +315,6 @@ func TestAPIKeyAuth_getKeyFromRequest_Neither(t *testing.T) {
 	}
 }
 
-func TestConstantTimeCompare(t *testing.T) {
-	tests := []struct {
-		name     string
-		a        string
-		b        string
-		expected bool
-	}{
-		{"equal strings", "test-key", "test-key", true},
-		{"different strings", "test-key-1", "test-key-2", false},
-		{"empty strings", "", "", true},
-		{"one empty", "test", "", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := constantTimeCompare(tt.a, tt.b)
-			if result != tt.expected {
-				t.Errorf("Expected %v, got %v", tt.expected, result)
-			}
-		})
-	}
-}
-
 func TestAPIKeyAuth_isValidKey_ThreadSafety(t *testing.T) {
 	auth := NewAPIKeyAuth("X-API-Key", "api_key")
 	auth.AddKey("key1")

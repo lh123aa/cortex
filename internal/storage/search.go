@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/lh123aa/cortex/internal/models"
+	"github.com/lh123aa/cortex/internal/vector"
+	"go.uber.org/zap"
 )
 
 // FTSSearch 进行基于 FTS5 的全文关键词检索 (BM25)
@@ -60,19 +62,11 @@ func (s *SQLiteStorage) VectorSearch(queryVector []float32, userID string, topK 
 			return results, nil
 		}
 		// HNSW 失败，触发降级
-		s.logDegraded("hnsw", err)
+		s.logWarn("hnsw search degraded, falling back to brute force", zap.Error(err))
 	}
 
 	// 降级到旧的暴力搜索
 	return s.vectorSearchBruteForce(queryVector, userID, topK)
-}
-
-// logDegraded 记录降级事件（未来可通过 metrics 暴露）
-func (s *SQLiteStorage) logDegraded(reason string, err error) {
-	// 目前只是日志记录，未来可添加 metrics 计数
-	// metrics.SearchDegraded.Inc()
-	_ = reason
-	_ = err
 }
 
 // vectorSearchHNSW 使用 HNSW 索引搜索（带用户隔离）
@@ -110,6 +104,7 @@ func (s *SQLiteStorage) vectorSearchHNSW(queryVector []float32, userID string, t
 		if err != nil {
 			return nil, err
 		}
+		defer rows.Close()
 
 		// 建立 id -> chunk 映射
 		chunkMap := make(map[string]*models.Chunk)
@@ -117,12 +112,10 @@ func (s *SQLiteStorage) vectorSearchHNSW(queryVector []float32, userID string, t
 			var chunk models.Chunk
 			var docUserID string
 			if err := rows.Scan(&chunk.ID, &chunk.DocumentID, &chunk.HeadingPath, &chunk.Content, &chunk.ContentRaw, &docUserID); err != nil {
-				rows.Close()
 				return nil, err
 			}
 			chunkMap[chunk.ID] = &chunk
 		}
-		rows.Close()
 
 		// 按原始顺序处理，仅保留匹配 userID 的结果
 		for i, id := range ids {
@@ -196,7 +189,7 @@ func (s *SQLiteStorage) vectorSearchBruteForce(queryVector []float32, userID str
 				continue
 			}
 
-			similarity := cosineSimilarity(queryVector, chunkVec)
+			similarity := vector.CosineSimilarity(queryVector, chunkVec)
 
 			// 边界优化插入逻辑
 			if len(topResults) < topK {
@@ -236,36 +229,4 @@ func insertSorted(res []*models.SearchResult, chunk *models.Chunk, sim float64) 
 	return res
 }
 
-// joinStrings 将字符串切片拼接为 SQL IN 子句的字符串列表
-func joinStrings(ids []string) string {
-	if len(ids) == 0 {
-		return ""
-	}
-	result := ""
-	for _, id := range ids {
-		if result != "" {
-			result += "','"
-		}
-		result += id
-	}
-	return result
-}
 
-// cosineSimilarity 计算余弦相似度
-func cosineSimilarity(a, b []float32) float64 {
-	if len(a) != len(b) {
-		return 0
-	}
-	var dotProduct, normA, normB float64
-	for i := range a {
-		valA := float64(a[i])
-		valB := float64(b[i])
-		dotProduct += valA * valB
-		normA += valA * valA
-		normB += valB * valB
-	}
-	if normA == 0 || normB == 0 {
-		return 0
-	}
-	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
-}
