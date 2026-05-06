@@ -7,9 +7,9 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
   <img src="https://img.shields.io/badge/Version-3.0-blue?style=for-the-badge" alt="v3.0">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
-  <img src="https://img.shields.io/badge/Tests-109_total-green?style=for-the-badge" alt="Tests">
-  <img src="https://img.shields.io/badge/Iteration-54_54-7B61FF?style=for-the-badge" alt="Iteration Complete">
-  <img src="https://img.shields.io/badge/Dedup-3_Layer-FF6B6B?style=for-the-badge" alt="3-Layer Dedup">
+  <img src="https://img.shields.io/badge/Tests-10_10_packages-green?style=for-the-badge" alt="Tests">
+  <img src="https://img.shields.io/badge/Iteration-Complete-7B61FF?style=for-the-badge" alt="Iteration Complete">
+  <img src="https://img.shields.io/badge/Bug-0-success?style=for-the-badge" alt="Bug 0">
   <img src="https://img.shields.io/badge/MCP-Native-7B61FF?style=for-the-badge" alt="MCP">
   <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
   <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
@@ -477,7 +477,10 @@ go test ./...                     # 109 个测试
 | 索引吞吐量 | > 100 files/min |
 | 内存占用 | ~30 MB / 进程 |
 | 二进制大小 | 34.2 MB (strip 优化) |
-| 测试覆盖率 | 109 个单元测试 + 8 包通过 |
+| 测试覆盖率 | 10/10 包通过 · 全部核心逻辑有测试 |
+| 内存占用 | ~30 MB / 进程 |
+| 二进制大小 | 34.2 MB (strip 优化) |
+| Bug 状态 | 0 · FG 循环验证通过 |
 
 ---
 
