@@ -26,6 +26,7 @@ type DocumentStore interface {
 type ChunkStore interface {
 	SaveChunks(chunks []*models.Chunk) error
 	GetChunk(id string, userID string) (*models.Chunk, error)
+	GetChunkByHash(hash string, userID string) (*models.Chunk, error)
 	DeleteChunksByDocument(docID string, userID string) error
 	GetChunksCount(userID string) (int, error)
 }
@@ -100,6 +101,7 @@ type APIKeyStore interface {
 // SystemStore 系统操作
 type SystemStore interface {
 	Close() error
+	DedupChunks() (removed int, groups int, err error)
 }
 
 // ============================================================

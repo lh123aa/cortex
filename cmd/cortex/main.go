@@ -81,6 +81,13 @@ var statusCmd = &cobra.Command{
 	Run:   runStatus,
 }
 
+var dedupCmd = &cobra.Command{
+	Use:   "dedup",
+	Short: "Deduplicate chunks in the knowledge base",
+	Long:  `Scan all chunks, find duplicates by content hash, and remove them.`,
+	Run:   runDedup,
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file path")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level (debug/info/warn/error)")
@@ -98,6 +105,7 @@ func init() {
 	rootCmd.AddCommand(mcpCmd)
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(statusCmd)
+	rootCmd.AddCommand(dedupCmd)
 }
 
 func main() {
@@ -532,5 +540,30 @@ func runStatus(cmd *cobra.Command, args []string) {
 	if cfg.Embedding.Provider == "ollama" {
 		fmt.Printf("  Model:      %s\n", cfg.Embedding.Ollama.Model)
 		fmt.Printf("  URL:        %s\n", cfg.Embedding.Ollama.BaseURL)
+	}
+}
+
+func runDedup(cmd *cobra.Command, args []string) {
+	cfg, logger, err := loadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	st, err := initStorage(cfg, logger)
+	if err != nil {
+		logger.Fatal("failed to init storage", zap.Error(err))
+	}
+	defer st.Close()
+
+	removed, groups, err := st.DedupChunks()
+	if err != nil {
+		logger.Fatal("dedup failed", zap.Error(err))
+	}
+
+	if groups == 0 {
+		fmt.Println("✅ No duplicate chunks found.")
+	} else {
+		fmt.Printf("✅ Dedup complete: %d groups, %d duplicate chunks removed.\n", groups, removed)
 	}
 }

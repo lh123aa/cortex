@@ -156,8 +156,8 @@ func (s *SQLiteStorage) SaveChunks(chunks []*models.Chunk) error {
 
 	stmtChunk, err := tx.Prepare(`
 		INSERT OR REPLACE INTO chunks
-		(id, user_id, document_id, heading_path, heading_level, content, content_raw, line_start, line_end, char_start, char_end, token_count, embedding_model)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		(id, user_id, document_id, content_hash, heading_path, heading_level, content, content_raw, line_start, line_end, char_start, char_end, token_count, embedding_model)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func (s *SQLiteStorage) SaveChunks(chunks []*models.Chunk) error {
 
 	for _, c := range chunks {
 		// 1. chunks 表插入 (触发器会自动同步 FTS)
-		_, err := stmtChunk.Exec(c.ID, c.UserID, c.DocumentID, c.HeadingPath, c.HeadingLevel,
+		_, err := stmtChunk.Exec(c.ID, c.UserID, c.DocumentID, c.ContentHash, c.HeadingPath, c.HeadingLevel,
 			c.Content, c.ContentRaw, c.LineStart, c.LineEnd, c.CharStart, c.CharEnd, c.TokenCount, c.EmbeddingModel)
 		if err != nil {
 			return err
@@ -208,6 +208,21 @@ func (s *SQLiteStorage) GetChunk(id string, userID string) (*models.Chunk, error
 	var c models.Chunk
 	err := row.Scan(&c.ID, &c.UserID, &c.DocumentID, &c.HeadingPath, &c.HeadingLevel,
 		&c.Content, &c.ContentRaw, &c.TokenCount)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &c, err
+}
+
+// GetChunkByHash 根据内容哈希查找已存在的 chunk（用于去重）
+func (s *SQLiteStorage) GetChunkByHash(hash string, userID string) (*models.Chunk, error) {
+	row := s.db.QueryRow(`
+		SELECT c.id, c.user_id, c.document_id, c.content_hash
+		FROM chunks c
+		WHERE c.content_hash = ? AND c.user_id = ?
+		LIMIT 1`, hash, userID)
+	var c models.Chunk
+	err := row.Scan(&c.ID, &c.UserID, &c.DocumentID, &c.ContentHash)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

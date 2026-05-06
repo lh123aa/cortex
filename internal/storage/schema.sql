@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS chunks (
     rowid INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL DEFAULT '',
     document_id TEXT NOT NULL,
+    content_hash TEXT DEFAULT '',  -- sha256 内容哈希，用于去重
     heading_path TEXT,
     heading_level INTEGER,
     content TEXT NOT NULL,
@@ -89,6 +90,7 @@ CREATE TABLE IF NOT EXISTS chunks (
 
 CREATE INDEX IF NOT EXISTS idx_chunks_doc_id ON chunks(document_id);
 CREATE INDEX IF NOT EXISTS idx_chunks_user ON chunks(user_id);
+-- idx_chunks_hash 通过迁移代码创建（确保 content_hash 列先存在）
 
 -- 全文搜索 FTS5 虚拟表
 CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(

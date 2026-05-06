@@ -459,6 +459,26 @@ func (idx *Indexer) indexFileInternalWithUser(path string, userID string) (bool,
 		c.DocumentID = docID
 	}
 
+	// 去重：计算每个 chunk 的内容哈希，跳过已存在的重复 chunk
+	var deduped []*models.Chunk
+	for _, c := range chunks {
+		hashBytes := sha256.Sum256([]byte(c.ContentRaw))
+		c.ContentHash = hex.EncodeToString(hashBytes[:])
+
+		existing, err := idx.storage.GetChunkByHash(c.ContentHash, userID)
+		if err == nil && existing != nil {
+			// 已存在完全相同的 chunk，跳过
+			continue
+		}
+		deduped = append(deduped, c)
+	}
+	chunks = deduped
+
+	if len(chunks) == 0 {
+		// 所有 chunk 都是重复的，但文档本身可能已存在，标记为已索引
+		return true, false, nil
+	}
+
 	// 转换为向量
 	texts := make([]string, len(chunks))
 	for i, c := range chunks {

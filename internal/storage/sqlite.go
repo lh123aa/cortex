@@ -52,6 +52,15 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 		s.logWarn("failed to init index_progress table", zap.Error(err))
 	}
 
+	// 数据库迁移：为旧表添加 content_hash 列 + 索引
+	if _, err := s.db.Exec(`ALTER TABLE chunks ADD COLUMN content_hash TEXT DEFAULT ''`); err != nil {
+		// 列已存在时忽略错误
+		s.logWarn("migration: add content_hash column (may already exist)", zap.Error(err))
+	}
+	if _, err := s.db.Exec(`CREATE INDEX IF NOT EXISTS idx_chunks_hash ON chunks(content_hash)`); err != nil {
+		s.logWarn("migration: create idx_chunks_hash index", zap.Error(err))
+	}
+
 	return s, nil
 }
 
@@ -147,4 +156,51 @@ func (s *SQLiteStorage) Close() error {
 		return s.db.Close()
 	}
 	return nil
+}
+
+// DedupChunks 查找并删除内容重复的 chunks（按 content_hash 分组）
+func (s *SQLiteStorage) DedupChunks() (removed int, groups int, err error) {
+	rows, err := s.db.Query(`
+		SELECT content_hash, COUNT(*) as cnt, MIN(rowid) as keep_id
+		FROM chunks
+		WHERE content_hash != ''
+		GROUP BY content_hash
+		HAVING cnt > 1
+	`)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to query duplicates: %w", err)
+	}
+	defer rows.Close()
+
+	type dupGroup struct {
+		Hash   string
+		KeepID int64
+	}
+	var dups []dupGroup
+	for rows.Next() {
+		var hash string
+		var cnt int
+		var keepID int64
+		if err := rows.Scan(&hash, &cnt, &keepID); err != nil {
+			return 0, 0, fmt.Errorf("failed to scan: %w", err)
+		}
+		dups = append(dups, dupGroup{Hash: hash, KeepID: keepID})
+	}
+
+	for _, d := range dups {
+		res, err := s.db.Exec(`DELETE FROM chunks WHERE content_hash = ? AND rowid != ?`, d.Hash, d.KeepID)
+		if err != nil {
+			return removed, len(dups), fmt.Errorf("failed to delete for hash %s: %w", d.Hash, err)
+		}
+		n, _ := res.RowsAffected()
+		removed += int(n)
+	}
+
+	// 使缓存失效
+	if removed > 0 {
+		s.InvalidateSearchCache()
+		_ = s.BuildHNSWIndex()
+	}
+
+	return removed, len(dups), nil
 }

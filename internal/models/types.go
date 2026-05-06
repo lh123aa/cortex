@@ -22,6 +22,7 @@ type Chunk struct {
 	ID             string    `json:"id"`
 	UserID         string    `json:"user_id"` // 所有者用户 ID
 	DocumentID     string    `json:"document_id"`
+	ContentHash    string    `json:"content_hash,omitempty"` // sha256 内容哈希，用于去重
 	HeadingPath    string    `json:"heading_path"`  // 例如: "基础知识 > Go语言 > 并发"
 	HeadingLevel   int       `json:"heading_level"` // 0-6
 	Content        string    `json:"content"`       // 带"Section: H1 > H2\n\n"前缀用于注入的上下文
