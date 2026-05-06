@@ -5,9 +5,10 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
-  <img src="https://img.shields.io/badge/Version-2.3-blue?style=for-the-badge" alt="v2.3">
+  <img src="https://img.shields.io/badge/Version-2.4-blue?style=for-the-badge" alt="v2.4">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
   <img src="https://img.shields.io/badge/Tests-109_total-green?style=for-the-badge" alt="Tests">
+  <img src="https://img.shields.io/badge/Iteration-53_53-7B61FF?style=for-the-badge" alt="Iteration Complete">
   <img src="https://img.shields.io/badge/MCP-Native-7B61FF?style=for-the-badge" alt="MCP">
   <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
   <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
@@ -48,7 +49,8 @@
   <a href="./README.en.md">🌐 English Version</a> ·
   <a href="#-开发">🛠️ 开发</a> ·
   <a href="./TEST_REPORT.md">📋 测试报告</a> ·
-  <a href="./ITERATION_PLAN.md">📋 迭代计划</a>
+  <a href="./ITERATION_PLAN.md">📋 迭代计划</a> ·
+  <a href="./docs/grafana-dashboard.json">📊 Grafana</a>
 </p>
 
 ---
@@ -201,6 +203,19 @@
 
 ## ✨ 更新日志
 
+### 🚀 v2.4 全面迭代完成 (2026-05-06)
+
+- ✅ **53/53 项优化全部完成** — 从 P0 紧急修复到架构重构全覆盖
+- ✅ **6 个 MCP 工具** — 新增 `cortex_memory_delete_batch` 批量删除
+- ✅ **11 个 Storage 子接口** — DocumentStore / Searcher / CacheStore / UserStore 等
+- ✅ **索引排除规则** — 自动跳过 `node_modules/.git/.opencode/` 等噪声目录
+- ✅ **Web 管理界面** — `/admin` 嵌入式单页 (Go embed)
+- ✅ **Docker 多阶段构建** — 镜像从 500MB → 30MB
+- ✅ **CLI JSON 输出** — `--json` 标志支持结构化输出
+- ✅ **MCP 错误码标准化** — 统一 `IsError` 协议响应
+- ✅ **暴力破解防护 / 分页搜索 / Grafana 监控模板 / Release 自动化**
+- ✅ 详见 [ITERATION_PLAN.md](./ITERATION_PLAN.md)
+
 ### 🔥 v2.3 迭代升级 (2026-05-06)
 
 - ✅ **7 个 P0 紧急 Bug 修复** — Float32FromBytes 位转换、索引进度竞争、HNSW 并发、API Key 泄露、Token 过期等
@@ -299,7 +314,8 @@ cortex search "如何实现 Go 并发"
 | `cortex_context` | RAG 上下文组装 | `GET /v1/context` |
 | `cortex_memory_write` | 写入记忆条目 | `POST /v1/memory` |
 | `cortex_memory_search` | 搜索记忆条目 | `GET /v1/memory/search` |
-| `cortex_memory_delete` | 删除记忆条目 | `DELETE /v1/memory/:id` |
+| `cortex_memory_delete` | 删除单条记忆 | `DELETE /v1/memory/:id` |
+| `cortex_memory_delete_batch` | 批量删除记忆 | — |
 
 ---
 
@@ -331,7 +347,7 @@ cortex search "如何实现 Go 并发"
 - **向量**: HNSW — 高性能近似最近邻搜索
 - **嵌入**: Ollama / ONNX / None（FTS5-only）
 - **协议**: MCP SDK — AI Agent 原生通信
-- **监控**: Prometheus — 39 个内置指标
+- **监控**: Prometheus — 39 个内置指标 + Grafana 模板
 
 ---
 
@@ -417,7 +433,7 @@ go test ./...                     # 109 个测试
 | 搜索延迟 P95 | < 100ms |
 | 缓存命中率 | > 60%（L1+L2 两级） |
 | 索引吞吐量 | > 100 files/min |
-| 测试覆盖率 | 109 个单元测试 + 30 项集成测试 |
+| 测试覆盖率 | 109 个单元测试 + 30 项集成测试（53/53 迭代完成） |
 
 ---
 
@@ -457,7 +473,7 @@ go test ./...                     # 109 个测试
 ---
 
 <p align="center">
-  <strong>🧠 Cortex v2.3 — 让 AI Agent 拥有记忆</strong>
+  <strong>🧠 Cortex v2.4 — 让 AI Agent 拥有记忆</strong>
   <br>
   <sub>单二进制 · 零配置 · MCP 原生 · 完全本地 · MIT 开源</sub>
 </p>
