@@ -126,13 +126,15 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.User, error
 	}
 
 	user := &models.User{
-		ID:           generateID(),
-		Username:     req.Username,
-		PasswordHash: string(hash),
-		Role:         models.RoleUser,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
-		IsActive:     true,
+		ID:                generateID(),
+		Username:          req.Username,
+		PasswordHash:      string(hash),
+		Role:              models.RoleUser,
+		Tier:              string(models.TierFree),
+		StorageLimitBytes: models.TierFree.StorageLimit(),
+		CreatedAt:         time.Now(),
+		UpdatedAt:         time.Now(),
+		IsActive:          true,
 	}
 
 	if err := s.storage.SaveUser(user); err != nil {

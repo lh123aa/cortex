@@ -68,6 +68,16 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 		s.logWarn("migration: create idx_chunks_hash index", zap.Error(err))
 	}
 
+	// 数据库迁移：users 表加 tier/storage 列
+	if !s.hasColumn("users", "tier") {
+		s.db.Exec(`ALTER TABLE users ADD COLUMN tier TEXT DEFAULT 'free'`)
+		s.db.Exec(`ALTER TABLE users ADD COLUMN storage_used_bytes INTEGER DEFAULT 0`)
+		s.db.Exec(`ALTER TABLE users ADD COLUMN storage_limit_bytes INTEGER DEFAULT 1073741824`)
+		s.db.Exec(`ALTER TABLE users ADD COLUMN license_key TEXT DEFAULT ''`)
+		s.db.Exec(`ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP`)
+		s.db.Exec(`ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`)
+	}
+
 	return s, nil
 }
 

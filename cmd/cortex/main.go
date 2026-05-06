@@ -113,6 +113,12 @@ With --vector: dedup by vector similarity (semantic match).`,
 	Run: runDedup,
 }
 
+var usageCmd = &cobra.Command{
+	Use:   "usage",
+	Short: "Show storage usage and plan info",
+	Run:   runUsage,
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file path")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level (debug/info/warn/error)")
@@ -134,6 +140,7 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(dedupCmd)
+	rootCmd.AddCommand(usageCmd)
 }
 
 func main() {
@@ -627,5 +634,58 @@ func runDedup(cmd *cobra.Command, args []string) {
 
 	default:
 		logger.Fatal("unknown dedup mode", zap.String("mode", dedupMode))
+	}
+}
+
+func runUsage(cmd *cobra.Command, args []string) {
+	cfg, logger, err := loadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	st, err := initStorage(cfg, logger)
+	if err != nil {
+		logger.Fatal("failed to init storage", zap.Error(err))
+	}
+	defer st.Close()
+
+	used, err := st.CalculateStorageUsed("")
+	if err != nil {
+		logger.Fatal("failed to calculate storage", zap.Error(err))
+	}
+
+	limit := models.TierFree.StorageLimit()
+	tier := string(models.TierFree)
+	pct := float64(used) / float64(limit) * 100
+
+	fmt.Println("\n📊 Cortex Usage")
+	fmt.Println("================")
+	fmt.Printf("Storage:   %s / %s (%.1f%%)\n", formatBytes(used), formatBytes(limit), pct)
+	fmt.Printf("Tier:      %s\n", tier)
+	if used > limit {
+		fmt.Println("\n⚠️  Storage limit exceeded. Upgrade at https://cortex.ai/pricing")
+	}
+}
+
+func formatBytes(b int64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	switch exp {
+	case 0:
+		return fmt.Sprintf("%.1f KB", float64(b)/float64(div))
+	case 1:
+		return fmt.Sprintf("%.1f MB", float64(b)/float64(div))
+	case 2:
+		return fmt.Sprintf("%.1f GB", float64(b)/float64(div))
+	default:
+		return fmt.Sprintf("%.1f TB", float64(b)/float64(div))
 	}
 }

@@ -30,22 +30,25 @@ Thumbs.db
 # Build output
 bin/
 
-# Release downloads (too large for git, use GitHub Releases instead)
+# Release downloads
 downloads/*.zip
 downloads/*.exe
 downloads/*.gz
 
-# Dependencies (go mod tidy)
+# Dependencies
 vendor/
 
 # Build output
 /dist/
 /build/
 
-# Next.js (not used but keep from original)
+# Node etc
 node_modules/
 .next/
 coverage/
 *.log
 .env*
 !.env.example
+
+# Business plan (local only, never push)
+COMMERCIAL_PLAN.md

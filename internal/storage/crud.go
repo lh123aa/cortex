@@ -475,6 +475,13 @@ func (s *SQLiteStorage) GetChunksCount(userID string) (int, error) {
 	return count, err
 }
 
+// CalculateStorageUsed 计算用户已使用的存储量（所有文档 file_size 总和）
+func (s *SQLiteStorage) CalculateStorageUsed(userID string) (int64, error) {
+	var total int64
+	err := s.db.QueryRow(`SELECT COALESCE(SUM(file_size), 0) FROM documents WHERE user_id = ?`, userID).Scan(&total)
+	return total, err
+}
+
 // GetVectorsCount 获取向量数量（用户隔离）
 func (s *SQLiteStorage) GetVectorsCount(userID string) (int, error) {
 	var count int

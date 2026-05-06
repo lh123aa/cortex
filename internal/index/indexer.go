@@ -26,6 +26,21 @@ type Indexer struct {
 	chunkers  map[string]chunker.Chunker
 	embedding embedding.EmbeddingProvider
 	pool      *ants.Pool
+	logger    *log.Logger // 结构化日志（可选）
+}
+
+// SetLogger 设置日志记录器
+func (idx *Indexer) SetLogger(l *log.Logger) {
+	idx.logger = l
+}
+
+// logWarn 日志回退：优先使用结构日志，否则标准 log
+func (idx *Indexer) logWarn(msg string, args ...interface{}) {
+	if idx.logger != nil {
+		idx.logger.Printf(msg, args...)
+	} else {
+		log.Printf(msg, args...)
+	}
 }
 
 // NewIndexer 初始化索引器（workers 从配置读取，默认 8）
@@ -236,7 +251,7 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 			progress.FailedFiles = progress.FailedFiles + int(atomicFailed.Load())
 
 			if err := idx.storage.SaveIndexProgress(progress); err != nil {
-				log.Printf("Warning: failed to save index progress: %v", err) // TODO: 使用传入的 logger
+				idx.logWarn("Warning: failed to save index progress: %v", err)
 			}
 		}
 	}
@@ -489,7 +504,7 @@ func (idx *Indexer) indexFileInternalWithUser(path string, userID string) (bool,
 	if idx.embedding != nil {
 		embeddings, err := idx.embedding.EmbedBatch(texts)
 		if err != nil {
-			log.Printf("Warning: embedding failed for %s (indexing continues without vectors): %v", path, err)
+			idx.logWarn("Warning: embedding failed for %s (indexing continues without vectors): %v", path, err)
 		} else {
 			for j, c := range chunks {
 				c.Embedding = embeddings[j]

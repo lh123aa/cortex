@@ -2,16 +2,53 @@ package models
 
 import "time"
 
+// UserTier 用户套餐等级
+type UserTier string
+
+const (
+	TierFree       UserTier = "free"
+	TierPro        UserTier = "pro"
+	TierEnterprise UserTier = "enterprise"
+)
+
+// StorageLimit 根据套餐返回存储上限（字节）
+func (t UserTier) StorageLimit() int64 {
+	switch t {
+	case TierFree:
+		return 1 * 1024 * 1024 * 1024 // 1 GB
+	case TierPro:
+		return 100 * 1024 * 1024 * 1024 // 100 GB（软限制）
+	case TierEnterprise:
+		return -1 // 不限
+	default:
+		return 1 * 1024 * 1024 * 1024
+	}
+}
+
+// IsValid 验证套餐是否有效
+func (t UserTier) IsValid() bool {
+	switch t {
+	case TierFree, TierPro, TierEnterprise:
+		return true
+	default:
+		return false
+	}
+}
+
 // User 用户模型
 type User struct {
-	ID           string    `json:"id"`
-	Username     string    `json:"username"`
-	PasswordHash string    `json:"-"`    // 不返回给客户端
-	Role         string    `json:"role"` // admin/user
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	LastLoginAt  time.Time `json:"last_login_at,omitempty"`
-	IsActive     bool      `json:"is_active"`
+	ID               string    `json:"id"`
+	Username         string    `json:"username"`
+	PasswordHash     string    `json:"-"`    // 不返回给客户端
+	Role             string    `json:"role"` // admin/user
+	Tier             string    `json:"tier"`             // free | pro | enterprise
+	StorageUsedBytes int64     `json:"storage_used_bytes"` // 当前存储用量
+	StorageLimitBytes int64    `json:"storage_limit_bytes"` // 存储上限
+	LicenseKey       string    `json:"license_key,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	LastLoginAt      time.Time `json:"last_login_at,omitempty"`
+	IsActive         bool      `json:"is_active"`
 }
 
 // UserRole 用户角色常量

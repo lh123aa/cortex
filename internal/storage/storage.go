@@ -104,6 +104,7 @@ type SystemStore interface {
 	DedupChunks() (removed int, groups int, err error)
 	DedupByVector(threshold float64) (removed int, candidates int, err error)
 	DedupByMinHash(threshold float64) (removed int, candidates int, err error)
+	CalculateStorageUsed(userID string) (int64, error)
 }
 
 // ============================================================
