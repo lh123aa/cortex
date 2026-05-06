@@ -1,18 +1,23 @@
-version: '3.8'
-
 services:
   cortex:
     build: .
     container_name: cortex
+    env_file:
+      - .env.example
     volumes:
       - cortex-data:/data
-      - ./knowledge_base:/knowledge_base:ro  # 只读挂载本体宿主机的知识库
+      - ./knowledge_base:/knowledge_base:ro
     environment:
       - OLLAMA_HOST=http://ollama:11434
     depends_on:
       - ollama
     restart: unless-stopped
-    command: ["./cortex", "mcp"]  # 默认以后台跑mcp服务，可接前端或其他
+    command: ["./cortex", "mcp"]
+    healthcheck:
+      test: ["CMD", "test", "-f", "/data/cortex.db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
   
   ollama:
     image: ollama/ollama:latest

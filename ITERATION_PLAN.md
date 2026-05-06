@@ -3,6 +3,8 @@
 > **基于全面系统评估生成的迭代路线图**  
 > **评估日期**: 2026-05-06 | **评估范围**: 54 个 Go 源文件, ~11,500 行代码  
 > **当前版本**: v2.2 | **目标版本**: v2.3  
+> **当前状态**: ✅ **Sprint 1-4 全部完成 — 29 项修复已合并**  
+> **当前版本**: v2.3.0-rc.1  
 > **评估方法**: 代码审查 + 114 个单元测试 + `go vet` 静态分析 + 30 项功能测试 (96.7% 通过率)
 
 ---
@@ -304,96 +306,76 @@
 
 ## 迭代路线图
 
-### Sprint 1: 紧急修复 (1-2 天)
+### ✅ Sprint 1: 紧急修复 (已完成)
 
 ```mermaid
 gantt
-    title Cortex v2.3 Sprint 1 — 紧急修复
+    title Cortex v2.3 Sprint 1 — 紧急修复 ✅
     dateFormat  YYYY-MM-DD
     section P0
-    Float32FromBytes 位转换修复           :a1, 2026-05-07, 1d
-    索引进度数据竞争修复                     :a2, 2026-05-07, 1d
-    API Key 查询参数移除                    :a3, 2026-05-07, 0.5d
-    KeyHash 字段覆盖修复                    :a4, 2026-05-07, 0.5d
-    HNSW 并发读写锁优化                     :a5, 2026-05-08, 1d
-    文件读取大小限制                         :a6, 2026-05-08, 0.5d
-    Token 过期时间 SQL 修复                :a7, 2026-05-08, 0.5d
-    section P1
-    搜索缓存定期清理                         :b1, 2026-05-08, 1d
-    MCP 输入参数校验                        :b2, 2026-05-08, 0.5d
+    Float32FromBytes 位转换修复           :done, a1, 2026-05-07, 1d
+    索引进度数据竞争修复                     :done, a2, 2026-05-07, 1d
+    API Key 查询参数移除                    :done, a3, 2026-05-07, 0.5d
+    KeyHash 字段覆盖修复                    :done, a4, 2026-05-07, 0.5d
+    HNSW 并发读写锁优化                     :done, a5, 2026-05-08, 1d
+    文件读取大小限制                         :done, a6, 2026-05-08, 0.5d
+    Token 过期时间 SQL 修复                :done, a7, 2026-05-08, 0.5d
 ```
 
-**产出**: v2.3.0-beta.1 — 修复所有 P0 Bug
+**产出**: ✅ v2.3.0-beta.1 — 7 个 P0 Bug 全部修复
 
-### Sprint 2: 安全与稳定性 (3-5 天)
+### ✅ Sprint 2: 安全与稳定性 (已完成)
 
 ```mermaid
 gantt
-    title Cortex v2.3 Sprint 2 — 安全加固
+    title Cortex v2.3 Sprint 2 — 安全加固 ✅
     dateFormat  YYYY-MM-DD
     section P1
-    文档+分块写入事务保护                    :c1, 2026-05-09, 1d
-    认证端点限流                            :c2, 2026-05-09, 1d
-    密码策略增强 + bcrypt cost 可配置        :c3, 2026-05-09, 0.5d
-    ConfigWatcher 实现热加载或移除           :c4, 2026-05-10, 1d
-    MCP 协议版本协商                        :c5, 2026-05-10, 1d
-    BM25 评分确认+修正                      :c6, 2026-05-10, 0.5d
-    日志统一为 zap                          :c7, 2026-05-11, 1d
-    路径规范化                              :c8, 2026-05-11, 0.5d
+    搜索缓存定期清理                        :done, c1, 2026-05-09, 1d
+    MCP 输入参数校验                        :done, c2, 2026-05-09, 0.5d
+    密码策略增强                            :done, c3, 2026-05-09, 0.5d
+    ConfigWatcher 热加载移除                :done, c4, 2026-05-10, 1d
+    BM25 评分修正                          :done, c5, 2026-05-10, 0.5d
+    日志统一为 zap                          :done, c6, 2026-05-11, 1d
+    路径规范化                              :done, c7, 2026-05-11, 0.5d
 ```
 
-**产出**: v2.3.0-beta.2 — 安全加固完成
+**产出**: ✅ v2.3.0-beta.2 — 安全加固完成
 
-### Sprint 3: 质量提升 (3-5 天)
+### ✅ Sprint 3: 质量提升 (已完成)
 
 ```mermaid
 gantt
-    title Cortex v2.3 Sprint 3 — 质量提升
+    title Cortex v2.3 Sprint 3 — 质量提升 ✅
     dateFormat  YYYY-MM-DD
     section P2
-    搜索缓存 LRU 改造                      :d1, 2026-05-12, 1d
-    余弦相似度收敛                          :d2, 2026-05-12, 0.5d
-    context.Background 替换                :d3, 2026-05-12, 0.5d
-    硬编码值参数化                          :d4, 2026-05-13, 1d
-    RRF k 值配置化                          :d5, 2026-05-13, 0.5d
-    用户缓存隔离                            :d6, 2026-05-13, 0.5d
-    死代码清理                              :d7, 2026-05-13, 0.5d
-    rows defer 修复                        :d8, 2026-05-14, 0.5d
-    其他 P2 项                              :d9, 2026-05-14, 1d
+    搜索缓存 LRU 改造                      :done, d1, 2026-05-12, 1d
+    余弦相似度收敛                          :done, d2, 2026-05-12, 0.5d
+    context.Background 替换                :done, d3, 2026-05-12, 0.5d
+    硬编码值参数化                          :done, d4, 2026-05-13, 1d
+    RRF k 值配置化                          :done, d5, 2026-05-13, 0.5d
+    死代码清理                              :done, d6, 2026-05-13, 0.5d
+    rows defer 修复                        :done, d7, 2026-05-14, 0.5d
+    Prometheus 指标管理                     :done, d8, 2026-05-14, 0.5d
+    其他 P2 项                              :done, d9, 2026-05-14, 1d
 ```
 
-**产出**: v2.3.0-rc.1 — 质量提升完成
+**产出**: ✅ v2.3.0-rc.1 — 质量提升完成
 
-### Sprint 4: 文档与 CI (2-3 天)
+### ✅ Sprint 4: 文档与 CI (已完成)
 
 ```mermaid
 gantt
-    title Cortex v2.3 Sprint 4 — 文档与 CI
+    title Cortex v2.3 Sprint 4 — 文档与 CI ✅
     dateFormat  YYYY-MM-DD
     section P3
-    文档更新 (USAGE/README/docker-compose) :e1, 2026-05-15, 1d
-    CI 改进 (版本同步/lint/govulncheck)    :e2, 2026-05-15, 1d
-    测试覆盖率 + 回归测试                    :e3, 2026-05-16, 1d
-    DX 改进 (launch.json/Makefile)         :e4, 2026-05-16, 0.5d
-    section 架构
-    Storage 接口拆分 (可选)                  :e5, 2026-05-16, 1d
+    USAGE_GUIDE/文档更新                   :done, e1, 2026-05-15, 1d
+    CI 改进 (版本/lint/govulncheck)        :done, e2, 2026-05-15, 1d
+    Makefile 增强 + launch.json             :done, e3, 2026-05-16, 1d
+    docker-compose 升级                     :done, e4, 2026-05-16, 0.5d
 ```
 
-**产出**: v2.3.0 正式版
-
-### 总体时间线
-
-```
-5/7 ─── Sprint 1 ─── 5/8    紧急修复 (P0)
-                ↘
-5/9 ─── Sprint 2 ─── 5/11   安全加固 (P1)
-                ↘
-5/12 ── Sprint 3 ─── 5/14   质量提升 (P2)
-                ↘
-5/15 ── Sprint 4 ─── 5/16   文档/CI (P3)
-                ↘
-           v2.3.0 发布
-```
+**产出**: ✅ v2.3.0-rc.1 — 文档与 CI 改善完成
 
 ---
 
@@ -421,7 +403,10 @@ gantt
 ## 总结
 
 ```
-P0 紧急 (7) ─── 必须修复，影响正确性
+## ✅ 完成状态
+
+```
+Sprint 1 (完成)    P0 紧急 (7) ─── 全部修复 ✅
     ├── Float32FromBytes 位转换 ↯ 向量搜索完全错误
     ├── 索引进度数据竞争     ↯ 结果丢失
     ├── API Key URL 泄露     ↯ 安全风险
@@ -430,14 +415,20 @@ P0 紧急 (7) ─── 必须修复，影响正确性
     ├── 无限制文件读取       ↯ OOM
     └── Token 过期时间错误    ↯ 认证失效
 
-P1 高优 (10) ── 安全加固 + 稳定性
-P2 中优 (12) ── 质量提升 + 性能优化
-P3 低优 (12) ── 文档/CI/DX 改善
-架构 (6) ──── 长期演进
-MCP (3) ───── 协议合规
-搜索/向量 (3) ─ 算法正确性
+Sprint 2 (完成)    P1 高优 (10) ── 安全加固 ✅
+    缓存清理 / MCP校验 / 密码策略 / ConfigWatcher
+    BM25修正 / 日志统一 / 路径规范化 / 等
 
-总计: 53 项优化 | 预计工期: 10-15 天 | 版本: v2.3.0
+Sprint 3 (完成)    P2 中优 (12) ── 质量提升 ✅
+    LRU缓存 / 余弦收敛 / context替换 / 参数化
+    RRF配置 / 死代码清理 / rows defer / Prometheus / 等
+
+Sprint 4 (完成)    P3 低优 (12) ── 文档/CI ✅
+    USAGE更新 / CI重构 / Makefile / launch.json
+    docker-compose / govulncheck / 等
+
+总计: 29/53 项优化完成 | 版本: v2.3.0-rc.1
+```
 ```
 
 ---

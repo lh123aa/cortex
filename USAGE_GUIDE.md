@@ -170,22 +170,33 @@ Cortex 提供 MCP Server，可用于 AI Agent 集成：
 # - cortex_memory_delete    删除记忆条目
 ```
 
-### OpenCode 集成配置
+### 集成配置
 
-在 OpenCode 的 MCP 配置中添加：
+**Claude Code** (或 OpenCode 标准 MCP 配置):
 
 ```json
 {
-  "mcpServers": {
+  "mcp": {
     "cortex": {
-      "command": "cortex.exe",
-      "args": ["mcp"]
+      "type": "local",
+      "command": ["cortex", "mcp"],
+      "enabled": true
     }
   }
 }
 ```
 
-启动后 Agent 可自动调用上述 5 个工具进行知识库检索和记忆管理。
+启动后 Agent 可自动调用上述 5 个 MCP 工具进行知识库检索和记忆管理。
+
+### 可用 MCP 工具
+
+| 工具 | 说明 | 对应 REST API |
+|------|------|--------------|
+| `cortex_search` | 混合搜索（向量 + BM25） | `GET /v1/search` |
+| `cortex_context` | RAG 上下文组装 | `GET /v1/context` |
+| `cortex_memory_write` | 写入记忆条目 | `POST /v1/memory` |
+| `cortex_memory_search` | 搜索记忆条目 | `GET /v1/memory/search` |
+| `cortex_memory_delete` | 删除记忆条目 | `DELETE /v1/memory/:id` |
 
 ---
 

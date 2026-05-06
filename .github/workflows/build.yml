@@ -2,15 +2,49 @@ name: Build and Release
 
 on:
   push:
+    branches: [main, master]
     tags:
       - 'v*'
+  pull_request:
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run tests with coverage
+        run: |
+          go test -v -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out | tail -5
+
+      - name: Check for vulnerable dependencies
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: '1.25'
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+
   build:
+    needs: quality
     strategy:
       matrix:
-        go-version: ['1.22', '1.23']
+        go-version: ['1.25']
         platform: [ubuntu-latest, windows-latest, macos-latest]
 
     runs-on: ${{ matrix.platform }}
@@ -24,9 +58,9 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
 
-      - name: Build with CGO and FTS5
+      - name: Build
         run: |
-          go build -tags "fts5" -o cortex-${{ matrix.platform }}-amd64 ./cmd/cortex
+          go build -o cortex-${{ matrix.platform }}-amd64 ./cmd/cortex
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -46,26 +80,21 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "# Cortex ${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "See [CHANGELOG.md](CHANGELOG.md) for full release notes." >> $GITHUB_OUTPUT
+          EOF
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: cortex-*
+          body: ${{ steps.release_notes.outputs.notes }}
           draft: true
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RETRY_COUNT: 3
-
-      - name: Retry Release on failure
-        if: failure()
-        run: |
-          echo "Release failed, retrying..."
-          for i in 1 2 3; do
-            echo "Attempt $i..."
-            if gh release create ${GITHUB_REF#refs/tags/} --draft --title "${GITHUB_REF#refs/tags/}" --notes "Fix file type detection for indexer" cortex-* 2>/dev/null; then
-              echo "Release created successfully"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "All retries failed"
