@@ -8,7 +8,8 @@
   <img src="https://img.shields.io/badge/Version-2.4-blue?style=for-the-badge" alt="v2.4">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
   <img src="https://img.shields.io/badge/Tests-109_total-green?style=for-the-badge" alt="Tests">
-  <img src="https://img.shields.io/badge/Iteration-53_53-7B61FF?style=for-the-badge" alt="Iteration Complete">
+  <img src="https://img.shields.io/badge/Iteration-54_54-7B61FF?style=for-the-badge" alt="Iteration Complete">
+  <img src="https://img.shields.io/badge/Dedup-3_Layer-FF6B6B?style=for-the-badge" alt="3-Layer Dedup">
   <img src="https://img.shields.io/badge/MCP-Native-7B61FF?style=for-the-badge" alt="MCP">
   <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
   <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
@@ -50,6 +51,7 @@
   <a href="#-开发">🛠️ 开发</a> ·
   <a href="./TEST_REPORT.md">📋 测试报告</a> ·
   <a href="./ITERATION_PLAN.md">📋 迭代计划</a> ·
+  <a href="./SYSTEM_EVALUATION.md">📋 评估报告</a> ·
   <a href="./docs/grafana-dashboard.json">📊 Grafana</a>
 </p>
 
@@ -205,7 +207,7 @@
 
 ### 🚀 v2.4 全面迭代完成 (2026-05-06)
 
-- ✅ **53/53 项优化全部完成** — 从 P0 紧急修复到架构重构全覆盖
+- ✅ **三层去重体系** — 内容哈希 + 向量语义 (-46 chunks) + MinHash 近似去重
 - ✅ **6 个 MCP 工具** — 新增 `cortex_memory_delete_batch` 批量删除
 - ✅ **11 个 Storage 子接口** — DocumentStore / Searcher / CacheStore / UserStore 等
 - ✅ **索引排除规则** — 自动跳过 `node_modules/.git/.opencode/` 等噪声目录
@@ -214,9 +216,9 @@
 - ✅ **CLI JSON 输出** — `--json` 标志支持结构化输出
 - ✅ **MCP 错误码标准化** — 统一 `IsError` 协议响应
 - ✅ **暴力破解防护** — `/auth` 端点 IP 级令牌桶限流 (5 req/s)
-- ✅ **二进制优化** — `-ldflags="-s -w"` 压缩至 **35.8 MB**
-- ✅ **分页搜索 / Grafana 监控模板 / Release 自动化**
-- ✅ 详见 [ITERATION_PLAN.md](./ITERATION_PLAN.md)
+- ✅ **二进制优化** — `-ldflags="-s -w"` 压缩至 **34.2 MB**
+- ✅ **分页搜索 / Grafana 监控模板 / Release 自动化 / 54 项迭代**
+- ✅ 详见 [SYSTEM_EVALUATION.md](./SYSTEM_EVALUATION.md)
 
 ### 🔥 v2.3 迭代升级 (2026-05-06)
 
@@ -269,6 +271,10 @@ cortex mcp
 
 # 4. 搜索
 cortex search "如何实现 Go 并发"
+
+# 5. 知识库去重
+cortex dedup                    # 内容哈希去重
+cortex dedup --mode vector      # 向量语义去重
 ```
 
 ---
@@ -303,6 +309,20 @@ cortex search "如何实现 Go 并发"
 <td align="center" width="33%">
 <h3>📊 Prometheus</h3>
 <p><sub>39 个监控指标<br><code>:9090/metrics</code></sub></p>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+<h3>🗑️ 三层去重</h3>
+<p><sub>内容哈希 + 向量语义 + MinHash<br><code>cortex dedup</code> 一键清理</sub></p>
+</td>
+<td align="center" width="33%">
+<h3>🔒 安全加固</h3>
+<p><sub>IP 限流 / 密码策略 / Header认证<br>路径保护 / 文件大小限制</sub></p>
+</td>
+<td align="center" width="33%">
+<h3>🐳 Docker 优化</h3>
+<p><sub>多阶段构建<br>镜像 ~30MB</sub></p>
 </td>
 </tr>
 </table>
@@ -423,6 +443,7 @@ cd cortex
 go build -o cortex ./cmd/cortex   # 纯 Go，无需 CGO
 ./cortex serve
 go test ./...                     # 109 个测试
+./cortex dedup                    # 一键去重
 ```
 
 ---
@@ -435,7 +456,9 @@ go test ./...                     # 109 个测试
 | 搜索延迟 P95 | < 100ms |
 | 缓存命中率 | > 60%（L1+L2 两级） |
 | 索引吞吐量 | > 100 files/min |
-| 测试覆盖率 | 109 个单元测试 + 30 项集成测试（60 项迭代修复完成） |
+| 测试覆盖率 | 109 个单元测试 + 8 包通过 |
+| 去重效果 | 46/689 chunks 移除 (6.7%) |
+| 二进制大小 | 34.2 MB (strip 优化) |
 
 ---
 
