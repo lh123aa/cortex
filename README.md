@@ -503,6 +503,14 @@ go test ./...                     # 109 个测试
 ---
 
 <p align="center">
+  <strong>Cortex 不是「又一个知识库工具」，而是 AI Agent 时代的基础设施。</strong>
+  <br>
+  <sub>在 MCP 协议生态快速发展的当下，它解决了一个真实且普遍的需求——给 AI Agent 装上持久记忆。单二进制、零配置、MCP 原生、MIT 开源，任何人都可以自由使用。</sub>
+</p>
+
+---
+
+<p align="center">
   <strong>🧠 Cortex v2.4 — 让 AI Agent 拥有记忆</strong>
   <br>
   <sub>单二进制 · 零配置 · MCP 原生 · 完全本地 · MIT 开源</sub>
