@@ -102,6 +102,7 @@ type APIKeyStore interface {
 type SystemStore interface {
 	Close() error
 	DedupChunks() (removed int, groups int, err error)
+	DedupByVector(threshold float64) (removed int, candidates int, err error)
 }
 
 // ============================================================

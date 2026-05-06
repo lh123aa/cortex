@@ -32,6 +32,8 @@ var (
 	mode        string
 	tokenBudget int
 	jsonOutput  bool
+	dedupMode   string
+	dedupThreshold float64
 )
 
 var rootCmd = &cobra.Command{
@@ -84,8 +86,10 @@ var statusCmd = &cobra.Command{
 var dedupCmd = &cobra.Command{
 	Use:   "dedup",
 	Short: "Deduplicate chunks in the knowledge base",
-	Long:  `Scan all chunks, find duplicates by content hash, and remove them.`,
-	Run:   runDedup,
+	Long: `Scan all chunks and remove duplicates.
+Without flags: dedup by content hash (exact match).
+With --vector: dedup by vector similarity (semantic match).`,
+	Run: runDedup,
 }
 
 func init() {
@@ -98,6 +102,9 @@ func init() {
 	statusCmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "output as JSON")
 
 	contextCmd.Flags().IntVarP(&tokenBudget, "tokens", "t", 4000, "token budget for context")
+
+	dedupCmd.Flags().StringVarP(&dedupMode, "mode", "m", "hash", "dedup mode: hash (exact) | vector (semantic)")
+	dedupCmd.Flags().Float64VarP(&dedupThreshold, "threshold", "t", 0.95, "similarity threshold for vector dedup (0.0-1.0)")
 
 	rootCmd.AddCommand(indexCmd)
 	rootCmd.AddCommand(searchCmd)
@@ -556,14 +563,33 @@ func runDedup(cmd *cobra.Command, args []string) {
 	}
 	defer st.Close()
 
-	removed, groups, err := st.DedupChunks()
-	if err != nil {
-		logger.Fatal("dedup failed", zap.Error(err))
-	}
+	switch dedupMode {
+	case "hash":
+		removed, groups, err := st.DedupChunks()
+		if err != nil {
+			logger.Fatal("dedup failed", zap.Error(err))
+		}
+		if groups == 0 {
+			fmt.Println("✅ No duplicate chunks found by content hash.")
+		} else {
+			fmt.Printf("✅ Content hash dedup complete: %d groups, %d chunks removed.\n", groups, removed)
+		}
 
-	if groups == 0 {
-		fmt.Println("✅ No duplicate chunks found.")
-	} else {
-		fmt.Printf("✅ Dedup complete: %d groups, %d duplicate chunks removed.\n", groups, removed)
+	case "vector":
+		if dedupThreshold < 0 || dedupThreshold > 1 {
+			logger.Fatal("threshold must be between 0.0 and 1.0")
+		}
+		removed, candidates, err := st.DedupByVector(dedupThreshold)
+		if err != nil {
+			logger.Fatal("vector dedup failed", zap.Error(err))
+		}
+		if removed == 0 {
+			fmt.Printf("✅ No semantic duplicates found (threshold=%.2f, scanned %d chunks).\n", dedupThreshold, candidates)
+		} else {
+			fmt.Printf("✅ Vector dedup complete: removed %d / %d chunks (threshold=%.2f).\n", removed, candidates, dedupThreshold)
+		}
+
+	default:
+		logger.Fatal("unknown dedup mode", zap.String("mode", dedupMode))
 	}
 }

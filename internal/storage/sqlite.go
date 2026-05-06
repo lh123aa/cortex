@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"strings"
 
 	"github.com/lh123aa/cortex/internal/vector"
 	"go.uber.org/zap"
@@ -203,4 +204,108 @@ func (s *SQLiteStorage) DedupChunks() (removed int, groups int, err error) {
 	}
 
 	return removed, len(dups), nil
+}
+
+// DedupByVector 基于向量相似度的去重
+// 扫描所有带向量的 chunks，对每个 chunk 在 HNSW 中找最近邻
+// 如果余弦相似度 >= threshold，则判定为语义重复并删除
+func (s *SQLiteStorage) DedupByVector(threshold float64) (removed int, candidates int, err error) {
+	if s.hnsw == nil {
+		return 0, 0, fmt.Errorf("HNSW index not available, need to index documents first")
+	}
+
+	// 获取所有带向量的 chunk
+	rows, err := s.db.Query(`
+		SELECT c.id, v.embedding
+		FROM chunks c
+		JOIN vectors v ON v.chunk_id = c.id
+		ORDER BY c.rowid ASC
+	`)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to query chunks with vectors: %w", err)
+	}
+	defer rows.Close()
+
+	type chunkVec struct {
+		ID        string
+		Embedding []float32
+	}
+
+	var allChunks []chunkVec
+	for rows.Next() {
+		var id string
+		var embBytes []byte
+		if err := rows.Scan(&id, &embBytes); err != nil {
+			return removed, 0, fmt.Errorf("failed to scan: %w", err)
+		}
+		vec := BytesToFloat32Array(embBytes)
+		if len(vec) == 0 {
+			continue
+		}
+		allChunks = append(allChunks, chunkVec{ID: id, Embedding: vec})
+	}
+
+	// 对每个 chunk 搜索最近邻，跳过自己
+	var deleted int
+	var toDelete []string
+	for i, c := range allChunks {
+		// 搜索 2 个最近邻（第一个是自己，第二个是最近的邻居）
+		ids, distances := s.hnsw.Search(c.Embedding, 2)
+		if len(ids) < 2 {
+			continue
+		}
+
+		// distances[0] 是 0（自己），distances[1] 是最近邻
+		similarity := 1.0 - distances[1]
+
+		// 如果相似度超过阈值且邻居的 ID 更大（保留更早的 chunk），则删除
+		if similarity >= threshold && ids[1] > ids[0] {
+			toDelete = append(toDelete, ids[1])
+		}
+
+		// 每处理 50 个 chunk，批量删除一次
+		if (i+1)%50 == 0 && len(toDelete) > 0 {
+			n, err := s.deleteChunksByIDs(toDelete)
+			if err != nil {
+				return removed, len(allChunks), fmt.Errorf("failed to delete at chunk %d: %w", i, err)
+			}
+			deleted += n
+			toDelete = nil
+		}
+	}
+
+	// 删除剩余的
+	if len(toDelete) > 0 {
+		n, err := s.deleteChunksByIDs(toDelete)
+		if err != nil {
+			return removed, len(allChunks), err
+		}
+		deleted += n
+	}
+
+	if deleted > 0 {
+		s.InvalidateSearchCache()
+		_ = s.BuildHNSWIndex()
+	}
+
+	return deleted, len(allChunks), nil
+}
+
+// deleteChunksByIDs 批量删除 chunks
+func (s *SQLiteStorage) deleteChunksByIDs(ids []string) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	placeholders := strings.Repeat(",?", len(ids)-1)
+	q := `DELETE FROM chunks WHERE id IN (?` + placeholders + `)`
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	res, err := s.db.Exec(q, args...)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
 }
