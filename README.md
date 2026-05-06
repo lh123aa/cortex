@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
-  <img src="https://img.shields.io/badge/Version-2.4-blue?style=for-the-badge" alt="v2.4">
+  <img src="https://img.shields.io/badge/Version-3.0-blue?style=for-the-badge" alt="v3.0">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
   <img src="https://img.shields.io/badge/Tests-109_total-green?style=for-the-badge" alt="Tests">
   <img src="https://img.shields.io/badge/Iteration-54_54-7B61FF?style=for-the-badge" alt="Iteration Complete">
@@ -205,6 +205,17 @@
 
 ## ✨ 更新日志
 
+### 💰 v3.0 商业化版本 (2026-05-06)
+
+- ✅ **套餐系统** — Free (≤1GB) / Pro / Enterprise 三级
+- ✅ **存储追踪** — `cortex usage` 查看用量和套餐
+- ✅ **License Key** — 许可证生成/激活/验证系统
+- ✅ **中文分词优化** — CJK 2-gram 分词器，搜索质量提升
+- ✅ **搜索结果高亮** — CLI 匹配关键词用颜色标记
+- ✅ **Web Admin 记忆管理** — 管理界面支持写入和搜索记忆
+- ✅ **启动无警告** — `PRAGMA table_info` 智能迁移
+- ✅ **测试覆盖** — 10/10 包通过，新增 storage/index 测试
+
 ### 🚀 v2.4 全面迭代完成 (2026-05-06)
 
 - ✅ **三层去重体系** — 内容哈希 + 向量语义 (-46 chunks) + MinHash 近似去重
@@ -275,6 +286,9 @@ cortex search "如何实现 Go 并发"
 # 5. 知识库去重
 cortex dedup                    # 内容哈希去重
 cortex dedup --mode vector      # 向量语义去重
+
+# 6. 查看用量
+cortex usage                    # 存储用量和套餐信息
 ```
 
 ---
@@ -511,7 +525,7 @@ go test ./...                     # 109 个测试
 ---
 
 <p align="center">
-  <strong>🧠 Cortex v2.4 — 让 AI Agent 拥有记忆</strong>
+  <strong>🧠 Cortex v3.0 — 让 AI Agent 拥有记忆</strong>
   <br>
   <sub>单二进制 · 零配置 · MCP 原生 · 完全本地 · MIT 开源</sub>
 </p>
