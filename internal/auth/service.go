@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/storage"
@@ -57,8 +59,56 @@ func NewAuthServiceWithStorage(s storage.Storage) *AuthService {
 	return NewAuthService(s, 24*time.Hour)
 }
 
+// validatePassword 校验密码强度
+func validatePassword(password string) error {
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters")
+	}
+	if len(password) > 128 {
+		return fmt.Errorf("password must be at most 128 characters")
+	}
+
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
+	for _, ch := range password {
+		switch {
+		case unicode.IsUpper(ch):
+			hasUpper = true
+		case unicode.IsLower(ch):
+			hasLower = true
+		case unicode.IsDigit(ch):
+			hasDigit = true
+		case unicode.IsPunct(ch) || unicode.IsSymbol(ch):
+			hasSpecial = true
+		}
+	}
+
+	var missing []string
+	if !hasUpper {
+		missing = append(missing, "uppercase letter")
+	}
+	if !hasLower {
+		missing = append(missing, "lowercase letter")
+	}
+	if !hasDigit {
+		missing = append(missing, "digit")
+	}
+	if !hasSpecial {
+		missing = append(missing, "special character")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("password must contain at least one %s", strings.Join(missing, ", "))
+	}
+
+	return nil
+}
+
 // Register 创建新用户
 func (s *AuthService) Register(req *models.RegisterRequest) (*models.User, error) {
+	// 校验密码强度
+	if err := validatePassword(req.Password); err != nil {
+		return nil, err
+	}
+
 	// 检查用户是否已存在
 	existing, err := s.storage.GetUserByUsername(req.Username)
 	if err != nil {
@@ -253,6 +303,11 @@ func (s *AuthService) ChangePassword(userID string, oldPwd, newPwd string) error
 	}
 	if user == nil {
 		return ErrUserNotFound
+	}
+
+	// 校验新密码强度
+	if err := validatePassword(newPwd); err != nil {
+		return err
 	}
 
 	// 验证旧密码

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/lh123aa/cortex/internal/models"
@@ -131,6 +132,25 @@ func hashQuery(query, userID, mode string, topK int) string {
 	data := fmt.Sprintf("%s|%s|%s|%d", userID, query, mode, topK)
 	hash := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(hash[:])[:32]
+}
+
+// StartCacheCleanup 启动定期缓存清理 goroutine
+// 每 interval 时间清理一次过期缓存
+func (s *SQLiteStorage) StartCacheCleanup(interval time.Duration) {
+	if interval <= 0 {
+		interval = 10 * time.Minute
+	}
+	go func() {
+		for {
+			time.Sleep(interval)
+			deleted, err := s.CleanupExpiredCache()
+			if err != nil {
+				log.Printf("Cache cleanup error: %v", err)
+			} else if deleted > 0 {
+				log.Printf("Cleaned %d expired cache entries", deleted)
+			}
+		}
+	}()
 }
 
 func min(a, b int) int {

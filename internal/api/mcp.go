@@ -130,9 +130,20 @@ func (s *MCPServer) registerTools() {
 }
 
 func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
+	// 参数校验
+	if args.Query == "" {
+		return nil, nil, fmt.Errorf("query is required")
+	}
+	if len(args.Query) > 5000 {
+		return nil, nil, fmt.Errorf("query too long (max 5000 characters)")
+	}
+
 	topK := args.TopK
 	if topK <= 0 {
 		topK = 10
+	}
+	if topK > 200 {
+		topK = 200
 	}
 
 	opts := models.SearchOptions{TopK: topK, Mode: "hybrid"}
@@ -158,9 +169,20 @@ func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolReque
 }
 
 func (s *MCPServer) handleContextTool(ctx context.Context, req *mcp.CallToolRequest, args ContextArgs) (*mcp.CallToolResult, any, error) {
+	// 参数校验
+	if args.Query == "" {
+		return nil, nil, fmt.Errorf("query is required")
+	}
+	if len(args.Query) > 5000 {
+		return nil, nil, fmt.Errorf("query too long (max 5000 characters)")
+	}
+
 	budget := args.TokenBudget
 	if budget <= 0 {
 		budget = 1500
+	}
+	if budget > 100000 {
+		budget = 100000
 	}
 
 	opts := models.SearchOptions{TopK: 50, Mode: "hybrid"}

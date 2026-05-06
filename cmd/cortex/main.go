@@ -135,6 +135,9 @@ func initStorage(cfg *config.Config, logger *zap.Logger) (storage.Storage, error
 		return nil, fmt.Errorf("failed to init storage: %w", err)
 	}
 
+	// 设置结构化日志
+	st.SetLogger(logger)
+
 	// 构建 HNSW 索引（如果数据库中已有向量）
 	if err := st.BuildHNSWIndex(); err != nil {
 		logger.Warn("failed to build HNSW index, using brute force search", zap.Error(err))

@@ -35,14 +35,14 @@ func (s *SQLiteStorage) FTSSearch(query string, userID string, topK int) ([]*mod
 			return nil, err
 		}
 
-		// sqlite FTS bm25 约小越相关，但通常可简单转换为正相关的分数，此处直接反转使其为正
-		// (如果 sqlite 默认 bm25() 是负数代表高相关，可乘以 -1)
-		positiveScore := math.Abs(rawScore)
+		// SQLite BM25: 分数越低表示越相关（0 = 完美匹配）
+		// 转为 0-1 范围的相似度分数，便于与向量分数融合
+		normalizedScore := 1.0 / (1.0 + math.Abs(rawScore))
 
 		results = append(results, &models.SearchResult{
 			Chunk:    &chunk,
-			Score:    positiveScore,
-			FTSScore: positiveScore,
+			Score:    normalizedScore,
+			FTSScore: normalizedScore,
 		})
 	}
 	return results, nil

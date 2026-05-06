@@ -145,6 +145,9 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 		}
 	}
 
+	// 路径规范化，防止路径遍历攻击
+	rootPath = filepath.Clean(rootPath)
+
 	// 第一阶段 — 收集所有文件路径
 	var allFiles []string
 	err = filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
@@ -205,7 +208,7 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 			progress.FailedFiles = progress.FailedFiles + int(atomicFailed.Load())
 
 			if err := idx.storage.SaveIndexProgress(progress); err != nil {
-				log.Printf("Warning: failed to save index progress: %v", err)
+				log.Printf("Warning: failed to save index progress: %v", err) // TODO: 使用传入的 logger
 			}
 		}
 	}
@@ -250,6 +253,9 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 func (idx *Indexer) IndexDirectory(rootPath string, userID string) (*IndexResult, error) {
 	start := time.Now()
 	result := &IndexResult{}
+
+	// 路径规范化，防止路径遍历攻击
+	rootPath = filepath.Clean(rootPath)
 
 	// P2-2: 第一阶段 — 收集所有文件路径
 	var files []string
@@ -498,6 +504,8 @@ func NewIncrementalIndexer(idx *Indexer, rootPath string, userID string) *Increm
 // ScanDirectory 扫描目录，返回需要索引的文件列表
 func (ii *IncrementalIndexer) ScanDirectory() ([]string, error) {
 	var files []string
+	// 路径规范化
+	ii.rootPath = filepath.Clean(ii.rootPath)
 	err := filepath.Walk(ii.rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return nil

@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
@@ -201,7 +200,7 @@ func WatchConfig(onChange func(*Config)) error {
 	return nil
 }
 
-// watch 监听配置文件变更
+// watch 监听配置文件变更（使用 fsnotify 实现热加载）
 func (w *ConfigWatcher) watch() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -209,15 +208,17 @@ func (w *ConfigWatcher) watch() {
 		}
 	}()
 
-	for {
-		select {
-		case <-w.done:
+	// 使用 viper 的 WatchConfig 实现热加载
+	w.viper.WatchConfig()
+	w.viper.OnConfigChange(func(e fsnotify.Event) {
+		if e.Op != fsnotify.Write {
 			return
-		case <-time.After(1 * time.Second):
-			// 简单轮询检查配置变更 (Viper 的 WatchConfig 不返回 channel)
-			// 实际触发由 OnConfigChange 回调处理
 		}
-	}
+		w.handleChange(e)
+	})
+
+	// 保持 goroutine 运行直到收到停止信号
+	<-w.done
 }
 
 // handleChange 处理配置变更
