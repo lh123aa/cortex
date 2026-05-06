@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7b61ff"/>
+      <stop offset="100%" style="stop-color:#00d4ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="#1a1a2e"/>
+  <!-- Simplified brain -->
+  <path d="M 32 14 C 24 14, 16 24, 16 32 C 16 40, 20 46, 28 50 C 30 51, 31 52, 32 52"
+    fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 32 14 C 40 14, 48 24, 48 32 C 48 40, 44 46, 36 50 C 34 51, 33 52, 32 52"
+    fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="24" cy="28" r="2" fill="#7b61ff"/>
+  <circle cx="28" cy="38" r="2" fill="#00d4ff"/>
+  <circle cx="40" cy="28" r="2" fill="#7b61ff"/>
+  <circle cx="36" cy="38" r="2" fill="#00d4ff"/>
+</svg>

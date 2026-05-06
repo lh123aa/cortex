@@ -23,30 +23,32 @@ const (
 )
 
 // Tool input schemas
+// Note: jsonschema tag value is the description text (jsonschema-go v0.3.0 format).
+// Required fields are inferred from JSON tags: fields without "omitempty" are required.
 type SearchArgs struct {
-	Query string `json:"query" jsonschema:"description=The exact search query to lookup;required"`
-	TopK  int    `json:"top_k,omitempty" jsonschema:"description=Number of results to return"`
+	Query string `json:"query" jsonschema:"The exact search query to lookup"`
+	TopK  int    `json:"top_k,omitempty" jsonschema:"Number of results to return"`
 }
 
 type ContextArgs struct {
-	Query       string `json:"query" jsonschema:"description=The query to build context upon;required"`
-	TokenBudget int    `json:"token_budget,omitempty" jsonschema:"description=Allowed max tokens"`
+	Query       string `json:"query" jsonschema:"The query to build context upon"`
+	TokenBudget int    `json:"token_budget,omitempty" jsonschema:"Allowed max tokens"`
 }
 
 type MemoryWriteArgs struct {
-	Content string   `json:"content" jsonschema:"description=The memory content to store;required"`
-	Tags    []string `json:"tags,omitempty" jsonschema:"description=Optional tags for the memory"`
-	Source  string   `json:"source,omitempty" jsonschema:"description=Optional source identifier"`
-	Summary string   `json:"summary,omitempty" jsonschema:"description=Optional summary, auto-generated if empty"`
+	Content string   `json:"content" jsonschema:"The memory content to store"`
+	Tags    []string `json:"tags,omitempty" jsonschema:"Optional tags for the memory"`
+	Source  string   `json:"source,omitempty" jsonschema:"Optional source identifier"`
+	Summary string   `json:"summary,omitempty" jsonschema:"Optional summary, auto-generated if empty"`
 }
 
 type MemorySearchArgs struct {
-	Query string `json:"query" jsonschema:"description=The query to search memories;required"`
-	TopK  int    `json:"top_k,omitempty" jsonschema:"description=Number of results to return"`
+	Query string `json:"query" jsonschema:"The query to search memories"`
+	TopK  int    `json:"top_k,omitempty" jsonschema:"Number of results to return"`
 }
 
 type MemoryDeleteArgs struct {
-	ID string `json:"id" jsonschema:"description=The memory ID to delete;required"`
+	ID string `json:"id" jsonschema:"The memory ID to delete"`
 }
 
 type MCPServer struct {

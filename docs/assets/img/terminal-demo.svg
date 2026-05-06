@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 480" width="720" height="480">
+  <defs>
+    <linearGradient id="termBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1b2e"/>
+      <stop offset="100%" style="stop-color:#0d0e1a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Terminal window frame -->
+  <rect x="10" y="10" width="700" height="460" rx="12" fill="url(#termBg)" stroke="#2a2b4e" stroke-width="1.5"/>
+
+  <!-- Title bar -->
+  <rect x="10" y="10" width="700" height="36" rx="12" fill="#2a2b4e"/>
+  <rect x="10" y="30" width="700" height="16" fill="#2a2b4e"/>
+
+  <!-- Dots -->
+  <circle cx="34" cy="28" r="6" fill="#ff5f57"/>
+  <circle cx="54" cy="28" r="6" fill="#ffbd2e"/>
+  <circle cx="74" cy="28" r="6" fill="#28ca41"/>
+
+  <!-- Title text -->
+  <text x="360" y="33" text-anchor="middle" fill="#606080" font-family="monospace" font-size="12">cortex — bash</text>
+
+  <!-- Line 1: command -->
+  <text x="24" y="72" fill="#7b61ff" font-family="monospace" font-size="13" font-weight="bold">$</text>
+  <text x="44" y="72" fill="#e0e0f0" font-family="monospace" font-size="13">./cortex version</text>
+
+  <!-- Line 2: output -->
+  <text x="24" y="94" fill="#00d4ff" font-family="monospace" font-size="13">Cortex v2.2 (pure Go, no CGO)</text>
+
+  <!-- Line 3: command -->
+  <text x="24" y="124" fill="#7b61ff" font-family="monospace" font-size="13" font-weight="bold">$</text>
+  <text x="44" y="124" fill="#e0e0f0" font-family="monospace" font-size="13">./cortex index ~/docs</text>
+
+  <!-- Line 4-7: index output -->
+  <text x="24" y="150" fill="#28ca41" font-family="monospace" font-size="13">✅ Indexing complete:</text>
+  <text x="36" y="170" fill="#8080a0" font-family="monospace" font-size="12">Total: 42 files | Indexed: 42 | Chunks: 1,247</text>
+  <text x="36" y="188" fill="#8080a0" font-family="monospace" font-size="12">Time: 12.3s</text>
+
+  <!-- Line 8: command -->
+  <text x="24" y="218" fill="#7b61ff" font-family="monospace" font-size="13" font-weight="bold">$</text>
+  <text x="44" y="218" fill="#e0e0f0" font-family="monospace" font-size="13">./cortex search "AI Agent memory"</text>
+
+  <!-- Line 9-16: search results -->
+  <text x="24" y="244" fill="#00d4ff" font-family="monospace" font-size="13">🔍 Top 3 results:</text>
+
+  <text x="24" y="268" fill="#7b61ff" font-family="monospace" font-size="12">[1] Score: 0.95</text>
+  <text x="36" y="284" fill="#e0e0f0" font-family="monospace" font-size="12">AI Agent Memory Architecture</text>
+  <text x="36" y="300" fill="#8080a0" font-family="monospace" font-size="12">Cortex provides persistent memory for AI Agents...</text>
+
+  <text x="24" y="324" fill="#7b61ff" font-family="monospace" font-size="12">[2] Score: 0.87</text>
+  <text x="36" y="340" fill="#e0e0f0" font-family="monospace" font-size="12">Getting Started with MCP</text>
+  <text x="36" y="356" fill="#8080a0" font-family="monospace" font-size="12">MCP (Model Context Protocol) enables...</text>
+
+  <!-- Line 17: command -->
+  <text x="24" y="386" fill="#7b61ff" font-family="monospace" font-size="13" font-weight="bold">$</text>
+  <text x="44" y="386" fill="#e0e0f0" font-family="monospace" font-size="13">./cortex mcp</text>
+
+  <!-- Line 18-21: MCP output -->
+  <text x="24" y="412" fill="#28ca41" font-family="monospace" font-size="13">🧠 MCP server started on stdio</text>
+  <text x="24" y="434" fill="#00d4ff" font-family="monospace" font-size="12">Available: cortex_search · cortex_context · cortex_memory_write · cortex_memory_search · cortex_memory_delete</text>
+
+  <!-- Blinking cursor -->
+  <rect x="44" y="448" width="8" height="14" fill="#e0e0f0" opacity="0.7">
+    <animate attributeName="opacity" values="0.7;0;0.7" dur="1s" repeatCount="indefinite"/>
+  </rect>
+</svg>

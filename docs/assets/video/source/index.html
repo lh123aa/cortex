@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800;14..32,900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:#0a0a12;font-family:'Inter',sans-serif;color:#e8e8f0}
+:root{--accent:#FF6900;--purple:#7B61FF;--cyan:#00D4FF;--fg:#e8e8f0;--fg-sec:#8888a0;--fg-dim:#555570;--surface:#13131f;--border:rgba(123,97,255,0.12);--mono:'JetBrains Mono',monospace}
+.bg{position:absolute;width:1920px;height:1080px;top:0;left:0}
+.bg-d1{background:radial-gradient(ellipse 800px 500px at 50% 40%,rgba(123,97,255,0.08) 0%,transparent 70%),radial-gradient(ellipse 600px 400px at 30% 60%,rgba(255,105,0,0.05) 0%,transparent 60%),#0a0a12}
+.bg-d2{background:#0e0e1a}
+.bg-d3{background:#0a0a12}
+.bg-d4{background:linear-gradient(135deg,#0e0e1a,#13131f)}
+.bg-d5{background:radial-gradient(ellipse 900px 500px at 50% 50%,rgba(123,97,255,0.06) 0%,transparent 70%),#0a0a12}
+.flex-c{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:90%}
+.cx{left:50%;transform:translateX(-50%)}
+
+/* Typography */
+.h1{font-weight:900;letter-spacing:-2px;line-height:1.05}
+.h1-xl{font-size:clamp(56px,5vw,80px)}
+.h1-lg{font-size:clamp(42px,4vw,64px)}
+.h2{font-size:clamp(32px,3.5vw,42px);font-weight:800;letter-spacing:-1px}
+.sub{font-size:21px;color:var(--fg-sec);letter-spacing:3px;font-weight:300}
+.body{font-size:17px;color:var(--fg-sec);line-height:1.6}
+.grad{background:linear-gradient(135deg,#7B61FF,#FF6900);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.grad-c{background:linear-gradient(135deg,#7B61FF,#00D4FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+/* Logo SVG */
+.clip{position:absolute}
+
+/* Terminal */
+.term{width:1100px;margin:0 auto;background:rgba(0,0,0,0.5);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.term-bar{display:flex;align-items:center;gap:8px;padding:14px 18px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border)}
+.term-dot{width:10px;height:10px;border-radius:50%}
+.tr{background:#ff5f57}.ty{background:#ffbd2e}.tg{background:#28ca41}
+.term-label{margin-left:8px;font:12px var(--mono);color:var(--fg-dim)}
+.term-b{padding:20px 24px;font:15px/2 var(--mono);text-align:left}
+.term-l{display:flex;gap:12px}
+.term-p{color:var(--accent);flex-shrink:0}
+.term-out{color:var(--cyan)}
+.term-ok{color:#28ca41}
+
+/* Feature cards */
+.f-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;width:1600px;margin:40px auto 0}
+.f-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 24px;text-align:left}
+.f-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:14px;background:rgba(123,97,255,0.1)}
+.f-card h3{font-size:18px;font-weight:700;margin-bottom:6px;color:var(--fg)}
+.f-card p{font-size:13px;color:var(--fg-sec);line-height:1.6}
+.f-tag{display:inline-block;margin-top:8px;padding:2px 8px;border-radius:5px;font:10px var(--mono);background:rgba(0,212,255,0.08);color:var(--cyan);border:1px solid rgba(0,212,255,0.12)}
+
+/* Stats */
+.s-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:40px;width:1400px;margin:50px auto 0}
+.s-item{text-align:center}
+.s-num{font-size:clamp(48px,5vw,64px);font-weight:800;background:linear-gradient(135deg,#7B61FF,#00D4FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+.s-label{font-size:16px;color:var(--fg-dim);margin-top:8px}
+
+/* CTA */
+.url-badge{padding:18px 48px;border-radius:14px;background:var(--accent);color:#fff;font-size:26px;font-weight:700;display:inline-block;box-shadow:0 4px 30px rgba(255,105,0,0.3)}
+.mcp-tags{display:flex;gap:14px;justify-content:center;margin-top:60px}
+.mcp-tags span{padding:8px 20px;border-radius:20px;font:13px var(--mono);background:rgba(123,97,255,0.08);color:var(--purple);border:1px solid rgba(123,97,255,0.15)}
+</style>
+</head>
+<body>
+
+<div id="root" data-composition-id="cortex-demo" data-start="0" data-duration="20" data-width="1920" data-height="1080">
+
+  <!-- ══════ SCENE 1: Brand Reveal 0-4s (Track 1) ══════ -->
+  <div class="bg bg-d1 clip" data-start="0" data-duration="4" data-track-index="1"></div>
+
+  <svg class="clip" data-start="0" data-duration="3.5" data-track-index="2" style="left:860px;top:240px;width:200px;height:200px" viewBox="0 0 200 200">
+    <rect x="10" y="10" width="180" height="180" rx="36" fill="none" stroke="url(#lg)" stroke-width="2"/>
+    <path id="logo-path" d="M100 30C72 30 40 58 40 82C40 106 52 122 70 134C78 140 88 144 100 146M100 30C128 30 160 58 160 82C160 106 148 122 130 134C122 140 112 144 100 146" fill="none" stroke="url(#lg)" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="68" cy="80" r="4" fill="#7B61FF"/>
+    <circle cx="78" cy="105" r="3" fill="#00D4FF"/>
+    <circle cx="132" cy="80" r="4" fill="#7B61FF"/>
+    <circle cx="122" cy="105" r="3" fill="#00D4FF"/>
+    <circle cx="100" cy="112" r="5" fill="#00D4FF" opacity="0.7"/>
+  </svg>
+
+  <div class="clip h1 h1-xl" data-start="1" data-duration="3" data-track-index="3" style="text-align:center;width:100%;top:490px">🧠 <span class="grad">Cortex</span></div>
+  <div class="clip sub" data-start="1.8" data-duration="2.2" data-track-index="4" style="text-align:center;width:100%;top:580px">AI AGENT · 第二大脑</div>
+  <div class="clip body" data-start="2.3" data-duration="1.7" data-track-index="5" style="text-align:center;width:100%;top:630px">单二进制 · MCP 原生 · 本地知识库</div>
+
+  <!-- ══════ SCENE 2: Features 4-9s (Track 6-12) ══════ -->
+  <div class="bg bg-d2 clip" data-start="4" data-duration="5" data-track-index="6"></div>
+  <div class="clip h2" data-start="4" data-duration="5" data-track-index="7" style="text-align:center;width:100%;top:100px">✨ 核心特性</div>
+
+  <div class="clip" data-start="4.3" data-duration="4.7" data-track-index="8" style="left:160px;top:200px;width:1600px">
+    <div class="f-grid" style="margin-top:0">
+      <div class="f-card"><div class="f-icon">🚀</div><h3>单二进制部署</h3><p>下载即运行，零依赖。不需要 Python、Node.js、Docker。</p><span class="f-tag">curl → unzip → run</span></div>
+      <div class="f-card"><div class="f-icon">🔌</div><h3>MCP 协议原生</h3><p>5 个内置工具，与 Claude Code / OpenCode 开箱即用。</p><span class="f-tag">cortex_search · memory</span></div>
+      <div class="f-card"><div class="f-icon">🧠</div><h3>Agent 记忆系统</h3><p>跨会话持久化记忆，Agent 能记住用户偏好和历史。</p><span class="f-tag">写入 · 搜索 · 删除</span></div>
+      <div class="f-card"><div class="f-icon">🔍</div><h3>混合搜索</h3><p>HNSW 向量 + BM25 关键词 + RRF 融合排序，精准召回。</p><span class="f-tag">向量 + 全文 + 重排序</span></div>
+      <div class="f-card"><div class="f-icon">⚡</div><h3>L1+L2 两级缓存</h3><p>内存 + SQLite 缓存架构，搜索速度提升 10 倍。</p><span class="f-tag">go-cache + SQLite</span></div>
+      <div class="f-card"><div class="f-icon">📊</div><h3>Prometheus 监控</h3><p>内置 39 个生产级指标，开箱即用的可观测性。</p><span class="f-tag">:9090/metrics</span></div>
+    </div>
+  </div>
+
+  <!-- ══════ SCENE 3: Terminal Demo 9-14s (Track 13-16) ══════ -->
+  <div class="bg bg-d3 clip" data-start="9" data-duration="5" data-track-index="13"></div>
+  <div class="clip h2" data-start="9" data-duration="5" data-track-index="14" style="text-align:center;width:100%;top:80px">⚡ 10 秒上手</div>
+
+  <div class="clip term" data-start="9.5" data-duration="4.5" data-track-index="15" style="position:absolute;left:410px;top:200px">
+    <div class="term-bar">
+      <span class="term-dot tr"></span><span class="term-dot ty"></span><span class="term-dot tg"></span>
+      <span class="term-label">cortex — bash</span>
+    </div>
+    <div class="term-b">
+      <div class="term-l"><span class="term-p">$</span><span>curl -fsSL [url] | unzip -</span></div>
+      <div class="term-l"><span class="term-p"></span><span class="term-ok">✅ 下载完成 · 单文件 12MB</span></div>
+      <div class="term-l" style="margin-top:6px"><span class="term-p">$</span><span>chmod +x cortex && ./cortex index ~/my-docs</span></div>
+      <div class="term-l"><span class="term-p"></span><span class="term-ok">✅ 42 文件 · 1,247 分块 · 12.3s</span></div>
+      <div class="term-l" style="margin-top:6px"><span class="term-p">$</span><span>./cortex mcp</span></div>
+      <div class="term-l"><span class="term-p"></span><span class="term-out">🧠 MCP server · 5 tools ready</span></div>
+      <div class="term-l" style="margin-top:6px"><span class="term-p">$</span><span>./cortex search "Go concurrency"</span></div>
+      <div class="term-l"><span class="term-p">#1</span><span class="term-ok">Score: 0.97 · Go Concurrency Guide</span></div>
+      <div class="term-l"><span class="term-p">#2</span><span class="term-ok">Score: 0.88 · Effective Go Channels</span></div>
+    </div>
+  </div>
+
+  <!-- ══════ SCENE 4: Stats 14-17s (Track 17-19) ══════ -->
+  <div class="bg bg-d4 clip" data-start="14" data-duration="3" data-track-index="17"></div>
+  <div class="clip h2" data-start="14" data-duration="3" data-track-index="18" style="text-align:center;width:100%;top:160px">📊 生产就绪的性能</div>
+
+  <div class="clip" data-start="14.3" data-duration="2.7" data-track-index="19" style="left:260px;top:320px;width:1400px">
+    <div class="s-grid" style="margin-top:0">
+      <div class="s-item"><div class="s-num">114</div><div class="s-label">单元测试通过</div></div>
+      <div class="s-item"><div class="s-num">&lt;50ms</div><div class="s-label">搜索 P50 延迟</div></div>
+      <div class="s-item"><div class="s-num">10x</div><div class="s-label">缓存加速比</div></div>
+      <div class="s-item"><div class="s-num">100+</div><div class="s-label">文件/分钟索引</div></div>
+    </div>
+  </div>
+
+  <!-- ══════ SCENE 5: CTA 17-20s (Track 20-25) ══════ -->
+  <div class="bg bg-d5 clip" data-start="17" data-duration="3" data-track-index="20"></div>
+  <div class="clip h1 h1-lg" data-start="17" data-duration="3" data-track-index="21" style="text-align:center;width:100%;top:340px">🧠 <span class="grad">让 AI Agent 拥有记忆</span></div>
+  <div class="clip body" data-start="17.5" data-duration="2.5" data-track-index="22" style="text-align:center;width:100%;top:430px">单二进制 · 零配置 · 100% 本地 · MIT 开源</div>
+  <div class="clip" data-start="18" data-duration="2" data-track-index="23" style="text-align:center;width:100%;top:520px"><span class="url-badge">github.com/lh123aa/cortex</span></div>
+  <div class="clip body" data-start="19" data-duration="1" data-track-index="24" style="text-align:center;width:100%;top:610px;color:var(--fg-dim);font-size:14px">给个 Star ⭐ 支持开源</div>
+  <div class="clip mcp-tags" data-start="17.2" data-duration="2.8" data-track-index="25" style="text-align:center">
+    <span>cortex_search</span><span>cortex_context</span><span>cortex_memory</span>
+  </div>
+</div>
+
+<svg width="0" height="0"><defs>
+  <linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#7B61FF"/><stop offset="100%" stop-color="#00D4FF"/>
+  </linearGradient>
+</defs></svg>
+
+<script>
+window.__timelines = window.__timelines || {};
+const tl = gsap.timeline({ paused: true });
+
+// Scene 1: Brand (0-4s)
+tl.from("[data-track-index='2'] svg", { scale:0, rotation:-180, opacity:0, duration:0.8, ease:"back.out(1.7)" }, 0.1);
+tl.from("[data-track-index='2'] circle", { scale:0, opacity:0, duration:0.25, stagger:0.08, ease:"back.out(2)" }, 0.3);
+tl.from("[data-track-index='3']", { y:40, opacity:0, duration:0.6, ease:"power3.out" }, 1.0);
+tl.from("[data-track-index='4']", { y:20, opacity:0, duration:0.5, ease:"power2.out" }, 1.8);
+tl.from("[data-track-index='5']", { y:20, opacity:0, duration:0.5, ease:"power2.out" }, 2.3);
+
+// Scene 2: Features (4-9s)
+tl.from("[data-track-index='7']", { y:-20, opacity:0, duration:0.4, ease:"power2.out" }, 4.1);
+tl.from("[data-track-index='8'] .f-card", { opacity:0, y:30, duration:0.35, stagger:0.1, ease:"power2.out" }, 4.3);
+
+// Scene 3: Terminal (9-14s)
+tl.from("[data-track-index='14']", { y:-20, opacity:0, duration:0.4, ease:"power2.out" }, 9.1);
+tl.from("[data-track-index='15']", { scaleY:0.7, opacity:0, duration:0.5, ease:"power3.out" }, 9.3);
+tl.from("[data-track-index='15'] .term-l", { opacity:0, x:-10, duration:0.2, stagger:0.15, ease:"power2.out" }, 9.6);
+
+// Scene 4: Stats (14-17s)
+tl.from("[data-track-index='18']", { y:-20, opacity:0, duration:0.4, ease:"power2.out" }, 14.1);
+tl.from("[data-track-index='19'] .s-item", { opacity:0, y:30, duration:0.4, stagger:0.15, ease:"back.out(1.4)" }, 14.4);
+
+// Scene 5: CTA (17-20s)
+tl.from("[data-track-index='21']", { y:30, opacity:0, duration:0.6, ease:"power3.out" }, 17.1);
+tl.from("[data-track-index='22']", { y:20, opacity:0, duration:0.4, ease:"power2.out" }, 17.7);
+tl.from("[data-track-index='23']", { scale:0.8, opacity:0, duration:0.5, ease:"back.out(1.7)" }, 18.2);
+tl.from("[data-track-index='24']", { y:10, opacity:0, duration:0.4, ease:"power2.out" }, 19.0);
+tl.from("[data-track-index='25']", { y:20, opacity:0, duration:0.5, ease:"power2.out" }, 17.3);
+
+window.__timelines["cortex-demo"] = tl;
+</script>
+</body>
+</html>

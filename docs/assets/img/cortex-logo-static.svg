@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f3460"/>
+    </linearGradient>
+    <linearGradient id="brainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7b61ff"/>
+      <stop offset="100%" style="stop-color:#00d4ff"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff"/>
+      <stop offset="100%" style="stop-color:#7b61ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="url(#bgGrad)"/>
+
+  <!-- Brain shape -->
+  <!-- Left hemisphere -->
+  <path d="M 256 100
+    C 200 100, 120 140, 110 210
+    C 100 270, 110 320, 130 350
+    C 150 380, 180 400, 220 410
+    C 240 415, 250 418, 256 420"
+    fill="none" stroke="url(#brainGrad)" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Right hemisphere -->
+  <path d="M 256 100
+    C 312 100, 392 140, 402 210
+    C 412 270, 402 320, 382 350
+    C 362 380, 332 400, 292 410
+    C 272 415, 262 418, 256 420"
+    fill="none" stroke="url(#brainGrad)" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Center divide -->
+  <line x1="256" y1="100" x2="256" y2="420" stroke="url(#accentGrad)" stroke-width="3" stroke-opacity="0.5" stroke-dasharray="4,6"/>
+
+  <!-- Neural network nodes and connections -->
+  <!-- Left hemisphere nodes -->
+  <circle cx="180" cy="180" r="5" fill="#7b61ff"/>
+  <circle cx="150" cy="250" r="4" fill="#00d4ff"/>
+  <circle cx="200" cy="300" r="5" fill="#7b61ff"/>
+  <circle cx="170" cy="360" r="4" fill="#00d4ff"/>
+  <circle cx="230" cy="220" r="4" fill="#7b61ff"/>
+
+  <!-- Right hemisphere nodes -->
+  <circle cx="332" cy="180" r="5" fill="#7b61ff"/>
+  <circle cx="362" cy="250" r="4" fill="#00d4ff"/>
+  <circle cx="312" cy="300" r="5" fill="#7b61ff"/>
+  <circle cx="342" cy="360" r="4" fill="#00d4ff"/>
+  <circle cx="282" cy="220" r="4" fill="#7b61ff"/>
+
+  <!-- Connections left -->
+  <line x1="180" y1="180" x2="150" y2="250" stroke="#7b61ff" stroke-width="1.5" stroke-opacity="0.6"/>
+  <line x1="150" y1="250" x2="200" y2="300" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.6"/>
+  <line x1="200" y1="300" x2="170" y2="360" stroke="#7b61ff" stroke-width="1.5" stroke-opacity="0.6"/>
+  <line x1="230" y1="220" x2="200" y2="300" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.6"/>
+  <line x1="180" y1="180" x2="230" y2="220" stroke="#7b61ff" stroke-width="1.5" stroke-opacity="0.6"/>
+
+  <!-- Connections right -->
+  <line x1="332" y1="180" x2="362" y2="250" stroke="#7b61ff" stroke-width="1.5" stroke-opacity="0.6"/>
+  <line x1="362" y1="250" x2="312" y2="300" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.6"/>
+  <line x1="312" y1="300" x2="342" y2="360" stroke="#7b61ff" stroke-width="1.5" stroke-opacity="0.6"/>
+  <line x1="282" y1="220" x2="312" y2="300" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.6"/>
+  <line x1="332" y1="180" x2="282" y2="220" stroke="#7b61ff" stroke-width="1.5" stroke-opacity="0.6"/>
+
+  <!-- Cross connections -->
+  <line x1="230" y1="220" x2="282" y2="220" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="3,3"/>
+  <line x1="200" y1="300" x2="312" y2="300" stroke="#7b61ff" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="3,3"/>
+
+  <!-- Center node -->
+  <circle cx="256" cy="260" r="8" fill="#00d4ff" opacity="0.8"/>
+
+  <!-- Bottom brain stem -->
+  <path d="M 256 420 C 256 440, 252 455, 248 465 C 244 475, 252 480, 256 480"
+    fill="none" stroke="url(#brainGrad)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 256 420 C 256 440, 260 455, 264 465 C 268 475, 260 480, 256 480"
+    fill="none" stroke="url(#accentGrad)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- MCP dots -->
+  <circle cx="180" cy="475" r="2" fill="#7b61ff" opacity="0.6"/>
+  <circle cx="210" cy="480" r="2" fill="#00d4ff" opacity="0.6"/>
+  <circle cx="240" cy="483" r="2" fill="#7b61ff" opacity="0.6"/>
+  <circle cx="272" cy="483" r="2" fill="#00d4ff" opacity="0.6"/>
+  <circle cx="302" cy="480" r="2" fill="#7b61ff" opacity="0.6"/>
+  <circle cx="332" cy="475" r="2" fill="#00d4ff" opacity="0.6"/>
+</svg>

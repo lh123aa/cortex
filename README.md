@@ -1,14 +1,41 @@
 <p align="center">
+  <img src="docs/assets/img/cortex-logo-static.svg" width="120" height="120" alt="Cortex Logo">
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go" alt="Go">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
   <img src="https://img.shields.io/badge/Version-2.2-blue?style=for-the-badge" alt="v2.2">
-  <img src="https://img.shields.io/badge/Code_Quality-100%25-brightgreen?style=for-the-badge" alt="Quality">
+  <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
   <img src="https://img.shields.io/badge/Tests-114_passing-green?style=for-the-badge" alt="Tests">
   <img src="https://img.shields.io/badge/MCP-Native-7B61FF?style=for-the-badge" alt="MCP">
+  <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
+  <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
 </p>
 
 <h1 align="center">🧠 Cortex</h1>
 <h3 align="center">AI Agent 的第二大脑 — 本地知识库 · 单二进制 · MCP 原生</h3>
+
+<p align="center">
+  <b>Cortex</b> 是一个为 AI Agent 设计的本地知识库引擎。单二进制文件部署，原生支持 <b>MCP 协议</b>，内置<b>混合搜索</b>（向量+BM25）和<b>Agent 记忆系统</b>。100% 本地运行，零外部依赖。
+</p>
+<p align="center">
+  给 Claude Code、OpenCode 等 AI Agent 装上永久记忆 🧠
+</p>
+<p align="center">
+  <a href="https://github.com/lh123aa/cortex"><b>GitHub 仓库</b></a> ·
+  <a href="https://lh123aa.github.io/cortex/"><b>🎨 营销落地页</b></a> ·
+  <a href="docs/index.html"><b>本地预览</b></a> ·
+  <a href="docs/promotion/juejin-article.md"><b>📖 深度技术文章</b></a>
+</p>
+
+<p align="center">
+  <a href="docs/index.html">
+    <img src="docs/assets/img/terminal-demo.svg" width="100%" alt="Terminal Demo" style="max-width:720px;border-radius:16px;border:1px solid rgba(123,97,255,0.15);">
+  </a>
+  <br>
+  <sub>⬆️ 点击查看完整营销落地页（小米/Mimo 风格）</sub>
+</p>
 
 <p align="center">
   <a href="#-产品对比">📊 产品对比</a> ·
@@ -155,6 +182,19 @@
 </table>
 
 > **Cortex 的核心差异化**：它是唯一一个同时具备「单二进制部署 + MCP 原生 + 内置记忆系统 + 混合搜索 + Prometheus 监控」的工具，专为 AI Agent 场景设计。
+
+---
+
+## 🎯 适用场景
+
+| 场景 | 说明 |
+|------|------|
+| 🤖 **AI Agent 记忆** | 让 Claude Code / OpenCode / Cursor 等 Agent 跨会话记住用户偏好和历史 |
+| 📚 **团队知识库** | 将团队 Wiki、技术文档、项目规范索引为可搜索的 RAG 知识库 |
+| 🔍 **代码库语义搜索** | 索引 Go/Python/JS 等代码，用自然语言搜索函数、类和实现 |
+| 🏢 **企业内部文档** | 员工手册、产品文档、培训材料的本地私密检索，数据不出内网 |
+| 🧪 **RAG 应用后端** | 作为 RAG pipeline 的检索层，提供 REST API 和 MCP 双协议接入 |
+| 🔐 **隐私敏感场景** | 金融、医疗、法律等需要 100% 本地部署的知识管理需求 |
 
 ---
 
@@ -384,17 +424,43 @@ go test ./...                     # 114 个测试
 
 ---
 
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=lh123aa/cortex&type=Date)](https://star-history.com/#lh123aa/cortex&Date)
+
+---
+
+## 💬 社区 & 支持
+
+- ⭐ **给个 Star** — 支持项目最好的方式
+- 🐛 **报告 Bug** — [提交 Issue](https://github.com/lh123aa/cortex/issues)
+- 💡 **功能建议** — [发起 Discussion](https://github.com/lh123aa/cortex/discussions)
+- 📣 **分享推荐** — 在掘金、知乎、V2EX 推荐 Cortex
+- 🤝 **贡献代码** — 阅读 [CONTRIBUTING.md](CONTRIBUTING.md)
+
 ## 🔗 相关资源
 
-- [MCP 协议规范](https://modelcontextprotocol.io)
+- [MCP 协议规范](https://modelcontextprotocol.io) — AI Agent 通信标准
 - [Ollama](https://ollama.ai) — 本地 LLM & Embedding
 - [OpenCode](https://opencode.ai) — AI Agent 框架
-- [Awesome MCP Servers](https://github.com/lh123aa/awesome-mcp-servers)
+- [Awesome MCP Servers](https://github.com/lh123aa/awesome-mcp-servers) — MCP 服务器资源列表
 
 ---
 
 <p align="center">
   <strong>🧠 Cortex v2.2 — 让 AI Agent 拥有记忆</strong>
   <br>
-  <sub>单二进制 · 零配置 · MCP 原生 · 完全本地</sub>
+  <sub>单二进制 · 零配置 · MCP 原生 · 完全本地 · MIT 开源</sub>
+</p>
+
+<p align="center">
+  <a href="https://github.com/lh123aa/cortex/stargazers">
+    <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=social" alt="Star">
+  </a>
+  <a href="https://github.com/lh123aa/cortex/forks">
+    <img src="https://img.shields.io/github/forks/lh123aa/cortex?style=social" alt="Fork">
+  </a>
+  <a href="https://github.com/lh123aa/cortex">
+    <img src="https://img.shields.io/github/followers/lh123aa?style=social" alt="Follow">
+  </a>
 </p>

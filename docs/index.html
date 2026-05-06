@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Cortex - AI Agent 的第二大脑。单二进制 MCP 原生知识库引擎，混合搜索 + Agent 记忆系统。100% 本地，MIT 开源。">
+<title>🧠 Cortex — AI Agent 的第二大脑</title>
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800;14..32,900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:#0a0a12;color:#e8e8f0;line-height:1.6;overflow-x:hidden}
+
+/* ============================================================
+   TOKENS — Xiaomi-inspired premium dark palette
+   ============================================================ */
+:root{
+  --bg:#0a0a12;
+  --bg-alt:#0e0e1a;
+  --surface:#13131f;
+  --surface-hover:#1a1a2e;
+  --fg:#e8e8f0;
+  --fg-secondary:#8888a0;
+  --fg-muted:#555570;
+  --border:rgba(123,97,255,0.12);
+  --accent:#FF6900;
+  --accent-glow:rgba(255,105,0,0.25);
+  --purple:#7B61FF;
+  --purple-glow:rgba(123,97,255,0.25);
+  --cyan:#00D4FF;
+  --gradient-hero:linear-gradient(135deg,#7B61FF,#FF6900);
+  --gradient-accent:linear-gradient(135deg,#7B61FF 0%,#00D4FF 100%);
+  --font-mono:'JetBrains Mono','Fira Code',monospace;
+  --radius-sm:8px;
+  --radius-md:16px;
+  --radius-lg:24px;
+  --radius-xl:32px;
+  --max-w:1200px;
+}
+::selection{background:rgba(255,105,0,0.3);color:#fff}
+
+/* ============================================================
+   NAV
+   ============================================================ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(10,10,18,0.8);backdrop-filter:blur(24px) saturate(1.4);
+  border-bottom:1px solid var(--border);
+  height:64px;
+}
+.nav-inner{
+  max-width:var(--max-w);margin:0 auto;padding:0 24px;
+  height:100%;display:flex;align-items:center;justify-content:space-between;
+}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--fg);text-decoration:none}
+.nav-brand img{width:28px;height:28px;border-radius:6px}
+.nav-links{display:flex;align-items:center;gap:8px}
+.nav-links a{
+  padding:8px 18px;border-radius:20px;font-size:14px;font-weight:500;
+  color:var(--fg-secondary);text-decoration:none;transition:all .25s;
+}
+.nav-links a:hover{color:var(--fg);background:rgba(255,255,255,0.05)}
+.nav-cta{
+  background:var(--accent);color:#fff!important;padding:8px 22px!important;
+  box-shadow:0 2px 20px var(--accent-glow);
+}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 4px 30px var(--accent-glow)!important}
+
+/* ============================================================
+   HERO
+   ============================================================ */
+.hero{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  position:relative;padding:120px 24px 80px;text-align:center;overflow:hidden;
+}
+.hero-bg{
+  position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 600px 400px at 20% 50%,rgba(123,97,255,0.08) 0%,transparent 70%),
+    radial-gradient(ellipse 500px 300px at 80% 40%,rgba(255,105,0,0.06) 0%,transparent 70%),
+    radial-gradient(ellipse 800px 300px at 50% 100%,rgba(0,212,255,0.04) 0%,transparent 70%);
+}
+.hero-content{position:relative;max-width:860px}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;
+  background:rgba(255,105,0,0.1);color:var(--accent);border:1px solid rgba(255,105,0,0.2);
+  letter-spacing:.5px;margin-bottom:24px;
+}
+.hero-eyebrow svg{width:14px;height:14px}
+.hero h1{
+  font-size:clamp(40px,7vw,80px);font-weight:900;line-height:1.05;
+  letter-spacing:-2px;margin-bottom:20px;
+  background:linear-gradient(135deg,var(--fg) 30%,var(--fg-secondary) 70%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero h1 em{font-style:normal;background:var(--gradient-hero);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-lead{
+  font-size:clamp(17px,2vw,21px);color:var(--fg-secondary);max-width:640px;
+  margin:0 auto 36px;line-height:1.7;
+}
+.hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:48px}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;padding:14px 32px;
+  border-radius:12px;font-weight:600;font-size:16px;cursor:pointer;
+  text-decoration:none;transition:all .3s;border:none;
+}
+.btn-primary{
+  background:var(--accent);color:#fff;box-shadow:0 4px 24px var(--accent-glow);
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 40px var(--accent-glow)}
+.btn-secondary{
+  background:rgba(255,255,255,0.05);color:var(--fg);
+  border:1px solid var(--border);
+}
+.btn-secondary:hover{background:rgba(255,255,255,0.08);transform:translateY(-2px)}
+.btn-outline{
+  background:transparent;color:var(--fg-secondary);border:1px solid var(--border);
+}
+.btn-outline:hover{color:var(--fg);border-color:var(--fg-muted)}
+
+/* Terminal card in hero */
+.hero-terminal{
+  max-width:680px;margin:0 auto;text-align:left;
+  background:rgba(0,0,0,0.4);border:1px solid var(--border);
+  border-radius:var(--radius-md);overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.4);
+}
+.term-bar{
+  display:flex;align-items:center;gap:8px;padding:12px 16px;
+  background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);
+}
+.term-dot{width:10px;height:10px;border-radius:50%}
+.term-dot.r{background:#ff5f57}
+.term-dot.y{background:#ffbd2e}
+.term-dot.g{background:#28ca41}
+.term-label{margin-left:8px;font:12px var(--font-mono);color:var(--fg-muted)}
+.term-body{padding:16px 20px;font:13px/1.8 var(--font-mono)}
+.term-body .line{display:flex;gap:10px;margin-bottom:4px}
+.term-body .prompt{color:var(--accent);user-select:none;flex-shrink:0}
+.term-body .cmd{color:var(--fg)}
+.term-body .out{color:var(--cyan);padding-left:24px}
+.term-body .out.success{color:#28ca41}
+.term-cursor{display:inline-block;width:7px;height:14px;background:var(--accent);margin-left:2px;vertical-align:text-bottom;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* ============================================================
+   STATS BAND
+   ============================================================ */
+.stats-band{
+  padding:64px 24px;background:var(--bg-alt);
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+}
+.stats-grid{
+  max-width:var(--max-w);margin:0 auto;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:32px;
+}
+.stat-item{text-align:center}
+.stat-num{
+  font-size:clamp(32px,4vw,48px);font-weight:800;letter-spacing:-1px;
+  background:var(--gradient-accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  line-height:1.1;
+}
+.stat-label{font-size:14px;color:var(--fg-muted);margin-top:4px;font-weight:500}
+
+/* ============================================================
+   SECTION COMMON
+   ============================================================ */
+section{padding:100px 24px}
+.section-inner{max-width:var(--max-w);margin:0 auto}
+.section-header{text-align:center;margin-bottom:60px}
+.section-header .eyebrow{
+  display:inline-block;font:600 13px var(--font-mono);color:var(--accent);
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;
+}
+.section-header h2{
+  font-size:clamp(30px,4vw,44px);font-weight:800;letter-spacing:-1px;
+  line-height:1.15;margin-bottom:14px;color:var(--fg);
+}
+.section-header p{font-size:17px;color:var(--fg-secondary);max-width:520px;margin:0 auto;line-height:1.7}
+
+/* ============================================================
+   FEATURES
+   ============================================================ */
+.features-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:20px;
+}
+@media(max-width:900px){.features-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.features-grid{grid-template-columns:1fr}}
+.feature-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-md);padding:32px 28px;
+  transition:all .35s;position:relative;overflow:hidden;
+}
+.feature-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--gradient-accent);opacity:0;transition:opacity .35s;
+}
+.feature-card:hover{transform:translateY(-4px);border-color:rgba(123,97,255,0.25);box-shadow:0 12px 40px rgba(0,0,0,0.3)}
+.feature-card:hover::before{opacity:1}
+.feature-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:18px;background:rgba(123,97,255,0.1)}
+.feature-card h3{font-size:18px;font-weight:700;margin-bottom:10px;color:var(--fg)}
+.feature-card p{font-size:14px;color:var(--fg-secondary);line-height:1.7}
+.feature-tag{
+  display:inline-block;margin-top:14px;padding:3px 10px;border-radius:6px;
+  font:11px var(--font-mono);background:rgba(0,212,255,0.08);color:var(--cyan);
+  border:1px solid rgba(0,212,255,0.12);
+}
+
+/* ============================================================
+   DEMO SECTION
+   ============================================================ */
+.demo-section{background:var(--bg-alt)}
+.demo-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;
+}
+@media(max-width:860px){.demo-grid{grid-template-columns:1fr}}
+.demo-text h3{font-size:28px;font-weight:700;margin-bottom:14px;letter-spacing:-.5px}
+.demo-text p{color:var(--fg-secondary);font-size:15px;line-height:1.7;margin-bottom:20px}
+.demo-steps{list-style:none;display:flex;flex-direction:column;gap:12px}
+.demo-steps li{
+  display:flex;align-items:center;gap:12px;padding:14px 18px;
+  background:var(--surface);border-radius:var(--radius-sm);
+  border:1px solid var(--border);font-size:14px;font-weight:500;
+}
+.demo-steps li .step-num{
+  width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  background:var(--gradient-accent);color:#fff;font:600 13px var(--font-mono);flex-shrink:0;
+}
+.demo-terminal{
+  background:rgba(0,0,0,0.5);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;
+}
+.demo-term-body{padding:20px;font:13px/1.9 var(--font-mono)}
+.demo-term-body .l{display:flex;gap:10px;margin-bottom:2px}
+.demo-term-body .p{color:var(--accent);flex-shrink:0}
+.demo-term-body .d{color:var(--cyan)}
+.demo-term-body .s{color:#28ca41}
+
+/* ============================================================
+   COMPARISON TABLE
+   ============================================================ */
+.table-wrap{overflow-x:auto;border-radius:var(--radius-md);border:1px solid var(--border)}
+.comparison-table{width:100%;border-collapse:collapse;font-size:14px;min-width:620px}
+.comparison-table th,.comparison-table td{padding:14px 18px;text-align:center;border-bottom:1px solid var(--border)}
+.comparison-table th{background:rgba(123,97,255,0.06);font-weight:600;color:var(--fg-secondary);font-size:13px}
+.comparison-table th:first-child,.comparison-table td:first-child{text-align:left;font-weight:500}
+.comparison-table th.highlight{background:rgba(255,105,0,0.1);color:var(--accent)}
+.comparison-table td.highlight{background:rgba(255,105,0,0.04);color:var(--fg)}
+.comparison-table td .check{color:#28ca41}
+.comparison-table td .cross{color:#ff4757;opacity:.6}
+.comparison-table td .warn{color:#ffbd2e}
+.comparison-table tr:last-child td{border-bottom:none}
+.comparison-table tr:hover td{background:rgba(255,255,255,0.02)}
+
+/* ============================================================
+   MCP TOOLS
+   ============================================================ */
+.tools-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+.tool-card{
+  display:flex;gap:16px;padding:20px 24px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
+  transition:all .25s;align-items:center;
+}
+.tool-card:hover{border-color:rgba(123,97,255,0.2)}
+.tool-method{
+  padding:4px 12px;border-radius:6px;font:600 11px var(--font-mono);
+  background:rgba(0,212,255,0.1);color:var(--cyan);white-space:nowrap;flex-shrink:0;
+}
+.tool-card .tool-name{font:600 14px var(--font-mono);color:var(--fg);flex-shrink:0}
+.tool-card .tool-desc{font-size:13px;color:var(--fg-secondary);flex:1}
+
+/* ============================================================
+   USE CASES
+   ============================================================ */
+.uc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:768px){.uc-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.uc-grid{grid-template-columns:1fr}}
+.uc-card{
+  padding:24px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-sm);transition:all .3s;
+}
+.uc-card:hover{background:var(--surface-hover);transform:translateY(-2px)}
+.uc-card .uc-emoji{font-size:28px;margin-bottom:10px}
+.uc-card h4{font-size:15px;font-weight:700;margin-bottom:6px;color:var(--fg)}
+.uc-card p{font-size:13px;color:var(--fg-secondary);line-height:1.6}
+
+/* ============================================================
+   CTA
+   ============================================================ */
+.cta-section{text-align:center;padding:120px 24px;position:relative}
+.cta-section::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 800px 400px at 50% 50%,rgba(123,97,255,0.06) 0%,transparent 70%);
+  pointer-events:none;
+}
+.cta-inner{position:relative;max-width:640px;margin:0 auto}
+.cta-inner h2{font-size:clamp(32px,5vw,52px);font-weight:800;letter-spacing:-1.5px;margin-bottom:16px;line-height:1.1}
+.cta-inner p{color:var(--fg-secondary);font-size:17px;margin-bottom:36px}
+.cta-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.cta-badges{display:flex;gap:8px;justify-content:center;margin-top:32px;flex-wrap:wrap}
+.cta-badges img{height:22px;border-radius:4px;opacity:.6}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+footer{
+  border-top:1px solid var(--border);padding:40px 24px;
+  text-align:center;color:var(--fg-muted);font-size:13px;
+}
+footer .links{display:flex;gap:24px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}
+footer .links a{color:var(--fg-secondary);text-decoration:none;font-size:13px}
+footer .links a:hover{color:var(--fg)}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.hero-content{animation:fadeUp .8s ease-out}
+.stagger > *{animation:fadeUp .5s ease-out both}
+.stagger > *:nth-child(1){animation-delay:.1s}
+.stagger > *:nth-child(2){animation-delay:.2s}
+.stagger > *:nth-child(3){animation-delay:.3s}
+.stagger > *:nth-child(4){animation-delay:.4s}
+.stagger > *:nth-child(5){animation-delay:.5s}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media(max-width:768px){
+  .nav-links a:not(.nav-cta){display:none}
+  section{padding:72px 20px}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:24px}
+  .feature-card{padding:24px 20px}
+}
+
+/* ============================================================
+   SCROLL REVEAL
+   ============================================================ */
+.reveal{opacity:0;transform:translateY(30px);transition:all .7s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ====== NAV ====== -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-brand">
+      <img src="assets/img/favicon.svg" alt="">Cortex
+    </a>
+    <div class="nav-links">
+      <a href="#features">特性</a>
+      <a href="#demo">演示</a>
+      <a href="#tools">MCP 工具</a>
+      <a href="#comparison">对比</a>
+      <a href="https://github.com/lh123aa/cortex" class="nav-cta" target="_blank">GitHub ⭐</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ====== HERO ====== -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 110 16A8 8 0 018 0zm0 2a6 6 0 100 12A6 6 0 008 2zm0 2a1 1 0 011 1v3a1 1 0 01-2 0V5a1 1 0 011-1z"/></svg>
+      v2.2 已发布 · 纯 Go · 零 CGO
+    </div>
+    <h1>AI Agent 的<em>第二大脑</em></h1>
+    <p class="hero-lead">
+      单二进制本地知识库引擎 · 原生 MCP 协议支持<br>
+      混合搜索 + Agent 记忆系统 · 100% 本地运行 · MIT 开源
+    </p>
+    <div class="hero-actions">
+      <a href="https://github.com/lh123aa/cortex" class="btn btn-primary" target="_blank">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        下载 &nbsp;·&nbsp; Star
+      </a>
+      <a href="#features" class="btn btn-secondary">了解特性 →</a>
+    </div>
+
+    <!-- Terminal Demo -->
+    <div class="hero-terminal">
+      <div class="term-bar">
+        <span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span>
+        <span class="term-label">cortex — bash</span>
+      </div>
+      <div class="term-body">
+        <div class="line"><span class="prompt">$</span><span class="cmd">curl -fsSL https://github.com/lh123aa/cortex/releases/latest/download/cortex-linux-amd64.zip | unzip -</span></div>
+        <div class="out success">✅ 下载完成 · 单文件 12MB</div>
+        <div class="line"><span class="prompt">$</span><span class="cmd">chmod +x cortex && ./cortex index ~/my-docs</span></div>
+        <div class="out success">✅ 索引完成: 42 文件 · 1,247 分块 · 12.3s</div>
+        <div class="line"><span class="prompt">$</span><span class="cmd">./cortex mcp</span></div>
+        <div class="out">🧠 MCP 服务器已启动 · 5 个工具就绪<span class="term-cursor"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== STATS ====== -->
+<div class="stats-band reveal">
+  <div class="stats-grid">
+    <div class="stat-item"><div class="stat-num">114</div><div class="stat-label">单元测试 · 全部通过</div></div>
+    <div class="stat-item"><div class="stat-num">&lt;50ms</div><div class="stat-label">搜索 P50 延迟</div></div>
+    <div class="stat-item"><div class="stat-num">5</div><div class="stat-label">MCP 内置工具</div></div>
+    <div class="stat-item"><div class="stat-num">39</div><div class="stat-label">Prometheus 指标</div></div>
+  </div>
+</div>
+
+<!-- ====== FEATURES ====== -->
+<section id="features" class="reveal">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="eyebrow">核心能力</div>
+      <h2>专为 AI Agent 场景设计</h2>
+      <p>一个二进制文件整合了知识库所需的一切能力</p>
+    </div>
+    <div class="features-grid stagger">
+      <div class="feature-card">
+        <div class="feature-icon">🚀</div>
+        <h3>单二进制部署</h3>
+        <p>下载即运行，零外部依赖。不需要 Python、Node.js、Docker。甚至不需要 Ollama。</p>
+        <span class="feature-tag">curl → unzip → run</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔌</div>
+        <h3>MCP 协议原生</h3>
+        <p>5 个内置 MCP 工具。任何支持 MCP 的 Agent（Claude Code、OpenCode 等）开箱即用。</p>
+        <span class="feature-tag">cortex_search · cortex_memory_write</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🧠</div>
+        <h3>Agent 记忆系统</h3>
+        <p>跨会话持久化记忆。Agent 能够记住用户偏好、历史上下文和工作状态。</p>
+        <span class="feature-tag">写入 · 搜索 · 删除</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <h3>混合搜索</h3>
+        <p>HNSW 向量语义 + BM25 关键词 + RRF 融合排序，精准召回每一份相关文档。</p>
+        <span class="feature-tag">向量 + 全文 + 重排序</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>L1+L2 两级缓存</h3>
+        <p>内存 + SQLite 两级缓存架构，热点搜索毫秒级响应，吞吐量提升 10 倍。</p>
+        <span class="feature-tag">go-cache + SQLite</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>Prometheus 监控</h3>
+        <p>内置 39 个生产级监控指标，开箱即用的可观测性，放心上生产环境。</p>
+        <span class="feature-tag">:9090/metrics</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== DEMO ====== -->
+<section id="demo" class="demo-section reveal">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="eyebrow">快速上手</div>
+      <h2>10 秒接入你的 AI Agent</h2>
+      <p>从下载到让 Agent 拥有知识库，只需 4 步</p>
+    </div>
+    <div class="demo-grid">
+      <div class="demo-text">
+        <ul class="demo-steps">
+          <li><span class="step-num">1</span>下载单二进制文件</li>
+          <li><span class="step-num">2</span>索引你的文档目录</li>
+          <li><span class="step-num">3</span>启动 MCP 服务器</li>
+          <li><span class="step-num">4</span>在 Agent 中配置使用</li>
+        </ul>
+        <p style="margin-top:18px">支持 Markdown、PDF、DOCX、代码文件、配置文件…… 覆盖你的所有文档类型。</p>
+      </div>
+      <div class="demo-terminal">
+        <div class="term-bar">
+          <span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span>
+          <span class="term-label">快速搜索演示</span>
+        </div>
+        <div class="demo-term-body">
+          <div class="l"><span class="p">$</span><span class="cmd">./cortex search "Go concurrency"</span></div>
+          <div class="l" style="margin-top:8px"><span class="p">#1</span><span class="s">Score: 0.97</span></div>
+          <div class="l"><span class="p"></span><span class="cmd">Go Concurrency Guide — goroutines & channels</span></div>
+          <div class="l" style="margin-top:6px"><span class="p">#2</span><span class="s">Score: 0.88</span></div>
+          <div class="l"><span class="p"></span><span class="cmd">Effective Go — Channel patterns</span></div>
+          <div class="l" style="margin-top:10px"><span class="p">$</span><span class="cmd">./cortex mcp</span></div>
+          <div class="l"><span class="p"></span><span class="d">🧠 MCP server ready · 5 tools available</span></div>
+          <div class="l"><span class="p"></span><span class="s">├─ cortex_search      Hybrid search</span></div>
+          <div class="l"><span class="p"></span><span class="s">├─ cortex_context     RAG context</span></div>
+          <div class="l"><span class="p"></span><span class="s">├─ cortex_memory_write</span></div>
+          <div class="l"><span class="p"></span><span class="s">├─ cortex_memory_search</span></div>
+          <div class="l"><span class="p"></span><span class="s">└─ cortex_memory_delete</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== COMPARISON ====== -->
+<section id="comparison" class="reveal">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="eyebrow">为什么选 Cortex</div>
+      <h2>与同类产品的全面对比</h2>
+      <p>唯一一个同时具备单二进制 + MCP 原生 + 记忆系统 + 混合搜索 + 监控的方案</p>
+    </div>
+    <div class="table-wrap">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th class="highlight">🚀 Cortex</th>
+            <th>Mem0</th>
+            <th>ChromaDB</th>
+            <th>Dify</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>部署方式</td>
+            <td class="highlight"><span class="check">✔</span> <strong>单二进制</strong></td>
+            <td><span class="warn">⚠</span> pip/Docker</td>
+            <td><span class="warn">⚠</span> pip/Docker</td>
+            <td><span class="cross">✘</span> Docker Compose</td>
+          </tr>
+          <tr>
+            <td>外部依赖</td>
+            <td class="highlight"><span class="check">✔</span> <strong>零依赖</strong></td>
+            <td><span class="cross">✘</span> 需 LLM API</td>
+            <td><span class="check">✔</span> 无</td>
+            <td><span class="cross">✘</span> 多服务</td>
+          </tr>
+          <tr>
+            <td>MCP 原生</td>
+            <td class="highlight"><span class="check">✔</span> <strong>5 个工具</strong></td>
+            <td><span class="warn">⚠</span> 插件集成</td>
+            <td><span class="cross">✘</span> 不支持</td>
+            <td><span class="check">✔</span> 1-2 个</td>
+          </tr>
+          <tr>
+            <td>Agent 记忆</td>
+            <td class="highlight"><span class="check">✔</span> <strong>内置系统</strong></td>
+            <td><span class="check">✔</span> 专注记忆</td>
+            <td><span class="cross">✘</span> 无</td>
+            <td><span class="warn">⚠</span> 基础</td>
+          </tr>
+          <tr>
+            <td>混合搜索</td>
+            <td class="highlight"><span class="check">✔</span> <strong>向量+BM25+RRF</strong></td>
+            <td><span class="check">✔</span> 混合搜索</td>
+            <td><span class="check">✔</span> 向量/混合</td>
+            <td><span class="warn">⚠</span> 依赖后端</td>
+          </tr>
+          <tr>
+            <td>内置监控</td>
+            <td class="highlight"><span class="check">✔</span> <strong>Prometheus</strong></td>
+            <td><span class="warn">⚠</span> Dashboard</td>
+            <td><span class="cross">✘</span> 无</td>
+            <td><span class="check">✔</span> Grafana</td>
+          </tr>
+          <tr>
+            <td>隐私保护</td>
+            <td class="highlight"><span class="check">✔</span> <strong>100% 本地</strong></td>
+            <td><span class="warn">⚠</span> 本地/云</td>
+            <td><span class="check">✔</span> 完全本地</td>
+            <td><span class="warn">⚠</span> 本地/云</td>
+          </tr>
+          <tr>
+            <td>开源协议</td>
+            <td class="highlight"><span class="check">✔</span> <strong>MIT</strong></td>
+            <td><span class="check">✔</span> Apache 2.0</td>
+            <td><span class="check">✔</span> Apache 2.0</td>
+            <td><span class="warn">⚠</span> 附加条款</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ====== MCP TOOLS ====== -->
+<section id="tools" class="demo-section reveal">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="eyebrow">MCP 工具集</div>
+      <h2>AI Agent 开箱即用</h2>
+      <p>5 个精心设计的工具，覆盖知识库与记忆的全部场景</p>
+    </div>
+    <div class="tools-grid stagger">
+      <div class="tool-card">
+        <span class="tool-method">GET</span>
+        <span class="tool-name">cortex_search</span>
+        <span class="tool-desc">混合搜索 · 向量 + BM25 融合</span>
+      </div>
+      <div class="tool-card">
+        <span class="tool-method">GET</span>
+        <span class="tool-name">cortex_context</span>
+        <span class="tool-desc">RAG 上下文组装</span>
+      </div>
+      <div class="tool-card">
+        <span class="tool-method">POST</span>
+        <span class="tool-name">cortex_memory_write</span>
+        <span class="tool-desc">写入 Agent 记忆</span>
+      </div>
+      <div class="tool-card">
+        <span class="tool-method">GET</span>
+        <span class="tool-name">cortex_memory_search</span>
+        <span class="tool-desc">搜索历史记忆</span>
+      </div>
+      <div class="tool-card">
+        <span class="tool-method">DEL</span>
+        <span class="tool-name">cortex_memory_delete</span>
+        <span class="tool-desc">删除记忆条目</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== USE CASES ====== -->
+<section class="reveal">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="eyebrow">适用场景</div>
+      <h2>不止于搜索</h2>
+      <p>从个人开发到企业部署，总有一种方式适合你</p>
+    </div>
+    <div class="uc-grid stagger">
+      <div class="uc-card">
+        <div class="uc-emoji">🤖</div>
+        <h4>AI Agent 记忆</h4>
+        <p>Claude Code / OpenCode 跨会话记住用户偏好和历史</p>
+      </div>
+      <div class="uc-card">
+        <div class="uc-emoji">📚</div>
+        <h4>团队知识库</h4>
+        <p>Wiki、技术文档、项目规范索引为可搜索 RAG 知识库</p>
+      </div>
+      <div class="uc-card">
+        <div class="uc-emoji">🔍</div>
+        <h4>代码语义搜索</h4>
+        <p>用自然语言搜索函数、类和实现，告别 grep</p>
+      </div>
+      <div class="uc-card">
+        <div class="uc-emoji">🏢</div>
+        <h4>企业内部文档</h4>
+        <p>员工手册、产品文档内部私密检索，数据不出内网</p>
+      </div>
+      <div class="uc-card">
+        <div class="uc-emoji">🧪</div>
+        <h4>RAG 后端</h4>
+        <p>作为 RAG pipeline 检索层，REST API + MCP 双协议</p>
+      </div>
+      <div class="uc-card">
+        <div class="uc-emoji">🔐</div>
+        <h4>隐私敏感场景</h4>
+        <p>金融、医疗、法律 —— 100% 本地部署，数据零泄漏</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== CTA ====== -->
+<section class="cta-section reveal">
+  <div class="cta-inner">
+    <h2>🧠 让 AI Agent 拥有记忆</h2>
+    <p>单二进制 · 零配置 · MCP 原生 · 100% 本地 · MIT 开源<br>现在开始，只需一个命令</p>
+    <div class="cta-actions">
+      <a href="https://github.com/lh123aa/cortex" class="btn btn-primary" target="_blank">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub · 点 Star 支持
+      </a>
+      <a class="btn btn-outline" onclick="document.querySelector('.hero-terminal').scrollIntoView({behavior:'smooth'})">查看快速上手</a>
+    </div>
+    <div class="cta-badges">
+      <img src="https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go" alt="Go">
+      <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT">
+      <img src="https://img.shields.io/badge/Tests-114_passing-brightgreen" alt="Tests">
+      <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex" alt="Go Report Card">
+      <img src="https://img.shields.io/github/stars/lh123aa/cortex" alt="Stars">
+    </div>
+  </div>
+</section>
+
+<!-- ====== FOOTER ====== -->
+<footer>
+  <div class="links">
+    <a href="https://github.com/lh123aa/cortex" target="_blank">GitHub</a>
+    <a href="https://github.com/lh123aa/cortex/releases" target="_blank">Releases</a>
+    <a href="https://github.com/lh123aa/cortex/issues" target="_blank">Issues</a>
+    <a href="https://github.com/lh123aa/cortex/discussions" target="_blank">Discussions</a>
+    <a href="README.md">文档</a>
+  </div>
+  <p>MIT License · 开源免费 · 商用自由</p>
+  <p style="margin-top:4px">🧠 Cortex v2.2 — 让 AI Agent 拥有记忆</p>
+</footer>
+
+<!-- ====== SCROLL REVEAL ====== -->
+<script>
+const observer = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){entry.target.classList.add('visible');observer.unobserve(entry.target)}
+  })
+},{threshold:0.12});
+document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+</script>
+
+</body>
+</html>

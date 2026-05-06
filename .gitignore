@@ -26,6 +26,14 @@ cortex
 .DS_Store
 Thumbs.db
 
+# Build output
+bin/
+
+# Release downloads (too large for git, use GitHub Releases instead)
+downloads/*.zip
+downloads/*.exe
+downloads/*.gz
+
 # Dependencies (go mod tidy)
 vendor/
 

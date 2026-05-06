@@ -1,14 +1,39 @@
 <p align="center">
+  <img src="docs/assets/img/cortex-logo-static.svg" width="120" height="120" alt="Cortex Logo">
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go" alt="Go">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
   <img src="https://img.shields.io/badge/Version-2.2-blue?style=for-the-badge" alt="v2.2">
-  <img src="https://img.shields.io/badge/Code_Quality-100%25-brightgreen?style=for-the-badge" alt="Quality">
+  <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
   <img src="https://img.shields.io/badge/Tests-114_passing-green?style=for-the-badge" alt="Tests">
   <img src="https://img.shields.io/badge/MCP-Native-7B61FF?style=for-the-badge" alt="MCP">
+  <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
+  <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
 </p>
 
 <h1 align="center">🧠 Cortex</h1>
 <h3 align="center">The Second Brain for AI Agents — Local Knowledge Base · Single Binary · MCP Native</h3>
+
+<p align="center">
+  <b>Cortex</b> is a local knowledge base engine purpose-built for AI Agents. One single binary, native <b>MCP protocol</b> support, built-in <b>hybrid search</b> (Vector + BM25) and <b>Agent Memory System</b>. 100% local, zero external dependencies.
+</p>
+<p align="center">
+  Give Claude Code, OpenCode, Cursor and other AI Agents a permanent memory 🧠
+</p>
+<p align="center">
+  <a href="https://github.com/lh123aa/cortex"><b>GitHub</b></a> ·
+  <a href="https://lh123aa.github.io/cortex/"><b>🎨 Landing Page</b></a>
+</p>
+
+<p align="center">
+  <a href="docs/index.html">
+    <img src="docs/assets/img/terminal-demo.svg" width="100%" alt="Terminal Demo" style="max-width:720px;border-radius:16px;border:1px solid rgba(123,97,255,0.15);">
+  </a>
+  <br>
+  <sub>⬆️ Click to view the full landing page (Xiaomi/Mimo style)</sub>
+</p>
 
 <p align="center">
   <a href="#-product-comparison">📊 Comparison</a> ·
@@ -155,6 +180,19 @@
 </table>
 
 > **Cortex Differentiator**: The only tool that combines single-binary deployment + native MCP protocol + built-in agent memory + hybrid search + Prometheus monitoring — purpose-built for AI Agent scenarios.
+
+---
+
+## 🎯 Use Cases
+
+| Use Case | Description |
+|----------|-------------|
+| 🤖 **AI Agent Memory** | Give Claude Code / OpenCode / Cursor persistent memory across sessions |
+| 📚 **Team Knowledge Base** | Index team wikis, technical docs, and project specs into a searchable RAG knowledge base |
+| 🔍 **Codebase Search** | Index Go/Python/JS code for natural language semantic search |
+| 🏢 **Enterprise Docs** | Private, local document retrieval for internal knowledge—data never leaves your network |
+| 🧪 **RAG Backend** | Serve as the retrieval layer for RAG pipelines via REST API and MCP dual protocol |
+| 🔐 **Privacy-First** | Finance, healthcare, legal — deploy 100% locally for sensitive data |
 
 ---
 
@@ -384,17 +422,43 @@ go test ./...                     # 114 tests
 
 ---
 
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=lh123aa/cortex&type=Date)](https://star-history.com/#lh123aa/cortex&Date)
+
+---
+
+## 💬 Community & Support
+
+- ⭐ **Star the repo** — The best way to show support
+- 🐛 **Report bugs** — [Open an Issue](https://github.com/lh123aa/cortex/issues)
+- 💡 **Feature ideas** — [Start a Discussion](https://github.com/lh123aa/cortex/discussions)
+- 📣 **Share it** — Recommend Cortex on HN, Reddit, Twitter
+- 🤝 **Contribute** — Read [CONTRIBUTING.md](CONTRIBUTING.md)
+
 ## 🔗 Resources
 
-- [MCP Protocol Specification](https://modelcontextprotocol.io)
+- [MCP Protocol Specification](https://modelcontextprotocol.io) — AI Agent communication standard
 - [Ollama](https://ollama.ai) — Local LLM & Embedding
 - [OpenCode](https://opencode.ai) — AI Agent Framework
-- [Awesome MCP Servers](https://github.com/lh123aa/awesome-mcp-servers)
+- [Awesome MCP Servers](https://github.com/lh123aa/awesome-mcp-servers) — MCP server list
 
 ---
 
 <p align="center">
   <strong>🧠 Cortex v2.2 — Give AI Agents a Memory</strong>
   <br>
-  <sub>Single Binary · Zero Config · MCP Native · 100% Local</sub>
+  <sub>Single Binary · Zero Config · MCP Native · 100% Local · MIT License</sub>
+</p>
+
+<p align="center">
+  <a href="https://github.com/lh123aa/cortex/stargazers">
+    <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=social" alt="Star">
+  </a>
+  <a href="https://github.com/lh123aa/cortex/forks">
+    <img src="https://img.shields.io/github/forks/lh123aa/cortex?style=social" alt="Fork">
+  </a>
+  <a href="https://github.com/lh123aa/cortex">
+    <img src="https://img.shields.io/github/followers/lh123aa?style=social" alt="Follow">
+  </a>
 </p>

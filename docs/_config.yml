@@ -1,0 +1,17 @@
+title: 🧠 Cortex - AI Agent 的第二大脑
+description: 单二进制本地知识库引擎，MCP 原生支持，混合搜索与 Agent 记忆系统
+email:
+twitter_username:
+github_username: lh123aa
+
+# GitHub Pages settings
+theme: null
+remote_theme: null
+plugins: []
+
+# Disable Jekyll
+markdown: none
+exclude:
+  - README.md
+  - README.en.md
+  - promotion/
