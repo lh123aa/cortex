@@ -102,9 +102,12 @@ func TestMCPSearchHandler_EmptyQuery(t *testing.T) {
 	defer cleanup()
 
 	req := makeArgs(t, SearchArgs{Query: "", TopK: 5})
-	_, _, err := srv.handleSearchTool(context.Background(), req, SearchArgs{Query: "", TopK: 5})
-	if err == nil {
-		t.Fatal("expected error for empty query")
+	result, _, err := srv.handleSearchTool(context.Background(), req, SearchArgs{Query: "", TopK: 5})
+	if err != nil {
+		t.Fatal("expected no error from handler (error should be in result)")
+	}
+	if result == nil || !result.IsError {
+		t.Fatal("expected IsError=true for empty query")
 	}
 }
 
@@ -140,9 +143,12 @@ func TestMCPContextHandler_EmptyQuery(t *testing.T) {
 	srv, _, cleanup := setupMCPTest(t)
 	defer cleanup()
 
-	_, _, err := srv.handleContextTool(context.Background(), nil, ContextArgs{Query: "", TokenBudget: 500})
-	if err == nil {
-		t.Fatal("expected error for empty query")
+	result, _, err := srv.handleContextTool(context.Background(), nil, ContextArgs{Query: "", TokenBudget: 500})
+	if err != nil {
+		t.Fatal("expected no error from handler (error should be in result)")
+	}
+	if result == nil || !result.IsError {
+		t.Fatal("expected IsError=true for empty query")
 	}
 }
 
@@ -176,9 +182,12 @@ func TestMCPMemoryWriteHandler_EmptyContent(t *testing.T) {
 	srv, _, cleanup := setupMCPTest(t)
 	defer cleanup()
 
-	_, _, err := srv.handleMemoryWriteTool(context.Background(), nil, MemoryWriteArgs{Content: ""})
-	if err == nil {
-		t.Fatal("expected error for empty content")
+	result, _, err := srv.handleMemoryWriteTool(context.Background(), nil, MemoryWriteArgs{Content: ""})
+	if err != nil {
+		t.Fatal("expected no error from handler (error should be in result)")
+	}
+	if result == nil || !result.IsError {
+		t.Fatal("expected IsError=true for empty content")
 	}
 }
 
@@ -221,9 +230,12 @@ func TestMCPMemorySearchHandler_EmptyQuery(t *testing.T) {
 	srv, _, cleanup := setupMCPTest(t)
 	defer cleanup()
 
-	_, _, err := srv.handleMemorySearchTool(context.Background(), nil, MemorySearchArgs{Query: ""})
-	if err == nil {
-		t.Fatal("expected error for empty query")
+	result, _, err := srv.handleMemorySearchTool(context.Background(), nil, MemorySearchArgs{Query: ""})
+	if err != nil {
+		t.Fatal("expected no error from handler (error should be in result)")
+	}
+	if result == nil || !result.IsError {
+		t.Fatal("expected IsError=true for empty query")
 	}
 }
 
@@ -242,9 +254,12 @@ func TestMCPMemoryDeleteHandler_EmptyID(t *testing.T) {
 	srv, _, cleanup := setupMCPTest(t)
 	defer cleanup()
 
-	_, _, err := srv.handleMemoryDeleteTool(context.Background(), nil, MemoryDeleteArgs{ID: ""})
-	if err == nil {
-		t.Fatal("expected error for empty id")
+	result, _, err := srv.handleMemoryDeleteTool(context.Background(), nil, MemoryDeleteArgs{ID: ""})
+	if err != nil {
+		t.Fatal("expected no error from handler (error should be in result)")
+	}
+	if result == nil || !result.IsError {
+		t.Fatal("expected IsError=true for empty id")
 	}
 }
 

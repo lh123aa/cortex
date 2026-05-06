@@ -29,6 +29,14 @@ var (
 	Date    = "unknown"
 )
 
+// toolError 创建标准 MCP 错误响应
+func toolError(msg string) *mcp.CallToolResult {
+	return &mcp.CallToolResult{
+		IsError: true,
+		Content: []mcp.Content{&mcp.TextContent{Text: msg}},
+	}
+}
+
 // Tool input schemas
 // Note: jsonschema tag value is the description text (jsonschema-go v0.3.0 format).
 // Required fields are inferred from JSON tags: fields without "omitempty" are required.
@@ -139,10 +147,10 @@ func (s *MCPServer) registerTools() {
 func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
 	// 参数校验
 	if args.Query == "" {
-		return nil, nil, fmt.Errorf("query is required")
+		return toolError("query is required"), nil, nil
 	}
 	if len(args.Query) > 5000 {
-		return nil, nil, fmt.Errorf("query too long (max 5000 characters)")
+		return toolError("query too long (max 5000 characters)"), nil, nil
 	}
 
 	topK := args.TopK
@@ -157,7 +165,7 @@ func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolReque
 	results, err := s.search.Search(ctx, args.Query, opts)
 	if err != nil {
 		s.logger.Error("mcp tool execution failed on search", zap.Error(err))
-		return nil, nil, fmt.Errorf("search operational error: %v", err)
+		return toolError(fmt.Sprintf("search error: %v", err)), nil, nil
 	}
 
 	var sb strings.Builder
@@ -178,10 +186,10 @@ func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolReque
 func (s *MCPServer) handleContextTool(ctx context.Context, req *mcp.CallToolRequest, args ContextArgs) (*mcp.CallToolResult, any, error) {
 	// 参数校验
 	if args.Query == "" {
-		return nil, nil, fmt.Errorf("query is required")
+		return toolError("query is required"), nil, nil
 	}
 	if len(args.Query) > 5000 {
-		return nil, nil, fmt.Errorf("query too long (max 5000 characters)")
+		return toolError("query too long (max 5000 characters)"), nil, nil
 	}
 
 	budget := args.TokenBudget
@@ -206,7 +214,7 @@ func (s *MCPServer) handleContextTool(ctx context.Context, req *mcp.CallToolRequ
 
 func (s *MCPServer) handleMemoryWriteTool(ctx context.Context, req *mcp.CallToolRequest, args MemoryWriteArgs) (*mcp.CallToolResult, any, error) {
 	if args.Content == "" {
-		return nil, nil, fmt.Errorf("content is required")
+		return toolError("content is required"), nil, nil
 	}
 
 	userID := s.userID
@@ -281,7 +289,7 @@ func (s *MCPServer) handleMemoryWriteTool(ctx context.Context, req *mcp.CallTool
 
 func (s *MCPServer) handleMemorySearchTool(ctx context.Context, req *mcp.CallToolRequest, args MemorySearchArgs) (*mcp.CallToolResult, any, error) {
 	if args.Query == "" {
-		return nil, nil, fmt.Errorf("query is required")
+		return toolError("query is required"), nil, nil
 	}
 
 	topK := args.TopK
@@ -323,7 +331,7 @@ func (s *MCPServer) handleMemorySearchTool(ctx context.Context, req *mcp.CallToo
 
 func (s *MCPServer) handleMemoryDeleteTool(ctx context.Context, req *mcp.CallToolRequest, args MemoryDeleteArgs) (*mcp.CallToolResult, any, error) {
 	if args.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
+		return toolError("id is required"), nil, nil
 	}
 
 	if err := s.storage.DeleteDocumentByPath(fmt.Sprintf("memory://%s", args.ID), s.userID); err != nil {

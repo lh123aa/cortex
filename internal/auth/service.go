@@ -19,6 +19,7 @@ import (
 // 错误定义
 var (
 	ErrUserNotFound      = errors.New("user not found")
+	ErrUserDeactivated   = errors.New("account deactivated")
 	ErrInvalidPassword   = errors.New("invalid password")
 	ErrUserExists        = errors.New("user already exists")
 	ErrInvalidToken      = errors.New("invalid token")
@@ -151,7 +152,7 @@ func (s *AuthService) Login(req *models.LoginRequest) (*models.AuthToken, error)
 	}
 
 	if !user.IsActive {
-		return nil, ErrUserNotFound
+		return nil, ErrUserDeactivated
 	}
 
 	// 验证密码

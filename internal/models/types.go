@@ -40,6 +40,7 @@ type Chunk struct {
 // SearchOptions 控制搜索参数
 type SearchOptions struct {
 	TopK        int      `json:"top_k"`
+	Offset      int      `json:"offset"`       // 分页偏移
 	Mode        string   `json:"mode"`         // hybrid/vector/fts
 	Filter      string   `json:"filter"`       // 路径过滤
 	TokenBudget int      `json:"token_budget"` // RAG模式Token预算

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -30,6 +31,7 @@ var (
 	topK        int
 	mode        string
 	tokenBudget int
+	jsonOutput  bool
 )
 
 var rootCmd = &cobra.Command{
@@ -85,6 +87,8 @@ func init() {
 
 	searchCmd.Flags().IntVarP(&topK, "top-k", "k", 10, "number of results to return")
 	searchCmd.Flags().StringVarP(&mode, "mode", "m", "hybrid", "search mode (vector/bm25/hybrid)")
+	searchCmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "output as JSON")
+	statusCmd.Flags().BoolVarP(&jsonOutput, "json", "j", false, "output as JSON")
 
 	contextCmd.Flags().IntVarP(&tokenBudget, "tokens", "t", 4000, "token budget for context")
 
@@ -288,6 +292,30 @@ func runSearch(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	if jsonOutput {
+		type jsonResult struct {
+			Rank    int     `json:"rank"`
+			Score   float64 `json:"score"`
+			Path    string  `json:"path"`
+			Section string  `json:"section"`
+			Content string  `json:"content"`
+		}
+		var jr []jsonResult
+		for i, r := range results {
+			jr = append(jr, jsonResult{
+				Rank:    i + 1,
+				Score:   r.Score,
+				Path:    r.Chunk.DocumentID,
+				Section: r.Chunk.HeadingPath,
+				Content: r.Chunk.ContentRaw,
+			})
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		enc.Encode(jr)
+		return
+	}
+
 	for i, r := range results {
 		fmt.Printf("%d. [Score: %.4f] %s\n", i+1, r.Score, r.Chunk.HeadingPath)
 		fmt.Printf("   %s\n", r.Chunk.DocumentID)
@@ -480,6 +508,19 @@ func runStatus(cmd *cobra.Command, args []string) {
 	docCount, _ := st.GetDocumentsCount("")
 	chunkCount, _ := st.GetChunksCount("")
 	vectorCount, _ := st.GetVectorsCount("")
+
+	if jsonOutput {
+		json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+			"database":   cfg.Cortex.DBPath,
+			"documents":  docCount,
+			"chunks":     chunkCount,
+			"vectors":    vectorCount,
+			"embedding":  cfg.Embedding.Provider,
+			"model":      cfg.Embedding.Ollama.Model,
+			"ollama_url": cfg.Embedding.Ollama.BaseURL,
+		})
+		return
+	}
 
 	fmt.Println("\n📊 Cortex Status")
 	fmt.Println("================")

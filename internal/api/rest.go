@@ -364,6 +364,13 @@ func (s *RESTServer) handleSearch(c *gin.Context) {
 		}
 	}
 
+	offset := 0
+	if off := c.Query("offset"); off != "" {
+		if n, err := parsePositiveInt(off); err == nil {
+			offset = n
+		}
+	}
+
 	mode := c.DefaultQuery("mode", "hybrid")
 
 	// 获取用户ID进行隔离
@@ -372,7 +379,7 @@ func (s *RESTServer) handleSearch(c *gin.Context) {
 		userID = uc.UserID
 	}
 
-	opts := models.SearchOptions{TopK: topK, Mode: mode, UserID: userID}
+	opts := models.SearchOptions{TopK: topK, Offset: offset, Mode: mode, UserID: userID}
 	results, err := s.engine.Search(c.Request.Context(), q, opts)
 	if err != nil {
 		s.logger.Error("search failed", zap.Error(err))

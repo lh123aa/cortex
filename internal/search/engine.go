@@ -131,7 +131,10 @@ func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts mode
 		finalResults = s.rrfMerge(vectorResults, ftsResults)
 	}
 
-	// 6. TopK 截断
+	// 6. 分页 + TopK 截断
+	if opts.Offset > 0 && opts.Offset < len(finalResults) {
+		finalResults = finalResults[opts.Offset:]
+	}
 	if len(finalResults) > opts.TopK {
 		finalResults = finalResults[:opts.TopK]
 	}
