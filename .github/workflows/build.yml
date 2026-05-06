@@ -83,18 +83,27 @@ jobs:
       - name: Generate release notes
         id: release_notes
         run: |
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo 'notes<<EOF' >> $GITHUB_OUTPUT
           echo "# Cortex ${{ github.ref_name }}" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "See [CHANGELOG.md](CHANGELOG.md) for full release notes." >> $GITHUB_OUTPUT
-          EOF
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p release-artifacts
+          for dir in cortex-*/; do
+            platform="${dir%/}"
+            mv "${dir}"/* "./release-artifacts/${platform}.tar.gz" 2>/dev/null || true
+          done
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: cortex-*
+          files: release-artifacts/*
           body: ${{ steps.release_notes.outputs.notes }}
-          draft: true
+          generate_release_notes: true
+          draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

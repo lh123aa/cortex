@@ -66,6 +66,10 @@ type MemoryDeleteArgs struct {
 	ID string `json:"id" jsonschema:"The memory ID to delete"`
 }
 
+type MemoryDeleteBatchArgs struct {
+	IDs []string `json:"ids" jsonschema:"A list of memory IDs to delete"`
+}
+
 type MCPServer struct {
 	server  *mcp.Server
 	search  *search.HybridSearchEngine
@@ -142,6 +146,12 @@ func (s *MCPServer) registerTools() {
 		Name:        "cortex_memory_delete",
 		Description: "Delete a memory entry from the cortex knowledge base by its ID",
 	}, s.handleMemoryDeleteTool)
+
+	// cortex_memory_delete_batch: 批量删除记忆
+	mcp.AddTool(s.server, &mcp.Tool{
+		Name:        "cortex_memory_delete_batch",
+		Description: "Delete multiple memory entries from the cortex knowledge base by their IDs",
+	}, s.handleMemoryDeleteBatchTool)
 }
 
 func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
@@ -343,6 +353,32 @@ func (s *MCPServer) handleMemoryDeleteTool(ctx context.Context, req *mcp.CallToo
 	}
 
 	result := fmt.Sprintf("Memory deleted successfully:\nID: %s", args.ID)
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: result}},
+	}, nil, nil
+}
+
+func (s *MCPServer) handleMemoryDeleteBatchTool(ctx context.Context, req *mcp.CallToolRequest, args MemoryDeleteBatchArgs) (*mcp.CallToolResult, any, error) {
+	if len(args.IDs) == 0 {
+		return toolError("ids is required"), nil, nil
+	}
+
+	var deleted []string
+	var failed []string
+	for _, id := range args.IDs {
+		if err := s.storage.DeleteDocumentByPath(fmt.Sprintf("memory://%s", id), s.userID); err != nil {
+			failed = append(failed, id)
+			s.logger.Warn("failed to delete memory in batch", zap.String("id", id), zap.Error(err))
+		} else {
+			deleted = append(deleted, id)
+		}
+	}
+
+	if err := s.storage.InvalidateSearchCache(); err != nil {
+		s.logger.Warn("failed to invalidate search cache after batch deletion", zap.Error(err))
+	}
+
+	result := fmt.Sprintf("Batch delete complete:\n  Deleted: %v\n  Failed: %v", deleted, failed)
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{&mcp.TextContent{Text: result}},
 	}, nil, nil
