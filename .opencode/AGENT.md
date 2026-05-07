@@ -1,137 +1,55 @@
-# Cortex OpenCode Agent 配置
+# Cortex - Agent Guide
 
-## 概述
-
-本配置文件定义了 Cortex AI 知识库系统的 OpenCode Agent 工作流程。
-
-## Agent 类型
-
-### cortex-developer
-- **用途**: Cortex 项目开发
-- **技能**: Go, REST API, SQLite, 向量搜索
-
-### cortex-operator
-- **用途**: Cortex 日常运维
-- **技能**: 服务管理, 监控, 备份
-
----
-
-## 工作流程
-
-### 1. 开发流程
+## 项目结构（已清理）
 
 ```
-需求分析
-    ↓
-代码实现
-    ↓
-单元测试
-    ↓
-集成测试
-    ↓
-代码审查
-    ↓
-合并部署
+E:\程序\Cortex/
+├── cmd/                    # 入口点
+├── internal/               # 核心包
+├── bin/                    # 编译输出（cortex.exe 等）
+├── docs/
+│   ├── demo/               # 演示文档
+│   ├── planning/           # 迭代计划/PRD/评估报告
+│   └── private/            # 商业/客户信息（.gitignore 排除，不进 Git）
+├── deploy/                 # 部署配置（prometheus.yml）
+├── scripts/                # 工具脚本
+├── test_framework/         # 测试框架
+├── downloads/              # 发布包
+├── _temp/                  # 临时文件（用完即删）
+├── go.mod / go.sum
+├── Makefile
+├── Dockerfile
+├── docker-compose.yml
+└── README.md
 ```
 
-### 2. 索引流程
+## 根目录文件保留规则
 
-```
-接收文档路径
-    ↓
-文件检测 (markdown, pdf, docx)
-    ↓
-内容提取
-    ↓
-分块处理
-    ↓
-Embedding 生成
-    ↓
-向量存储
-    ↓
-索引完成
-```
+根目录只允许以下文件存在：
+- `cmd/` `internal/` — 核心源码
+- `go.mod` `go.sum` `Makefile` — 构建配置
+- `README.md` `README.en.md` — 项目门面
+- `CHANGELOG.md` `CONTRIBUTING.md` `CODE_OF_CONDUCT.md` `SECURITY.md` — 社区文档
+- `Dockerfile` `docker-compose.yml` — 容器化（根目录是标准）
+- `.gitignore` `.github/` `.vscode/` `.opencode/` — 配置/CI
 
-### 3. 搜索流程
+## 禁止行为（强制规则）
 
-```
-接收查询
-    ↓
-Embedding 查询向量
-    ↓
-并行: 向量搜索 + FTS 搜索
-    ↓
-RRF 融合
-    ↓
-重排序 (可选)
-    ↓
-返回结果
-```
+1. **编译产物不进根目录** — `make build` 已配置输出到 `bin/`，任何 `.exe` 出现在根目录即为违规
+2. **规划文档不进根目录** — PRD、迭代计划、评估报告 → `docs/planning/`
+3. **商业保密文件不进 Git** — COMMERCIAL_PLAN.md 等 → `docs/private/`（.gitignore 已排除）
+4. **临时文件用完必删** — 测试/调试文件 → `_temp/`，完成后立即 `rm -rf _temp/`
+5. **不产生孤立文件** — AI 生成的文件必须写入已有目录结构
 
-### 4. 记忆流程
+## 构建命令
 
-```
-写入记忆 → 内容分块 → Embedding → 存储
-搜索记忆 → 向量检索 → 过滤 memory://
-上下文 → RAG 构建 → 返回上下文
-```
-
----
-
-## 命令
-
-### 索引
 ```bash
-go run cmd/cortex/main.go index <path>
+make build          # 编译到 bin/cortex
+make test           # 运行测试
+make clean          # 清理 bin/ 和数据库
 ```
 
-### 搜索
-```bash
-go run cmd/cortex/main.go search <query>
-```
+## MCP 配置
 
-### RAG 上下文
-```bash
-go run cmd/cortex/main.go context <query>
-```
-
-### 启动服务
-```bash
-go run cmd/cortex/main.go serve
-```
-
-### 状态检查
-```bash
-go run cmd/cortex/main.go status
-```
-
----
-
-## 环境要求
-
-- Go 1.21+
-- Ollama (localhost:11434)
-- 8GB+ RAM
-
----
-
-## 监控
-
-- API: http://localhost:8080
-- Metrics: http://localhost:9090/metrics
-- Ollama: http://localhost:11434
-
----
-
-## 常见任务
-
-| 任务 | 命令 |
-|------|------|
-| 索引文档 | `go run cmd/cortex/main.go index ./docs` |
-| 搜索 | `go run cmd/cortex/main.go search "query"` |
-| 启动API | `go run cmd/cortex/main.go serve` |
-| 检查状态 | `go run cmd/cortex/main.go status` |
-
----
-
-*生成时间: 2026-04-25*
+Cortex 已注册为 MCP 工具，工具名: `cortex`
+可用 MCP 工具: `cortex_search`, `cortex_context`, `cortex_memory_write`, `cortex_memory_search`, `cortex_memory_delete`, `cortex_memory_delete_batch`

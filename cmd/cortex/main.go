@@ -194,6 +194,25 @@ func initStorage(cfg *config.Config, logger *zap.Logger) (storage.Storage, error
 	return st, nil
 }
 
+// initStorageLight 轻量版初始化，跳过 HNSW 索引构建
+// 用于 index/status/usage 等不需要向量搜索的命令
+// HNSW 只在需要搜索时加载，索引类命令无需加载存量向量
+func initStorageLight(cfg *config.Config, logger *zap.Logger) (storage.Storage, error) {
+	dbDir := filepath.Dir(cfg.Cortex.DBPath)
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create db directory: %w", err)
+	}
+
+	st, err := storage.NewSQLiteStorage(cfg.Cortex.DBPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init storage: %w", err)
+	}
+
+	st.SetLogger(logger)
+	logger.Info("lightweight storage initialized (HNSW skipped)", zap.String("path", cfg.Cortex.DBPath))
+	return st, nil
+}
+
 func initEmbedding(cfg *config.Config, logger *zap.Logger) (embedding.EmbeddingProvider, error) {
 	var primary embedding.EmbeddingProvider
 
@@ -257,7 +276,8 @@ func runIndex(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	st, err := initStorage(cfg, logger)
+	// index 命令无需 HNSW 索引，用轻量版跳过向量加载
+	st, err := initStorageLight(cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}
@@ -543,7 +563,8 @@ func runStatus(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	st, err := initStorage(cfg, logger)
+	// status 仅查询计数，无需 HNSW
+	st, err := initStorageLight(cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}
@@ -644,7 +665,8 @@ func runUsage(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	st, err := initStorage(cfg, logger)
+	// usage 只查询存储用量，无需 HNSW
+	st, err := initStorageLight(cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}

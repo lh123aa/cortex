@@ -52,3 +52,8 @@ coverage/
 
 # Business plan (local only, never push)
 COMMERCIAL_PLAN.md
+docs/private/
+
+# Temporary files (auto-generated during testing, must delete after use)
+_temp/
+tmp/
