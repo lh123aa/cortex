@@ -212,6 +212,15 @@
 - ✅ **根目录清理** — 从 39 项精简至 27 项，规划文档移入 `docs/planning/`，部署配置移入 `deploy/`，编译产物移入 `bin/`
 - ✅ **文件组织规则** — 全局 AGENTS.md 新增 6 条强制规则，涵盖根目录守则、构建产出、临时文件、AI 文件生成
 
+### 🚀 v3.1 多 Provider + 配置向导 (2026-05-07)
+
+- ✅ **`cortex setup` 交互式向导** — 网络检测 → 选择 Provider → 输入 API Key → 选择模型 → 测试连接 → 写入配置
+- ✅ **9 个 Embedding Provider** — 本地: none / ollama / onnx；国际: OpenAI / Cohere / Voyage AI；国内: 阿里DashScope / 智谱GLM / 百度ERNIE
+- ✅ **工厂模式** — `NewProviderFromConfig()` 根据配置自动创建对应 Provider，无需修改 main.go
+- ✅ **百度 OAuth2** — 自动缓存 access_token（30天有效期），自动刷新
+- ✅ **默认模型 all-minilm** — 23MB，比 nomic-embed-text 快 30x
+- ✅ **自动网络检测** — 离线时自动隐藏 API 选项，仅显示本地模式
+
 ### 💰 v3.0 商业化版本 (2026-05-06)
 
 - ✅ **套餐系统** — Free (≤1GB) / Pro / Enterprise 三级
@@ -281,10 +290,13 @@ chmod +x cortex
 # Windows
 # Invoke-WebRequest -Uri "..." -OutFile "cortex.zip"
 
-# 2. 索引文档
+# 2. 运行配置向导（选择 embedding provider）
+./cortex setup
+
+# 3. 索引文档
 cortex index ~/my-docs
 
-# 3. 启动 MCP 服务器（供 AI Agent 使用）
+# 4. 启动 MCP 服务器（供 AI Agent 使用）
 cortex mcp
 
 # 4. 搜索
@@ -420,15 +432,44 @@ cortex usage                    # 存储用量和套餐信息
 cortex:
   db_path: ~/.cortex/cortex.db
   log_level: info
-  auth_enabled: false
 
 embedding:
-  provider: none       # none（推荐，FTS5-only）| ollama | onnx
-  # 如需语义搜索，改为:
-  # provider: ollama
-  # ollama:
-  #   base_url: http://localhost:11434
-  #   model: all-minilm   # 23MB，比 nomic-embed-text 快 5-8x
+  provider: none              # none | ollama | openai | cohere | voyage | dashscope | zhipu | baidu
+  auto_update: true           # 联网时自动检查最新模型
+
+  # 本地 Ollama（离线场景默认）
+  ollama:
+    base_url: http://localhost:11434
+    model: all-minilm         # 推荐: all-minilm(23MB), nomic-embed-text(137MB)
+
+  # 国外 API
+  openai:
+    api_key: sk-xxx
+    model: text-embedding-3-small
+    dimension: 512
+  cohere:
+    api_key: co-xxx
+    model: embed-multilingual-v3.0
+    dimension: 1024
+  voyage:
+    api_key: pa-xxx
+    model: voyage-3-lite
+    dimension: 512
+
+  # 国内 API
+  dashscope:
+    api_key: sk-xxx
+    model: text-embedding-v2
+    dimension: 1536
+  zhipu:
+    api_key: xxx
+    model: embedding-3
+    dimension: 2048
+  baidu:
+    api_key: xxx
+    secret_key: xxx
+    model: Embedding-V1
+    dimension: 384
 
 index:
   workers: 4
