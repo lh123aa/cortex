@@ -44,7 +44,17 @@ func NewProviderFromConfig(cfg ProviderConfig) (EmbeddingProvider, error) {
 		if model == "" {
 			model = "all-minilm"
 		}
-		return NewOllamaEmbedding(url, model, 384), nil
+		// 根据模型查找正确维度
+		dim := 384 // 默认 all-minilm
+		if p := GetProviderByID("ollama"); p != nil {
+			for _, m := range p.Models {
+				if m.ID == model {
+					dim = m.Dimension
+					break
+				}
+			}
+		}
+		return NewOllamaEmbedding(url, model, dim), nil
 	case "openai":
 		return NewOpenAIEmbedding(cfg.OpenAI.APIKey, cfg.OpenAI.Model, cfg.OpenAI.BaseURL, cfg.OpenAI.Dimension), nil
 	case "cohere":
