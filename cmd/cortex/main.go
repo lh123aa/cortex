@@ -317,7 +317,8 @@ func runSearch(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	st, err := initStorage(cfg, logger)
+	// search 使用 light 版初始化（HNSW 降级到暴力搜索，FTS 不受影响）
+	st, err := initStorageLight(cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}
@@ -398,7 +399,8 @@ func runContext(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	st, err := initStorage(cfg, logger)
+	// context 使用 light 版初始化
+	st, err := initStorageLight(cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}
