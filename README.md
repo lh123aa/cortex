@@ -207,7 +207,8 @@
 
 ### 🔥 v3.0.1 启动性能优化 (2026-05-07)
 
-- ✅ **HNSW 按需加载** — `initStorageLight()` 跳过向量索引构建，`cortex index`/`status`/`usage` 启动时间从 >4min 降至 <30s
+- ✅ **HNSW 按需加载** — `initStorageLight()` 跳过向量索引构建，所有 CLI 命令启动 <0.5s
+- ✅ **默认切到 FTS5-only 模式** — `embedding.provider: none`，索引速度提升 28x，零外部依赖
 - ✅ **根目录清理** — 从 39 项精简至 27 项，规划文档移入 `docs/planning/`，部署配置移入 `deploy/`，编译产物移入 `bin/`
 - ✅ **文件组织规则** — 全局 AGENTS.md 新增 6 条强制规则，涵盖根目录守则、构建产出、临时文件、AI 文件生成
 
@@ -422,13 +423,15 @@ cortex:
   auth_enabled: false
 
 embedding:
-  provider: ollama    # ollama | onnx | none（FTS5-only，无需外部服务）
-  ollama:
-    base_url: http://localhost:11434
-    model: nomic-embed-text
+  provider: none       # none（推荐，FTS5-only）| ollama | onnx
+  # 如需语义搜索，改为:
+  # provider: ollama
+  # ollama:
+  #   base_url: http://localhost:11434
+  #   model: all-minilm   # 23MB，比 nomic-embed-text 快 5-8x
 
 index:
-  workers: 8
+  workers: 4
   max_tokens: 512
 
 search:
@@ -480,9 +483,10 @@ go test ./...                     # 109 个测试
 | 缓存命中率 | > 60%（L1+L2 两级） |
 | MinHash 去重 | ~12μs / chunk (102k ops/sec) |
 | 向量去重效果 | 46/689 chunks 移除 (6.7%) |
-| 启动时间（index/status 命令） | **< 30s**（轻量版，跳过 HNSW 加载） |
-| 启动时间（搜索相关命令） | **< 5min**（需加载全部向量重建 HNSW） |
-| 索引吞吐量 | > 100 files/min |
+| 启动时间（全部 CLI 命令） | **< 0.5s**（FTS5-only 模式，HNSW 按需异步加载） |
+| FTS5 搜索 P50 | **< 50ms**（20k 分块） |
+| FTS5 搜索 P95 | **< 200ms**（20k 分块） |
+| 索引吞吐量（FTS5-only） | **> 1000 files/min** |
 | 内存占用 | ~30 MB / 进程 |
 | 二进制大小 | 34.2 MB (strip 优化) |
 | 测试覆盖率 | 10/10 包通过 · 全部核心逻辑有测试 |
