@@ -156,7 +156,7 @@ func Load(configPath string) (*Config, error) {
 	} else {
 		v.SetConfigName("config")
 		v.SetConfigType("yaml")
-		v.AddConfigPath(filepath.Join(defaultDir, "config"))
+		v.AddConfigPath(defaultDir)               // ~/.cortex/config.yaml
 		v.AddConfigPath(".")
 	}
 
@@ -205,7 +205,7 @@ func WatchConfig(onChange func(*Config)) error {
 
 	home, _ := os.UserHomeDir()
 	defaultDir := filepath.Join(home, ".cortex")
-	v.AddConfigPath(filepath.Join(defaultDir, "config"))
+	v.AddConfigPath(defaultDir)
 	v.AddConfigPath(".")
 
 	// 读取现有配置
