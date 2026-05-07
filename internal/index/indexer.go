@@ -1,6 +1,7 @@
 package index
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -20,6 +21,9 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
+// perFileEmbeddingTimeout 单个文件的 embedding 超时时间（防止卡死）
+const perFileEmbeddingTimeout = 5 * time.Minute
+
 // Indexer 统筹负责调度文件提取、分块、向量与存储
 type Indexer struct {
 	storage   storage.Storage
@@ -27,6 +31,9 @@ type Indexer struct {
 	embedding embedding.EmbeddingProvider
 	pool      *ants.Pool
 	logger    *log.Logger // 结构化日志（可选）
+
+	// OnProgress 可选回调，每个文件处理完成后触发（用于实时进度展示）
+	OnProgress func(evt models.IndexProgressEvent)
 }
 
 // SetLogger 设置日志记录器
@@ -43,10 +50,10 @@ func (idx *Indexer) logWarn(msg string, args ...interface{}) {
 	}
 }
 
-// NewIndexer 初始化索引器（workers 从配置读取，默认 8）
+// NewIndexer 初始化索引器（workers 从配置读取，默认 16）
 func NewIndexer(s storage.Storage, em embedding.EmbeddingProvider, workers int) (*Indexer, error) {
 	if workers <= 0 {
-		workers = 8 // 默认值
+		workers = 16 // 默认值（I/O 密集型，更多 workers 提升吞吐量）
 	}
 	ckMap := make(map[string]chunker.Chunker)
 	mk, _ := chunker.NewMarkdownChunker(chunker.ChunkConfig{
@@ -134,6 +141,7 @@ type IndexResult struct {
 }
 
 type fileResult struct {
+	path    string
 	indexed bool
 	skipped bool
 	err     error
@@ -154,6 +162,10 @@ var defaultExcludeDirs = map[string]bool{
 	"coverage":     true,
 	".idea":        true,
 	".vscode":      true,
+	"WeChat Files": true,
+	"Applet":       true,
+	"FileStorage":  true,
+	"__GAME_FILE_CACHE": true,
 }
 
 // isExcludedDir 检查目录是否应被排除
@@ -162,7 +174,8 @@ func isExcludedDir(name string) bool {
 }
 
 // IndexDirectoryWithCheckpoint 遍历执行整个文件夹（支持断点恢复，用户隔离）
-func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string) (*IndexResult, error) {
+// ctx 用于超时控制和优雅退出，传入 context.Background() 则不限制
+func (idx *Indexer) IndexDirectoryWithCheckpoint(ctx context.Context, rootPath string, userID string) (*IndexResult, error) {
 	start := time.Now()
 	result := &IndexResult{}
 
@@ -222,46 +235,56 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 	resultCh := make(chan fileResult, len(filesToProcess))
 	var wg sync.WaitGroup
 
-	// 使用原子计数器替代直接竞争 progress 字段
-	var atomicIndexed atomic.Int32
-	var atomicSkipped atomic.Int32
-	var atomicFailed atomic.Int32
+	for _, file := range filesToProcess {
+		// 检查全局是否已取消
+		select {
+		case <-ctx.Done():
+			goto collectResultsWithCheckpoint
+		default:
+		}
 
-	for i, file := range filesToProcess {
 		wg.Add(1)
-		// 闭包捕获 userID
 		currentUserID := userID
-		fileIdx := i
+		filePath := file
 		err := idx.pool.Submit(func() {
 			defer wg.Done()
-			indexed, skipped, err := idx.indexFileInternalWithUser(file, currentUserID)
-			resultCh <- fileResult{indexed: indexed, skipped: skipped, err: err}
+			// goroutine 内部再次检查取消
+			select {
+			case <-ctx.Done():
+				resultCh <- fileResult{path: filePath, err: ctx.Err()}
+				return
+			default:
+			}
+			indexed, skipped, err := idx.indexFileInternalWithUser(ctx, filePath, currentUserID)
+			resultCh <- fileResult{path: filePath, indexed: indexed, skipped: skipped, err: err}
 		})
 		if err != nil {
 			wg.Done()
-			resultCh <- fileResult{err: fmt.Errorf("pool submit error: %w", err)}
-		}
-
-		// 每 10 个文件保存一次进度（仅保存位置，不 drain resultCh）
-		if (fileIdx+1)%10 == 0 || fileIdx == len(filesToProcess)-1 {
-			progress.LastFileIndex = startIndex + fileIdx + 1
-			progress.LastFilePath = file
-			progress.UpdatedAt = time.Now()
-			progress.IndexedFiles = progress.IndexedFiles + int(atomicIndexed.Load())
-			progress.FailedFiles = progress.FailedFiles + int(atomicFailed.Load())
-
-			if err := idx.storage.SaveIndexProgress(progress); err != nil {
-				idx.logWarn("Warning: failed to save index progress: %v", err)
-			}
+			resultCh <- fileResult{path: filePath, err: fmt.Errorf("pool submit error: %w", err)}
 		}
 	}
 
+collectResultsWithCheckpoint:
 	// 等所有 goroutine 完成后收集结果
 	go func() {
 		wg.Wait()
 		close(resultCh)
 	}()
 
+	// 使用原子计数器统计已完成文件
+	var atomicIndexed atomic.Int32
+	var atomicSkipped atomic.Int32
+	var atomicFailed atomic.Int32
+
+	// 记录 baseline，防止 checkpoint 累计计数 bug
+	baselineIndexed := progress.IndexedFiles
+	baselineFailed := progress.FailedFiles
+
+	completedCount := 0
+	checkpointTicker := time.NewTicker(5 * time.Second) // 每 5 秒保存一次 checkpoint
+	defer checkpointTicker.Stop()
+
+	progressStart := start
 	for res := range resultCh {
 		if res.indexed {
 			atomicIndexed.Add(1)
@@ -273,14 +296,54 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 			atomicFailed.Add(1)
 		}
 		metrics.IndexTotal.Inc()
+		completedCount++
+
+		// 发送实时进度事件
+		if idx.OnProgress != nil {
+			indexed := int(atomicIndexed.Load())
+			skipped := int(atomicSkipped.Load())
+			failed := int(atomicFailed.Load())
+			elapsed := time.Since(progressStart)
+			speed := float64(completedCount) / elapsed.Seconds()
+			var eta time.Duration
+			if speed > 0.01 && completedCount < len(filesToProcess) {
+				remaining := float64(len(filesToProcess) - completedCount)
+				eta = time.Duration(remaining/speed) * time.Second
+			}
+			idx.OnProgress(models.IndexProgressEvent{
+				Total:       result.Total,
+				Indexed:     indexed,
+				Skipped:     skipped,
+				Failed:      failed,
+				CurrentFile: res.path,
+				Speed:       speed,
+				Elapsed:     elapsed,
+				ETA:         eta,
+				Done:        completedCount >= len(filesToProcess),
+			})
+		}
+
+		// 定时保存 checkpoint（不阻塞每次循环）
+		select {
+		case <-checkpointTicker.C:
+			progress.LastFileIndex = startIndex + completedCount
+			progress.LastFilePath = res.path
+			progress.UpdatedAt = time.Now()
+			progress.IndexedFiles = baselineIndexed + int(atomicIndexed.Load())
+			progress.FailedFiles = baselineFailed + int(atomicFailed.Load())
+			if err := idx.storage.SaveIndexProgress(progress); err != nil {
+				idx.logWarn("Warning: failed to save index progress: %v", err)
+			}
+		default:
+		}
 	}
 
 	// 汇总最终结果
 	result.Indexed = int(atomicIndexed.Load())
 	result.Skipped = int(atomicSkipped.Load())
 	result.Failed = int(atomicFailed.Load())
-	progress.IndexedFiles += result.Indexed
-	progress.FailedFiles += result.Failed
+	progress.IndexedFiles = baselineIndexed + result.Indexed
+	progress.FailedFiles = baselineFailed + result.Failed
 
 	// 标记完成
 	progress.Status = "completed"
@@ -293,7 +356,8 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(rootPath string, userID string)
 }
 
 // IndexDirectory 遍历执行整个文件夹（并发优化，不支持断点恢复，用户隔离）
-func (idx *Indexer) IndexDirectory(rootPath string, userID string) (*IndexResult, error) {
+// ctx 用于超时控制和优雅退出，传入 context.Background() 则不限制
+func (idx *Indexer) IndexDirectory(ctx context.Context, rootPath string, userID string) (*IndexResult, error) {
 	start := time.Now()
 	result := &IndexResult{}
 
@@ -325,24 +389,42 @@ func (idx *Indexer) IndexDirectory(rootPath string, userID string) (*IndexResult
 	var wg sync.WaitGroup
 
 	for _, file := range files {
+		// 检查全局是否已取消
+		select {
+		case <-ctx.Done():
+			// 跳过剩余文件，直接进入收集阶段
+			goto collectResults
+		default:
+		}
+
 		wg.Add(1)
 		currentUserID := userID // 闭包捕获
+		filePath := file
 		err := idx.pool.Submit(func() {
 			defer wg.Done()
-			indexed, skipped, err := idx.indexFileInternalWithUser(file, currentUserID)
-			resultCh <- fileResult{indexed: indexed, skipped: skipped, err: err}
+			// goroutine 内部再次检查取消
+			select {
+			case <-ctx.Done():
+				resultCh <- fileResult{path: filePath, err: ctx.Err()}
+				return
+			default:
+			}
+			indexed, skipped, err := idx.indexFileInternalWithUser(ctx, filePath, currentUserID)
+			resultCh <- fileResult{path: filePath, indexed: indexed, skipped: skipped, err: err}
 		})
 		if err != nil {
 			wg.Done()
-			resultCh <- fileResult{err: fmt.Errorf("pool submit error: %w", err)}
+			resultCh <- fileResult{path: filePath, err: fmt.Errorf("pool submit error: %w", err)}
 		}
 	}
 
+collectResults:
 	go func() {
 		wg.Wait()
 		close(resultCh)
 	}()
 
+	progStart := start
 	for res := range resultCh {
 		if res.indexed {
 			result.Indexed++
@@ -354,24 +436,47 @@ func (idx *Indexer) IndexDirectory(rootPath string, userID string) (*IndexResult
 			result.Failed++
 		}
 		metrics.IndexTotal.Inc()
+
+		// 发送进度事件
+		if idx.OnProgress != nil {
+			completed := result.Indexed + result.Skipped + result.Failed
+			elapsed := time.Since(progStart)
+			speed := float64(completed) / elapsed.Seconds()
+			var eta time.Duration
+			if speed > 0.01 && completed < result.Total {
+				remaining := float64(result.Total - completed)
+				eta = time.Duration(remaining/speed) * time.Second
+			}
+			idx.OnProgress(models.IndexProgressEvent{
+				Total:       result.Total,
+				Indexed:     result.Indexed,
+				Skipped:     result.Skipped,
+				Failed:      result.Failed,
+				CurrentFile: res.path,
+				Speed:       speed,
+				Elapsed:     elapsed,
+				ETA:         eta,
+				Done:        completed >= result.Total,
+			})
+		}
 	}
 
 	result.Duration = time.Since(start).Milliseconds()
 	return result, nil
 }
 
-// IndexFile 解析单一文件（暴露给Watcher使用，内部调用，用户隔离）
+// IndexFile 解析单一文件（暴露给Watcher使用，向后兼容）
 func (idx *Indexer) IndexFile(path string, userID string) (bool, bool, error) {
-	return idx.indexFileInternalWithUser(path, userID)
+	return idx.indexFileInternalWithUser(context.Background(), path, userID)
 }
 
 // indexFileInternal 实际索引逻辑（无用户隔离，用于向后兼容）
 func (idx *Indexer) indexFileInternal(path string) (bool, bool, error) {
-	return idx.indexFileInternalWithUser(path, "")
+	return idx.indexFileInternalWithUser(context.Background(), path, "")
 }
 
-// indexFileInternalWithUser 实际索引逻辑（用户隔离）
-func (idx *Indexer) indexFileInternalWithUser(path string, userID string) (bool, bool, error) {
+// indexFileInternalWithUser 实际索引逻辑（用户隔离，带 Context 超时控制）
+func (idx *Indexer) indexFileInternalWithUser(ctx context.Context, path string, userID string) (bool, bool, error) {
 	// 检查文件大小，防止 OOM（限制 100MB）
 	info, err := os.Stat(path)
 	if err != nil {
@@ -500,16 +605,32 @@ func (idx *Indexer) indexFileInternalWithUser(path string, userID string) (bool,
 		texts[i] = c.ContentRaw
 	}
 
-	// 进行Embedding
+	// 进行Embedding（带 per-file 超时保护，防止卡死）
 	if idx.embedding != nil {
-		embeddings, err := idx.embedding.EmbedBatch(texts)
-		if err != nil {
-			idx.logWarn("Warning: embedding failed for %s (indexing continues without vectors): %v", path, err)
-		} else {
-			for j, c := range chunks {
-				c.Embedding = embeddings[j]
-				c.EmbeddingModel = idx.embedding.Name()
+		embedCtx, embedCancel := context.WithTimeout(ctx, perFileEmbeddingTimeout)
+		done := make(chan struct{}, 1)
+		var embeddings [][]float32
+		var embedErr error
+
+		go func() {
+			embeddings, embedErr = idx.embedding.EmbedBatch(texts)
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			embedCancel()
+			if embedErr != nil {
+				idx.logWarn("Warning: embedding failed for %s (indexing continues without vectors): %v", path, embedErr)
+			} else {
+				for j, c := range chunks {
+					c.Embedding = embeddings[j]
+					c.EmbeddingModel = idx.embedding.Name()
+				}
 			}
+		case <-embedCtx.Done():
+			embedCancel()
+			idx.logWarn("Warning: embedding timed out for %s (indexing continues without vectors)", path)
 		}
 	}
 

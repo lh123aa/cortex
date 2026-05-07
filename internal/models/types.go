@@ -135,3 +135,16 @@ type MemorySearchResult struct {
 	Score   float64 `json:"score"`
 	Source  string  `json:"source"`
 }
+
+// IndexProgressEvent 实时索引进度事件（通过 OnProgress 回调发送）
+type IndexProgressEvent struct {
+	Total       int           `json:"total"`
+	Indexed     int           `json:"indexed"`
+	Skipped     int           `json:"skipped"`
+	Failed      int           `json:"failed"`
+	CurrentFile string        `json:"current_file"`
+	Speed       float64       `json:"speed"`        // files/sec
+	Elapsed     time.Duration `json:"elapsed_ms"`
+	ETA         time.Duration `json:"eta_ms"`       // 预计剩余时间
+	Done        bool          `json:"done"`         // 是否已完成
+}

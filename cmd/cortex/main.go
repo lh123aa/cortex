@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -28,14 +29,17 @@ import (
 )
 
 var (
-	cfgPath     string
-	logLevel    string
-	topK        int
-	mode        string
-	tokenBudget int
-	jsonOutput  bool
-	dedupMode   string
-	dedupThreshold float64
+	cfgPath         string
+	logLevel        string
+	topK            int
+	mode            string
+	tokenBudget     int
+	jsonOutput      bool
+	dedupMode       string
+	dedupThreshold  float64
+	forceReindex    bool
+	indexTimeout    time.Duration
+	indexWorkers    int
 )
 
 // highlightText 高亮文本中的匹配关键词（ANSI 黄色标记）
@@ -134,6 +138,10 @@ Run 'cortex setup' anytime to reconfigure.`,
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file path")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level (debug/info/warn/error)")
+
+	indexCmd.Flags().BoolVarP(&forceReindex, "force", "f", false, "Force re-index from scratch (ignore checkpoint)")
+	indexCmd.Flags().DurationVarP(&indexTimeout, "timeout", "t", 0, "Maximum time for indexing (e.g. 30m, 1h). 0 = no limit")
+	indexCmd.Flags().IntVarP(&indexWorkers, "workers", "w", 0, "Number of indexing workers (default 16)")
 
 	searchCmd.Flags().IntVarP(&topK, "top-k", "k", 10, "number of results to return")
 	searchCmd.Flags().StringVarP(&mode, "mode", "m", "hybrid", "search mode (vector/bm25/hybrid)")
@@ -339,6 +347,12 @@ func runIndex(cmd *cobra.Command, args []string) {
 		logger.Fatal("failed to init embedding", zap.Error(err))
 	}
 
+	// --workers 标志覆盖配置中的 worker 数
+	if indexWorkers > 0 {
+		cfg.Index.Workers = indexWorkers
+		logger.Info("index workers overridden by CLI flag", zap.Int("workers", indexWorkers))
+	}
+
 	idx, err := initIndexer(st, emb, cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to init indexer", zap.Error(err))
@@ -347,18 +361,116 @@ func runIndex(cmd *cobra.Command, args []string) {
 	path := args[0]
 	logger.Info("starting indexing", zap.String("path", path))
 
-	result, err := idx.IndexDirectory(path, "")
+	// --force 标志：清除已有 checkpoint，重新索引
+	if forceReindex {
+		progress, _ := st.GetIndexProgress(path)
+		if progress != nil {
+			st.DeleteIndexProgress(progress.ID)
+		}
+		logger.Info("force re-index: cleared existing checkpoint", zap.String("path", path))
+	}
+
+	// 创建可取消 context（支持超时 + Ctrl+C）
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if indexTimeout > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), indexTimeout)
+		defer cancel()
+		logger.Info("index timeout set", zap.Duration("timeout", indexTimeout))
+	}
+
+	// 信号处理：SIGINT/SIGTERM → 优雅退出
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		select {
+		case sig := <-sigCh:
+			fmt.Printf("\n  ⚠️  Received %v, saving checkpoint and exiting gracefully...\n", sig)
+			cancel()
+			// 给 goroutine 一点时间完成 ctx 传播
+			time.Sleep(200 * time.Millisecond)
+		case <-ctx.Done():
+			// 超时触达，不输出额外信息
+		}
+	}()
+
+	// 设置实时进度条
+	lastLineLen := 0
+	idx.OnProgress = func(evt models.IndexProgressEvent) {
+		completed := evt.Indexed + evt.Skipped + evt.Failed
+		pct := float64(completed) / float64(evt.Total) * 100
+
+		// 20 字符进度条
+		barWidth := 20
+		filled := int(pct / 100 * float64(barWidth))
+		if filled > barWidth {
+			filled = barWidth
+		}
+		filledStr := strings.Repeat("█", filled)
+		emptyStr := strings.Repeat("░", barWidth-filled)
+
+		// 截断文件名
+		filename := evt.CurrentFile
+		if len(filename) > 45 {
+			filename = "..." + filename[len(filename)-42:]
+		}
+
+		// 格式化时间
+		etaStr := ""
+		if evt.ETA > 0 && completed < evt.Total {
+			etaStr = " · ETA " + formatDuration(evt.ETA)
+		}
+		elapsedStr := formatDuration(evt.Elapsed)
+
+		// 构建一行进度文本
+		line := fmt.Sprintf("\r  Indexing [%s%s] %3.0f%%  %d/%d · %s · %.1f/s%s · %s",
+			filledStr, emptyStr, pct, completed, evt.Total, elapsedStr, evt.Speed, etaStr, filename)
+
+		// 用空格填充覆盖旧内容（避免残影）
+		if len(line) < lastLineLen {
+			fmt.Print(line + strings.Repeat(" ", lastLineLen-len(line)))
+		} else {
+			fmt.Print(line)
+		}
+		lastLineLen = len(line)
+	}
+
+	// 使用支持断点恢复的 checkpoint 版本（带 Context 超时/取消）
+	result, err := idx.IndexDirectoryWithCheckpoint(ctx, path, "")
 	if err != nil {
-		logger.Error("indexing failed", zap.Error(err))
+		fmt.Println() // 换行结束进度行
+		if errors.Is(err, context.Canceled) {
+			logger.Warn("indexing cancelled by user or timeout")
+			fmt.Printf("  ⚠️  Indexing interrupted (checkpoint saved, use 'cortex index' to resume)\n")
+		} else {
+			logger.Error("indexing failed", zap.Error(err))
+		}
 		os.Exit(1)
 	}
 
-	fmt.Printf("\n✅ Indexing complete:\n")
-	fmt.Printf("   Total:   %d files\n", result.Total)
-	fmt.Printf("   Indexed: %d files\n", result.Indexed)
-	fmt.Printf("   Skipped: %d files (unchanged)\n", result.Skipped)
-	fmt.Printf("   Failed:  %d files\n", result.Failed)
-	fmt.Printf("   Time:    %s\n", time.Duration(result.Duration)*time.Millisecond)
+	// 覆盖进度行，输出最终结果
+	fmt.Printf("\r%s\r", strings.Repeat(" ", lastLineLen))
+	fmt.Printf("  ✅ Indexing complete! %d indexed, %d skipped, %d failed · %s\n",
+		result.Indexed, result.Skipped, result.Failed,
+		time.Duration(result.Duration)*time.Millisecond)
+	if result.Failed > 0 {
+		fmt.Printf("     (see logs for details on failed files)\n")
+	}
+}
+
+// formatDuration 格式化 time.Duration 为人类可读字符串
+func formatDuration(d time.Duration) string {
+	if d < time.Minute {
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%dm %ds", int(d.Minutes()), int(d.Seconds())%60)
+	}
+	h := int(d.Hours())
+	m := int(d.Minutes()) % 60
+	s := int(d.Seconds()) % 60
+	return fmt.Sprintf("%dh %dm %ds", h, m, s)
 }
 
 func runSearch(cmd *cobra.Command, args []string) {

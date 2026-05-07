@@ -205,6 +205,17 @@
 
 ## ✨ 更新日志
 
+### 🚀 v3.2 进度系统 + 防卡死 + 性能优化 (2026-05-07)
+
+- ✅ **实时进度条** — `cortex index` 显示动态进度条 `[████░░] 45%`，含速度、ETA、当前文件
+- ✅ **断点续传** — 默认启用 checkpoint 模式，中断后重新索引自动恢复
+- ✅ **Ctrl+C 安全退出** — 信号处理保存进度后优雅退出，不丢失已索引数据
+- ✅ **全局超时** — `cortex index --timeout 30m` 超时自动保存进度退出
+- ✅ **单文件超时** — Embedding 调用 5 分钟超时保护，防止卡死
+- ✅ **`--force` 重新索引** — `cortex index --force path` 从头开始（忽略 checkpoint）
+- ✅ **`--workers` 控制并发** — `cortex index --workers 32` 覆盖默认 16 个 worker
+- ✅ **默认 16 workers** — I/O 密集型索引任务，吞吐量提升
+
 ### 🔥 v3.0.1 启动性能优化 (2026-05-07)
 
 - ✅ **HNSW 按需加载** — `initStorageLight()` 跳过向量索引构建，所有 CLI 命令启动 <0.5s
@@ -293,20 +304,25 @@ chmod +x cortex
 # 2. 运行配置向导（选择 embedding provider）
 ./cortex setup
 
-# 3. 索引文档
+# 3. 索引文档（显示实时进度条，支持断点续传）
 cortex index ~/my-docs
 
-# 4. 启动 MCP 服务器（供 AI Agent 使用）
+# 4. 高级索引选项
+cortex index ~/my-docs --force           # 从头重新索引
+cortex index ~/my-docs --timeout 30m     # 30 分钟超时
+cortex index ~/my-docs --workers 32      # 32 个并发 worker
+
+# 5. 启动 MCP 服务器（供 AI Agent 使用）
 cortex mcp
 
-# 4. 搜索
+# 6. 搜索
 cortex search "如何实现 Go 并发"
 
-# 5. 知识库去重
+# 7. 知识库去重
 cortex dedup                    # 内容哈希去重
 cortex dedup --mode vector      # 向量语义去重
 
-# 6. 查看用量
+# 8. 查看用量
 cortex usage                    # 存储用量和套餐信息
 ```
 
@@ -528,6 +544,9 @@ go test ./...                     # 109 个测试
 | FTS5 搜索 P50 | **< 50ms**（20k 分块） |
 | FTS5 搜索 P95 | **< 200ms**（20k 分块） |
 | 索引吞吐量（FTS5-only） | **> 1000 files/min** |
+| 实时进度反馈 | **动态进度条 · 速度/ETA/当前文件** |
+| 中断恢复 | **Checkpoint 自动保存，重启续跑** |
+| 单文件超时保护 | **5 分钟 Embedding 超时** |
 | 内存占用 | ~30 MB / 进程 |
 | 二进制大小 | 34.2 MB (strip 优化) |
 | 测试覆盖率 | 10/10 包通过 · 全部核心逻辑有测试 |
