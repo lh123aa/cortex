@@ -30,9 +30,16 @@ type CortexConfig struct {
 
 // EmbeddingConfig holds embedding provider settings
 type EmbeddingConfig struct {
-	Provider string       `mapstructure:"provider"`
-	Ollama   OllamaConfig `mapstructure:"ollama"`
-	ONNX     ONNXConfig   `mapstructure:"onnx"`
+	Provider    string          `mapstructure:"provider"`
+	AutoUpdate  bool            `mapstructure:"auto_update"`
+	Ollama      OllamaConfig    `mapstructure:"ollama"`
+	ONNX        ONNXConfig      `mapstructure:"onnx"`
+	OpenAI      APIConfig       `mapstructure:"openai"`
+	Cohere      APIConfig       `mapstructure:"cohere"`
+	Voyage      APIConfig       `mapstructure:"voyage"`
+	DashScope   APIConfig       `mapstructure:"dashscope"`
+	Zhipu       APIConfig       `mapstructure:"zhipu"`
+	Baidu       BaiduConfig     `mapstructure:"baidu"`
 }
 
 // OllamaConfig holds Ollama-specific settings
@@ -46,6 +53,23 @@ type ONNXConfig struct {
 	BaseURL string `mapstructure:"base_url"`
 	Model   string `mapstructure:"model"`
 	Dim     int    `mapstructure:"dim"`
+}
+
+// APIConfig generic API-based embedding provider config
+type APIConfig struct {
+	APIKey    string `mapstructure:"api_key"`
+	Model     string `mapstructure:"model"`
+	BaseURL   string `mapstructure:"base_url"`
+	Dimension int    `mapstructure:"dimension"`
+}
+
+// BaiduConfig 百度文心特有配置（需 access_key + secret_key 换取 token）
+type BaiduConfig struct {
+	APIKey      string `mapstructure:"api_key"`
+	SecretKey   string `mapstructure:"secret_key"`
+	Model       string `mapstructure:"model"`
+	Dimension   int    `mapstructure:"dimension"`
+	BaseURL     string `mapstructure:"base_url"`
 }
 
 // IndexConfig holds indexing settings
@@ -108,9 +132,10 @@ func Load(configPath string) (*Config, error) {
 	// 设置默认值
 	v.SetDefault("cortex.db_path", filepath.Join(defaultDir, "cortex.db"))
 	v.SetDefault("cortex.log_level", "info")
-	v.SetDefault("embedding.provider", "ollama")
+	v.SetDefault("embedding.provider", "none")
+	v.SetDefault("embedding.auto_update", true)
 	v.SetDefault("embedding.ollama.base_url", "http://localhost:11434")
-	v.SetDefault("embedding.ollama.model", "nomic-embed-text")
+	v.SetDefault("embedding.ollama.model", "all-minilm")
 	v.SetDefault("index.max_tokens", 512)
 	v.SetDefault("index.overlap_tokens", 64)
 	v.SetDefault("index.min_chars", 50)
@@ -387,8 +412,13 @@ func ValidateConfig(c *Config) error {
 	if c.Cortex.DBPath == "" {
 		return fmt.Errorf("cortex.db_path is required")
 	}
-	if c.Embedding.Provider != "ollama" && c.Embedding.Provider != "onnx" && c.Embedding.Provider != "none" {
-		return fmt.Errorf("embedding.provider must be 'ollama', 'onnx', or 'none'")
+	validProviders := map[string]bool{
+		"ollama": true, "onnx": true, "none": true,
+		"openai": true, "cohere": true, "voyage": true,
+		"dashscope": true, "zhipu": true, "baidu": true,
+	}
+	if !validProviders[c.Embedding.Provider] {
+		return fmt.Errorf("embedding.provider must be one of: ollama, onnx, none, openai, cohere, voyage, dashscope, zhipu, baidu")
 	}
 	if c.Index.Workers <= 0 || c.Index.Workers > 32 {
 		return fmt.Errorf("index.workers must be between 1 and 32")

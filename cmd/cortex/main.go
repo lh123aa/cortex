@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -119,6 +120,17 @@ var usageCmd = &cobra.Command{
 	Run:   runUsage,
 }
 
+var setupCmd = &cobra.Command{
+	Use:   "setup",
+	Short: "Interactive embedding provider configuration wizard",
+	Long: `Run the interactive setup wizard to configure your embedding provider.
+
+Supports local (Ollama), international API (OpenAI, Cohere, Voyage),
+and domestic API (DashScope, Zhipu, Baidu) providers.
+Run 'cortex setup' anytime to reconfigure.`,
+	Run: runSetup,
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", "config file path")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level (debug/info/warn/error)")
@@ -141,6 +153,7 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(dedupCmd)
 	rootCmd.AddCommand(usageCmd)
+	rootCmd.AddCommand(setupCmd)
 }
 
 func main() {
@@ -214,44 +227,82 @@ func initStorageLight(cfg *config.Config, logger *zap.Logger) (storage.Storage, 
 }
 
 func initEmbedding(cfg *config.Config, logger *zap.Logger) (embedding.EmbeddingProvider, error) {
-	var primary embedding.EmbeddingProvider
-
-	if cfg.Embedding.Provider == "ollama" || cfg.Embedding.Provider == "" {
-		ollama := embedding.NewOllamaEmbedding(
-			cfg.Embedding.Ollama.BaseURL,
-			cfg.Embedding.Ollama.Model,
-			768,
-		)
-		primary = ollama
-		logger.Info("embedding provider initialized",
-			zap.String("provider", "ollama"),
-			zap.String("model", cfg.Embedding.Ollama.Model),
-		)
+	// 使用工厂模式从配置创建 Provider
+	provider, err := embedding.NewProviderFromConfig(convertConfig(cfg))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create embedding provider: %w", err)
 	}
-
-	if cfg.Embedding.Provider == "onnx" {
-		onnx := embedding.NewONNXEmbedding(
-			cfg.Embedding.ONNX.BaseURL,
-			cfg.Embedding.ONNX.Model,
-			cfg.Embedding.ONNX.Dim,
-		)
-		primary = onnx
-		logger.Info("embedding provider initialized",
-			zap.String("provider", "onnx"),
-			zap.String("model", cfg.Embedding.ONNX.Model),
-		)
-	}
-
-	if cfg.Embedding.Provider == "none" {
+	if provider == nil {
 		logger.Info("embedding provider disabled, search will use FTS-only mode")
 		return nil, nil
 	}
+	logger.Info("embedding provider initialized",
+		zap.String("provider", cfg.Embedding.Provider),
+		zap.String("model", provider.Name()),
+	)
+	return provider, nil
+}
 
-	if primary != nil {
-		return embedding.NewProviderManager(primary, nil), nil
+// convertConfig 将 config.Config 转换为 embedding.ProviderConfig
+func convertConfig(cfg *config.Config) embedding.ProviderConfig {
+	pc := embedding.ProviderConfig{Provider: cfg.Embedding.Provider}
+	pc.Ollama.BaseURL = cfg.Embedding.Ollama.BaseURL
+	pc.Ollama.Model = cfg.Embedding.Ollama.Model
+	pc.OpenAI.APIKey = cfg.Embedding.OpenAI.APIKey
+	pc.OpenAI.Model = cfg.Embedding.OpenAI.Model
+	pc.OpenAI.BaseURL = cfg.Embedding.OpenAI.BaseURL
+	pc.OpenAI.Dimension = cfg.Embedding.OpenAI.Dimension
+	pc.Cohere.APIKey = cfg.Embedding.Cohere.APIKey
+	pc.Cohere.Model = cfg.Embedding.Cohere.Model
+	pc.Cohere.BaseURL = cfg.Embedding.Cohere.BaseURL
+	pc.Cohere.Dimension = cfg.Embedding.Cohere.Dimension
+	pc.Voyage.APIKey = cfg.Embedding.Voyage.APIKey
+	pc.Voyage.Model = cfg.Embedding.Voyage.Model
+	pc.Voyage.BaseURL = cfg.Embedding.Voyage.BaseURL
+	pc.Voyage.Dimension = cfg.Embedding.Voyage.Dimension
+	pc.DashScope.APIKey = cfg.Embedding.DashScope.APIKey
+	pc.DashScope.Model = cfg.Embedding.DashScope.Model
+	pc.DashScope.BaseURL = cfg.Embedding.DashScope.BaseURL
+	pc.DashScope.Dimension = cfg.Embedding.DashScope.Dimension
+	pc.Zhipu.APIKey = cfg.Embedding.Zhipu.APIKey
+	pc.Zhipu.Model = cfg.Embedding.Zhipu.Model
+	pc.Zhipu.BaseURL = cfg.Embedding.Zhipu.BaseURL
+	pc.Zhipu.Dimension = cfg.Embedding.Zhipu.Dimension
+	pc.Baidu.APIKey = cfg.Embedding.Baidu.APIKey
+	pc.Baidu.SecretKey = cfg.Embedding.Baidu.SecretKey
+	pc.Baidu.Model = cfg.Embedding.Baidu.Model
+	pc.Baidu.BaseURL = cfg.Embedding.Baidu.BaseURL
+	pc.Baidu.Dimension = cfg.Embedding.Baidu.Dimension
+	return pc
+}
+
+// runSetup 运行交互式配置向导
+func runSetup(cmd *cobra.Command, args []string) {
+	cfg, err := embedding.RunSetupWizard()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
 
-	return nil, fmt.Errorf("no embedding provider configured")
+	if err := cfg.WriteConfig(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing config: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 如果选的是 ollama 但未检测到服务，提示安装
+	if cfg.Provider == "ollama" {
+		testCfg, _ := config.Load(cfgPath)
+		if testCfg != nil {
+			// 简单测试 Ollama 是否可达
+			client := &http.Client{Timeout: 3 * time.Second}
+			resp, err := client.Get("http://localhost:11434/api/tags")
+			if err != nil {
+				embedding.SuggestInstallOllama()
+			} else {
+				resp.Body.Close()
+			}
+		}
+	}
 }
 
 func initIndexer(st storage.Storage, emb embedding.EmbeddingProvider, cfg *config.Config, logger *zap.Logger) (*index.Indexer, error) {
