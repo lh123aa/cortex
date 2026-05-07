@@ -345,7 +345,18 @@ collectResultsWithCheckpoint:
 	progress.IndexedFiles = baselineIndexed + result.Indexed
 	progress.FailedFiles = baselineFailed + result.Failed
 
-	// 标记完成
+	// 强制保存最终 checkpoint（确保中断时进度不丢失）
+	progress.LastFileIndex = startIndex + completedCount
+	progress.UpdatedAt = time.Now()
+	_ = idx.storage.SaveIndexProgress(progress)
+
+	// 检查是否被取消/超时 — 如果是，保持 "running" 状态以便续传
+	if ctx.Err() != nil {
+		result.Duration = time.Since(start).Milliseconds()
+		return result, ctx.Err()
+	}
+
+	// 正常完成才标记 completed
 	progress.Status = "completed"
 	progress.CompletedAt = time.Now()
 	progress.UpdatedAt = time.Now()
