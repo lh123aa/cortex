@@ -166,6 +166,15 @@ var defaultExcludeDirs = map[string]bool{
 	"Applet":       true,
 	"FileStorage":  true,
 	"__GAME_FILE_CACHE": true,
+	".venv":        true,
+	"venv":         true,
+	".env":         true,
+	"site-packages": true,
+	".mypy_cache":  true,
+	".pytest_cache": true,
+	".eggs":        true,
+	"eggs":         true,
+	"pip-wheel-metadata": true,
 }
 
 // isExcludedDir 检查目录是否应被排除
