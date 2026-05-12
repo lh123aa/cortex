@@ -228,18 +228,12 @@ func (h *HNSW) insertAtLevel(nodeID int, vector []float32, level int) {
 	visited[ep] = true
 
 	for candidates.Len() > 0 {
-		// 获取当前最近但最远的候选
 		current, d := candidates.pop()
 
-		// 获取与当前候选的距离 (声明但未使用，实际使用 candidates 中的 d)
-		_ = cosineDistance(vector, h.vectors[current])
-
-		// 检查是否需要终止
-		if d > candidates.getWorst() && candidates.Len() >= ef {
+		if candidates.Len() >= ef && d > candidates.getWorst() {
 			break
 		}
 
-		// 遍历邻居（含边界检查）
 		if h.neighbors[level][current] == nil {
 			continue
 		}
@@ -253,7 +247,7 @@ func (h *HNSW) insertAtLevel(nodeID int, vector []float32, level int) {
 			visited[neighbor] = true
 
 			ndist := cosineDistance(vector, h.vectors[neighbor])
-			if ndist < d || candidates.Len() < ef {
+			if candidates.Len() < ef || ndist < candidates.getWorst() {
 				candidates.push(neighbor, ndist)
 			}
 		}
@@ -393,7 +387,13 @@ func (pq *priorityQueue) getWorst() float64 {
 	if len(pq.items) == 0 {
 		return math.MaxFloat64
 	}
-	return pq.items[len(pq.items)-1].dist
+	worst := -1.0
+	for _, item := range pq.items {
+		if item.dist > worst {
+			worst = item.dist
+		}
+	}
+	return worst
 }
 
 // searchLayer 在指定层搜索最近邻

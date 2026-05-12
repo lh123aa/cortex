@@ -29,20 +29,15 @@ type OllamaEmbedding struct {
 }
 
 func NewOllamaEmbedding(baseURL, model string, dim int) *OllamaEmbedding {
-	transport := &http.Transport{
-		MaxIdleConns:        10,
-		MaxIdleConnsPerHost: 4,
-		IdleConnTimeout:     90 * time.Second,
-	}
 	return &OllamaEmbedding{
 		BaseURL:    baseURL,
 		Model:      model,
 		CacheDim:   dim,
 		Timeout:    30 * time.Second,
-		MaxRetries: 3,                      // 默认 3 次重试
-		RetryDelay: 100 * time.Millisecond, // 默认 100ms
+		MaxRetries: 3,
+		RetryDelay: 100 * time.Millisecond,
 		client: &http.Client{
-			Transport: transport,
+			Transport: getSharedTransport(),
 			Timeout:   30 * time.Second,
 		},
 	}

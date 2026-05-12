@@ -25,18 +25,13 @@ type ONNXEmbedding struct {
 // NewONNXEmbedding 创建 ONNX Embedding Provider
 // baseURL: ONNX 模型服务器的地址，例如 http://localhost:8080
 func NewONNXEmbedding(baseURL, model string, dim int) *ONNXEmbedding {
-	transport := &http.Transport{
-		MaxIdleConns:        5,
-		MaxIdleConnsPerHost: 2,
-		IdleConnTimeout:     90 * time.Second,
-	}
 	return &ONNXEmbedding{
 		BaseURL: strings.TrimSuffix(baseURL, "/"),
 		Model:   model,
 		Dim:     dim,
 		Timeout: 60 * time.Second,
 		client: &http.Client{
-			Transport: transport,
+			Transport: getSharedTransport(),
 			Timeout:   60 * time.Second,
 		},
 	}

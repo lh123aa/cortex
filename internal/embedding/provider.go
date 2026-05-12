@@ -1,5 +1,32 @@
 package embedding
 
+import (
+	"net/http"
+	"sync"
+	"time"
+)
+
+// 全局共享 HTTP 连接池，所有 Provider 共用
+// 减少独立连接池造成的资源浪费，提升连接复用率
+var (
+	sharedTransport     *http.Transport
+	sharedTransportOnce sync.Once
+)
+
+// getSharedTransport 返回全局共享的 HTTP 传输层
+// 连接数: 最多 50 个空闲连接, 每个 Host 最多 16 个
+func getSharedTransport() *http.Transport {
+	sharedTransportOnce.Do(func() {
+		sharedTransport = &http.Transport{
+			MaxIdleConns:        50,
+			MaxIdleConnsPerHost: 16,
+			IdleConnTimeout:     90 * time.Second,
+			DisableCompression:  false,
+		}
+	})
+	return sharedTransport
+}
+
 // EmbeddingProvider 提供通用 Embedding 封装支持
 type EmbeddingProvider interface {
 	// EmbedBatch 并发或批量提交多段文本转化为浮点数向量

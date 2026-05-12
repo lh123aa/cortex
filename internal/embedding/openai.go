@@ -34,11 +34,7 @@ func NewOpenAIEmbedding(apiKey, model, baseURL string, dim int) *OpenAIEmbedding
 		BaseURL: baseURL,
 		Dim:     dim,
 		client: &http.Client{
-			Transport: &http.Transport{
-				MaxIdleConns:        10,
-				MaxIdleConnsPerHost: 4,
-				IdleConnTimeout:     90 * time.Second,
-			},
+			Transport: getSharedTransport(),
 			Timeout: 60 * time.Second,
 		},
 	}

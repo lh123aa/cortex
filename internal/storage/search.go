@@ -4,16 +4,54 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/vector"
 	"go.uber.org/zap"
 )
 
+// isCJKRune 判断是否为中日韩文字
+func isCJKRune(r rune) bool {
+	return unicode.Is(unicode.Han, r) ||
+		(r >= 0x3040 && r <= 0x309F) || // Hiragana
+		(r >= 0x30A0 && r <= 0x30FF) // Katakana
+}
+
+// expandChineseQuery 对中文搜索词进行 2-gram 展开
+// 使 FTS5 能匹配经过同样展开的索引内容
+func expandChineseQuery(query string) string {
+	if !strings.ContainsFunc(query, isCJKRune) {
+		return query
+	}
+	runes := []rune(query)
+	var result strings.Builder
+	for i := 0; i < len(runes); i++ {
+		if isCJKRune(runes[i]) {
+			if i > 0 {
+				result.WriteByte(' ')
+			}
+			if i+1 < len(runes) && isCJKRune(runes[i+1]) {
+				result.WriteRune(runes[i])
+				result.WriteRune(runes[i+1])
+				result.WriteByte(' ')
+			}
+			result.WriteRune(runes[i])
+		} else {
+			if result.Len() > 0 && result.String()[result.Len()-1] != ' ' {
+				result.WriteByte(' ')
+			}
+			result.WriteRune(runes[i])
+		}
+	}
+	return result.String()
+}
+
 // FTSSearch 进行基于 FTS5 的全文关键词检索 (BM25)
 // userID 参数用于用户数据隔离
 func (s *SQLiteStorage) FTSSearch(query string, userID string, topK int) ([]*models.SearchResult, error) {
-	// FTS5 按 bm25 分数倒序，同时通过 document.user_id 隔离用户数据
+	// 对中文 query 做 2-gram 展开，匹配索引时同样展开的内容
+	ftsQuery := expandChineseQuery(query)
 	q := `
 		SELECT c.id, c.document_id, c.heading_path, c.content, c.content_raw, bm25(chunks_fts) as score
 		FROM chunks_fts fts
@@ -23,7 +61,7 @@ func (s *SQLiteStorage) FTSSearch(query string, userID string, topK int) ([]*mod
 		  AND d.user_id = ?
 		ORDER BY score LIMIT ?
 	`
-	rows, err := s.db.Query(q, query, userID, topK)
+	rows, err := s.db.Query(q, ftsQuery, userID, topK)
 	if err != nil {
 		return nil, err
 	}

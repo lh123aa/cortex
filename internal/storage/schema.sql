@@ -140,6 +140,7 @@ CREATE TABLE IF NOT EXISTS vectors (
 );
 
 CREATE INDEX IF NOT EXISTS idx_vectors_user ON vectors(user_id);
+CREATE INDEX IF NOT EXISTS idx_vectors_dim ON vectors(dimension);
 
 -- 元数据表
 CREATE TABLE IF NOT EXISTS metadata (
