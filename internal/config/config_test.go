@@ -86,14 +86,14 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.Cortex.LogLevel != "info" {
 		t.Errorf("Expected default log_level 'info', got '%s'", cfg.Cortex.LogLevel)
 	}
-	if cfg.Embedding.Provider != "ollama" {
-		t.Errorf("Expected default provider 'ollama', got '%s'", cfg.Embedding.Provider)
+	if cfg.Embedding.Provider != "none" {
+		t.Errorf("Expected default provider 'none', got '%s'", cfg.Embedding.Provider)
 	}
 	if cfg.Index.MaxTokens != 512 {
 		t.Errorf("Expected default max_tokens 512, got %d", cfg.Index.MaxTokens)
 	}
-	if cfg.Index.Workers != 8 {
-		t.Errorf("Expected default workers 8, got %d", cfg.Index.Workers)
+	if cfg.Index.Workers != 16 {
+		t.Errorf("Expected default workers 16, got %d", cfg.Index.Workers)
 	}
 	if cfg.Search.DefaultTopK != 10 {
 		t.Errorf("Expected default default_top_k 10, got %d", cfg.Search.DefaultTopK)

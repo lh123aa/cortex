@@ -21,7 +21,14 @@ func isCJKRune(r rune) bool {
 // expandChineseQuery 对中文搜索词进行 2-gram 展开
 // 使 FTS5 能匹配经过同样展开的索引内容
 func expandChineseQuery(query string) string {
-	if !strings.ContainsFunc(query, isCJKRune) {
+	hasCJK := false
+	for _, r := range query {
+		if isCJKRune(r) {
+			hasCJK = true
+			break
+		}
+	}
+	if !hasCJK {
 		return query
 	}
 	runes := []rune(query)
