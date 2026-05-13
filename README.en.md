@@ -44,6 +44,7 @@
   <a href="#-configuration">🔧 Config</a>
   <br>
   <a href="./README.md">🌐 中文版</a> ·
+  <a href="./docs/TUTORIAL.en.md">📖 Tutorial</a> ·
   <a href="#-development">🛠️ Dev</a> ·
   <a href="./docs">📖 Docs</a>
 </p>

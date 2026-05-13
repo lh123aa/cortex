@@ -48,6 +48,7 @@
   <a href="#-配置">🔧 配置</a>
   <br>
   <a href="./README.en.md">🌐 English Version</a> ·
+  <a href="./docs/TUTORIAL.md">📖 实战教程</a> ·
   <a href="#-开发">🛠️ 开发</a> ·
   <a href="./TEST_REPORT.md">📋 测试报告</a> ·
   <a href="./ITERATION_PLAN.md">📋 迭代计划</a> ·
