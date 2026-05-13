@@ -1,6 +1,8 @@
 package search
 
 import (
+	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -257,5 +259,90 @@ func TestPrefetchEngine(t *testing.T) {
 	}
 	if pe.GetCachedCount() != 0 {
 		t.Error("expected empty cache")
+	}
+}
+
+func TestPrefetchEngine_OnFileChange_EmptyContent(t *testing.T) {
+	engine := &HybridSearchEngine{}
+	pe := NewPrefetchEngine(engine)
+
+	// Empty content should not panic
+	pe.OnFileChange("/test/file.md", nil)
+	pe.OnFileChange("/test/file.md", []byte{})
+}
+
+func TestPrefetchEngine_Suggest_EmptyQuery(t *testing.T) {
+	engine := &HybridSearchEngine{}
+	pe := NewPrefetchEngine(engine)
+
+	results := pe.Suggest(context.Background(), "", "/test/file.md", 5)
+	if len(results) != 0 {
+		t.Error("expected empty results for empty query")
+	}
+}
+
+func TestPrefetchEngine_InvalidateFile(t *testing.T) {
+	engine := &HybridSearchEngine{}
+	pe := NewPrefetchEngine(engine)
+
+	// Invalidate on empty cache should not panic
+	pe.InvalidateFile("/test/file.md")
+}
+
+func TestPrefetchEngine_KeywordExtraction_Markdown(t *testing.T) {
+	content := `# Project Overview
+This is a project about building a search engine.
+The search engine supports full text search and vector search.
+We use Go and Python for implementation.`
+
+	kw := extractKeywords(content, 3)
+	if len(kw) == 0 {
+		t.Fatal("expected at least 1 keyword")
+	}
+
+	hasH1 := false
+	for _, k := range kw {
+		if k == "Project Overview" {
+			hasH1 = true
+			break
+		}
+	}
+	if !hasH1 {
+		t.Logf("keywords: %v (expected 'Project Overview' to be included)", kw)
+	}
+}
+
+func TestPrefetchEngine_KeywordExtraction_Code(t *testing.T) {
+	content := `package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("Hello, World!")
+}`
+
+	kw := extractKeywords(content, 3)
+	if len(kw) == 0 {
+		t.Fatal("expected at least 1 keyword from code content")
+	}
+	t.Logf("extracted from code: %v", kw)
+}
+
+func TestSearchCache_EvictOldest(t *testing.T) {
+	cache := NewSearchCache()
+	opts := models.SearchOptions{TopK: 10, Mode: "hybrid"}
+
+	// Fill cache beyond max
+	for i := 0; i < 10100; i++ {
+		result := []*models.SearchResult{{
+			Score: 0.5,
+			Chunk: &models.Chunk{ID: fmt.Sprintf("chunk-%d", i)},
+		}}
+		cache.Set(fmt.Sprintf("query-%d", i), opts, result)
+	}
+
+	// Should have evicted oldest entries
+	if cache.itemCount > MaxCacheItems {
+		t.Errorf("cache size %d exceeds max %d", cache.itemCount, MaxCacheItems)
 	}
 }

@@ -111,3 +111,57 @@ func TestExcludedDirSkipped(t *testing.T) {
 		t.Errorf("expected 1 file (excluding node_modules), got %d: %v", len(files), files)
 	}
 }
+
+func TestIsSkippableExt(t *testing.T) {
+	tests := []struct {
+		ext  string
+		want bool
+	}{
+		{".md", false},
+		{".go", false},
+		{".py", false},
+		{".js", false},
+		{".txt", false},
+		{".png", true},
+		{".jpg", true},
+		{".mp4", true},
+		{".zip", true},
+		{".exe", true},
+		{".dll", true},
+		{".so", true},
+		{".dylib", true},
+		{".ico", true},
+		{".woff2", true},
+		{"", false},
+		{".go", false},
+	}
+	for _, tt := range tests {
+		got := isSkippableExt(tt.ext)
+		if got != tt.want {
+			t.Errorf("isSkippableExt(%q) = %v, want %v", tt.ext, got, tt.want)
+		}
+	}
+}
+
+func TestIndexFileResult(t *testing.T) {
+	r := fileResult{indexed: true, skipped: false}
+	if !r.indexed {
+		t.Error("expected indexed=true")
+	}
+	if r.skipped {
+		t.Error("expected skipped=false")
+	}
+
+	r2 := fileResult{indexed: false, skipped: true}
+	if r2.indexed {
+		t.Error("expected indexed=false")
+	}
+	if !r2.skipped {
+		t.Error("expected skipped=true")
+	}
+
+	r3 := fileResult{indexed: false, skipped: false, err: os.ErrNotExist}
+	if r3.err == nil {
+		t.Error("expected non-nil error")
+	}
+}
