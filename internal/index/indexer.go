@@ -32,6 +32,9 @@ type Indexer struct {
 	pool      *ants.Pool
 	logger    *log.Logger // 结构化日志（可选）
 
+	// Force 强制重新索引，跳过内容哈希检查
+	Force bool
+
 	// OnProgress 可选回调，每个文件处理完成后触发（用于实时进度展示）
 	OnProgress func(evt models.IndexProgressEvent)
 }
@@ -149,37 +152,77 @@ type fileResult struct {
 
 // 默认排除目录：这些目录的内容通常不产生有意义的搜索语义
 var defaultExcludeDirs = map[string]bool{
-	"node_modules": true,
-	".git":         true,
-	".opencode":    true,
-	".svn":         true,
-	"__pycache__":  true,
-	".cache":       true,
-	"vendor":       true,
-	"dist":         true,
-	"build":        true,
-	".next":        true,
-	"coverage":     true,
-	".idea":        true,
-	".vscode":      true,
-	"WeChat Files": true,
-	"Applet":       true,
-	"FileStorage":  true,
-	"__GAME_FILE_CACHE": true,
-	".venv":        true,
-	"venv":         true,
-	".env":         true,
-	"site-packages": true,
-	".mypy_cache":  true,
-	".pytest_cache": true,
-	".eggs":        true,
-	"eggs":         true,
+	"node_modules":       true,
+	".git":               true,
+	".opencode":          true,
+	".svn":               true,
+	"__pycache__":        true,
+	".cache":             true,
+	"vendor":             true,
+	"dist":               true,
+	"build":              true,
+	".next":              true,
+	"coverage":           true,
+	".idea":              true,
+	".vscode":            true,
+	"WeChat Files":       true,
+	"Applet":             true,
+	"FileStorage":        true,
+	"__GAME_FILE_CACHE":  true,
+	".venv":              true,
+	"venv":               true,
+	".env":               true,
+	"site-packages":      true,
+	".mypy_cache":        true,
+	".pytest_cache":      true,
+	".eggs":              true,
+	"eggs":               true,
 	"pip-wheel-metadata": true,
+	"bin":                true, // 编译产物
+	"out":                true, // 编译输出
+	".terraform":         true,
+	"target":             true, // Rust 编译输出
 }
 
 // isExcludedDir 检查目录是否应被排除
 func isExcludedDir(name string) bool {
 	return defaultExcludeDirs[name]
+}
+
+// 默认跳过扩展名：这些文件类型不会被索引
+var defaultSkipExts = map[string]bool{
+	// 图片
+	".jpg": true, ".jpeg": true, ".png": true, ".gif": true,
+	".bmp": true, ".svg": true, ".webp": true, ".ico": true,
+	".tiff": true, ".tif": true, ".heic": true, ".avif": true,
+	// 视频
+	".mp4": true, ".avi": true, ".mov": true, ".wmv": true,
+	".mkv": true, ".flv": true, ".webm": true, ".m4v": true,
+	// 音频
+	".mp3": true, ".wav": true, ".flac": true, ".aac": true, ".ogg": true,
+	// 压缩包
+	".zip": true, ".rar": true, ".7z": true, ".tar": true,
+	".gz": true, ".bz2": true, ".xz": true, ".zst": true,
+	// 二进制/执行文件
+	".exe": true, ".dll": true, ".so": true, ".dylib": true,
+	".bin": true, ".out": true, ".o": true, ".a": true, ".lib": true,
+	".class": true, ".jar": true, ".war": true,
+	// 字体
+	".ttf": true, ".otf": true, ".woff": true, ".woff2": true, ".eot": true,
+	// 数据库
+	".db": true, ".sqlite": true, ".sqlite3": true,
+	// 文档二进制格式无需索引
+	".pptx": true, ".xlsx": true,
+	// 系统/缓存
+	".pyc": true, ".pyo": true, ".pyd": true,
+	".DS_Store": true, ".thumb": true,
+	".log": true, // 日志文件通常太大且无索引价值
+}
+
+// isSkippableExt 检查文件扩展名是否应被跳过
+func isSkippableExt(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return defaultSkipExts[ext]
 }
 
 // IndexDirectoryWithCheckpoint 遍历执行整个文件夹（支持断点恢复，用户隔离）
@@ -217,6 +260,9 @@ func (idx *Indexer) IndexDirectoryWithCheckpoint(ctx context.Context, rootPath s
 			if isExcludedDir(info.Name()) {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+		if isSkippableExt(path) {
 			return nil
 		}
 		allFiles = append(allFiles, path)
@@ -394,6 +440,9 @@ func (idx *Indexer) IndexDirectory(ctx context.Context, rootPath string, userID 
 			if isExcludedDir(info.Name()) {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+		if isSkippableExt(path) {
 			return nil
 		}
 		files = append(files, path)
@@ -578,7 +627,7 @@ func (idx *Indexer) indexFileInternalWithUser(ctx context.Context, path string, 
 
 	// 查询是否存在及比对Hash（用户隔离）
 	doc, _ := idx.storage.GetDocumentByPath(path, userID)
-	if doc != nil && doc.ContentHash == hashStr {
+	if !idx.Force && doc != nil && doc.ContentHash == hashStr {
 		// 跳过重复索引
 		return false, true, nil
 	}
@@ -726,6 +775,9 @@ func (ii *IncrementalIndexer) ScanDirectory() ([]string, error) {
 			if isExcludedDir(info.Name()) {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+		if isSkippableExt(path) {
 			return nil
 		}
 		files = append(files, path)

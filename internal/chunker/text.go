@@ -2,6 +2,7 @@ package chunker
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -47,7 +48,7 @@ func (c *TextChunker) Chunk(content string, path string) ([]*models.Chunk, error
 		sectionTokens := len(section) / 4
 
 		// 检测是否为标题
-		heading, level := c.detectHeading(section)
+		heading, level := c.detectHeading(section, path)
 
 		// 如果是标题变化，先输出当前块
 		if level > 0 && currentHeading != heading && currentBlock.Len() > c.config.MinChars {
@@ -118,7 +119,7 @@ func (c *TextChunker) splitByHeaders(content string) []string {
 }
 
 // detectHeading 检测标题
-func (c *TextChunker) detectHeading(section string) (string, int) {
+func (c *TextChunker) detectHeading(section string, path string) (string, int) {
 	lines := strings.Split(section, "\n")
 	if len(lines) == 0 {
 		return "unknown", 0
@@ -143,7 +144,7 @@ func (c *TextChunker) detectHeading(section string) (string, int) {
 	}
 
 	// 文件名作为标题
-	return "section", 0
+	return filepath.Base(path), 0
 }
 
 // buildChunk 创建 Chunk
@@ -151,10 +152,10 @@ func (c *TextChunker) buildChunk(rawText string, tokenCount int, path string, do
 	trimmed := strings.TrimSpace(rawText)
 	// 中文分词优化：对中文文本预分词，提升 FTS5 搜索质量
 	contentForSearch := OptimizeForChineseSearch(trimmed)
-	contentWrapped := contentForSearch
+	contentWrapped := trimmed
 	if c.config.IncludeBreadcrumb {
 		breadcrumb := fmt.Sprintf("File: %s | %s\n\n", path, heading)
-		contentWrapped = breadcrumb + contentForSearch
+		contentWrapped = breadcrumb + trimmed
 	}
 
 	chID := generateID(path, trimmed)

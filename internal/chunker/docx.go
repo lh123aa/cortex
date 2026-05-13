@@ -154,6 +154,7 @@ func (c *DocxChunker) splitByParagraph(fullText string, path, docIDHash string) 
 		tokens := len(c.tokenizer.Encode(text, nil, nil))
 		chID := generateID(path, text[:min(50, len(text))])
 
+		contentForSearch := OptimizeForChineseSearch(text)
 		content := text
 		if c.config.IncludeBreadcrumb {
 			content = fmt.Sprintf("Section: [%s] > %s\n\n%s", path, currentHeading, text)
@@ -165,7 +166,7 @@ func (c *DocxChunker) splitByParagraph(fullText string, path, docIDHash string) 
 			HeadingPath:  currentHeading,
 			HeadingLevel: currentLevel,
 			Content:      content,
-			ContentRaw:   text,
+			ContentRaw:   contentForSearch,
 			TokenCount:   tokens,
 		})
 		currentPara.Reset()

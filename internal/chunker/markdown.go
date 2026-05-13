@@ -125,10 +125,10 @@ func (c *MarkdownChunker) buildChunk(rawText string, tokenCount int, path string
 	trimmed := strings.TrimSpace(rawText)
 	// 中文分词优化
 	contentForSearch := OptimizeForChineseSearch(trimmed)
-	contentWrapped := contentForSearch
+	contentWrapped := trimmed
 	if c.config.IncludeBreadcrumb {
 		breadcrumb := fmt.Sprintf("Section: [%s] > %s\n\n", path, heading)
-		contentWrapped = breadcrumb + contentForSearch
+		contentWrapped = breadcrumb + trimmed
 	}
 
 	chID := generateID(path, trimmed)

@@ -118,6 +118,22 @@ With --vector: dedup by vector similarity (semantic match).`,
 	Run: runDedup,
 }
 
+var watchCmd = &cobra.Command{
+	Use:   "watch <path>",
+	Short: "Watch a directory for changes and auto-index",
+	Long: `Monitor a directory for file changes (create, modify, delete)
+and automatically update the index in real-time.
+
+Uses filesystem notifications (fsnotify) for instant updates.
+Supports the same file types as 'cortex index'.
+
+Examples:
+  cortex watch ~/my-docs
+  cortex watch /path/to/project`,
+	Args: cobra.ExactArgs(1),
+	Run:  runWatch,
+}
+
 var usageCmd = &cobra.Command{
 	Use:   "usage",
 	Short: "Show storage usage and plan info",
@@ -160,6 +176,7 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(dedupCmd)
+	rootCmd.AddCommand(watchCmd)
 	rootCmd.AddCommand(usageCmd)
 	rootCmd.AddCommand(setupCmd)
 }
@@ -357,6 +374,7 @@ func runIndex(cmd *cobra.Command, args []string) {
 	if err != nil {
 		logger.Fatal("failed to init indexer", zap.Error(err))
 	}
+	idx.Force = forceReindex
 
 	path := args[0]
 	logger.Info("starting indexing", zap.String("path", path))
@@ -367,7 +385,7 @@ func runIndex(cmd *cobra.Command, args []string) {
 		if progress != nil {
 			st.DeleteIndexProgress(progress.ID)
 		}
-		logger.Info("force re-index: cleared existing checkpoint", zap.String("path", path))
+		logger.Info("force re-index: cleared existing checkpoint, all content will be re-processed", zap.String("path", path))
 	}
 
 	// 创建可取消 context（支持超时 + Ctrl+C）
@@ -657,6 +675,16 @@ func runServe(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	// 启动配置热加载（配置文件变更自动生效）
+	if err := config.WatchConfig(func(newCfg *config.Config) {
+		logger.Info("config file changed, new settings loaded",
+			zap.String("embedding.provider", newCfg.Embedding.Provider),
+			zap.String("log_level", newCfg.Cortex.LogLevel),
+		)
+	}); err != nil {
+		logger.Warn("failed to start config watcher, config hot-reload disabled", zap.Error(err))
+	}
+
 	st, err := initStorage(cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
@@ -689,6 +717,17 @@ func runServe(cmd *cobra.Command, args []string) {
 	// 启动 Prometheus metrics 服务器
 	metricsServer := metrics.StartMetricsServer(":9090")
 	logger.Info("metrics server started", zap.String("addr", ":9090"))
+
+	// 启动自动备份（默认 24 小时间隔，保留最多 10 份）
+	if cfg.Backup.AutoBackup {
+		backupMgr := storage.NewBackupManager(cfg.Cortex.DBPath)
+		if cfg.Backup.MaxBackups > 0 {
+			backupMgr.SetMaxBackups(cfg.Backup.MaxBackups)
+		}
+		backupMgr.StartAutoBackup(24 * time.Hour)
+		defer backupMgr.StopAutoBackup()
+		logger.Info("auto backup enabled", zap.Int("max_backups", cfg.Backup.MaxBackups))
+	}
 
 	// Graceful Shutdown 通道
 	sigChan := make(chan os.Signal, 1)
@@ -853,6 +892,50 @@ func runUsage(cmd *cobra.Command, args []string) {
 	if used > limit {
 		fmt.Println("\n⚠️  Storage limit exceeded. Upgrade at https://cortex.ai/pricing")
 	}
+}
+
+func runWatch(cmd *cobra.Command, args []string) {
+	cfg, logger, err := loadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	st, err := initStorage(cfg, logger)
+	if err != nil {
+		logger.Fatal("failed to init storage", zap.Error(err))
+	}
+	defer st.Close()
+
+	emb, err := initEmbedding(cfg, logger)
+	if err != nil {
+		logger.Fatal("failed to init embedding", zap.Error(err))
+	}
+
+	idx, err := initIndexer(st, emb, cfg, logger)
+	if err != nil {
+		logger.Fatal("failed to init indexer", zap.Error(err))
+	}
+
+	rootPath := args[0]
+	logger.Info("starting file watcher", zap.String("path", rootPath))
+
+	watcher, err := index.NewIncrementalWatcher(idx, rootPath, "")
+	if err != nil {
+		logger.Fatal("failed to create watcher", zap.Error(err))
+	}
+
+	if err := watcher.Start(); err != nil {
+		logger.Fatal("failed to start watcher", zap.Error(err))
+	}
+
+	// 等待信号
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	sig := <-sigChan
+	logger.Info("received shutdown signal, stopping watcher", zap.String("signal", sig.String()))
+	watcher.Stop()
 }
 
 func formatBytes(b int64) string {

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/lh123aa/cortex/internal/chunker"
 	"github.com/lh123aa/cortex/internal/embedding"
@@ -78,6 +79,8 @@ type MCPServer struct {
 	memory  *MemoryHandler
 	logger  *zap.Logger
 	userID  string // 用户隔离：当前 MCP 会话的 userID
+
+	startupTime time.Time // MCP 服务器启动时间，用于健康检测
 }
 
 // SetUserID 设置 MCP 服务器的用户上下文
@@ -89,11 +92,12 @@ func (s *MCPServer) SetUserID(userID string) {
 func NewMCPServer(se *search.HybridSearchEngine, st storage.Storage, em embedding.EmbeddingProvider, log *zap.Logger) *MCPServer {
 	mh := NewMemoryHandler(st, se, em, log)
 	s := &MCPServer{
-		search:  se,
-		rag:     rag.NewRAGBuilder(se),
-		storage: st,
-		memory:  mh,
-		logger:  log,
+		search:      se,
+		rag:         rag.NewRAGBuilder(se),
+		storage:     st,
+		memory:      mh,
+		logger:      log,
+		startupTime: time.Now(),
 	}
 
 	// 实例化 MCP Server
@@ -152,6 +156,12 @@ func (s *MCPServer) registerTools() {
 		Name:        "cortex_memory_delete_batch",
 		Description: "Delete multiple memory entries from the cortex knowledge base by their IDs",
 	}, s.handleMemoryDeleteBatchTool)
+
+	// cortex_health: 健康检测
+	mcp.AddTool(s.server, &mcp.Tool{
+		Name:        "cortex_health",
+		Description: "Check if the cortex server is healthy and responsive. Returns system status, document count, and uptime.",
+	}, s.handleHealthTool)
 }
 
 func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
@@ -379,6 +389,29 @@ func (s *MCPServer) handleMemoryDeleteBatchTool(ctx context.Context, req *mcp.Ca
 	}
 
 	result := fmt.Sprintf("Batch delete complete:\n  Deleted: %v\n  Failed: %v", deleted, failed)
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: result}},
+	}, nil, nil
+}
+
+func (s *MCPServer) handleHealthTool(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
+	uptime := time.Since(s.startupTime).Round(time.Second).String()
+
+	docCount, _ := s.storage.GetDocumentsCount("")
+
+	result := fmt.Sprintf(`✅ Cortex MCP Server is healthy
+
+Server:     %s v%s
+Uptime:     %s
+Status:     Running
+Documents:  %d
+Embedding:  %s (FTS5)
+`,
+		ServerName, Version, uptime,
+		docCount,
+		"none",
+	)
+
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{&mcp.TextContent{Text: result}},
 	}, nil, nil

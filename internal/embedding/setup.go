@@ -364,6 +364,15 @@ func (cfg *SetupConfig) WriteConfig() error {
 
 	existing["embedding"] = embedMap
 
+	// 确保 cortex 配置存在，默认开启认证
+	if _, ok := existing["cortex"]; !ok {
+		existing["cortex"] = map[string]interface{}{
+			"db_path":      filepath.Join(filepath.Dir(configPath), "cortex.db"),
+			"log_level":    "info",
+			"auth_enabled": true,
+		}
+	}
+
 	data, err := yaml.Marshal(existing)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)

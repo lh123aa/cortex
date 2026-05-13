@@ -128,6 +128,7 @@ func (c *PDFChunker) Chunk(content string, path string) ([]*models.Chunk, error)
 
 func (c *PDFChunker) buildChunk(rawText string, tokenCount int, path string, docIDHash string, pageNum int) *models.Chunk {
 	trimmed := strings.TrimSpace(rawText)
+	contentForSearch := OptimizeForChineseSearch(trimmed)
 	contentWrapped := trimmed
 	if c.config.IncludeBreadcrumb {
 		breadcrumb := fmt.Sprintf("Section: [%s] > Page %d\n\n", path, pageNum)
@@ -141,7 +142,7 @@ func (c *PDFChunker) buildChunk(rawText string, tokenCount int, path string, doc
 		HeadingPath:  fmt.Sprintf("Page %d", pageNum),
 		HeadingLevel: 1,
 		Content:      contentWrapped,
-		ContentRaw:   trimmed,
+		ContentRaw:   contentForSearch,
 		TokenCount:   tokenCount,
 	}
 }

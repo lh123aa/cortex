@@ -18,8 +18,11 @@ func isCJKRune(r rune) bool {
 		(r >= 0x30A0 && r <= 0x30FF) // Katakana
 }
 
-// expandChineseQuery 对中文搜索词进行 2-gram 展开
-// 使 FTS5 能匹配经过同样展开的索引内容
+// expandChineseQuery 对中文搜索词进行单字展开
+// 之前使用 2-gram 导致搜索词和索引不一致（如搜"商品价格"→"商品 品价 价格"，
+// 但索引中是"商品 品销 销售..."，"品价"不存在→全不命中）
+// 改为单字展开后：搜索"商品价格"→"商 品 价 格"，索引"商 品 销 售 价 格"
+// FTS5 AND 模式下完美匹配
 func expandChineseQuery(query string) string {
 	hasCJK := false
 	for _, r := range query {
@@ -31,24 +34,21 @@ func expandChineseQuery(query string) string {
 	if !hasCJK {
 		return query
 	}
+
+	// 单字展开，每个中文字单独作为FTS5词项
 	runes := []rune(query)
 	var result strings.Builder
-	for i := 0; i < len(runes); i++ {
-		if isCJKRune(runes[i]) {
+	for i, r := range runes {
+		if isCJKRune(r) {
 			if i > 0 {
 				result.WriteByte(' ')
 			}
-			if i+1 < len(runes) && isCJKRune(runes[i+1]) {
-				result.WriteRune(runes[i])
-				result.WriteRune(runes[i+1])
-				result.WriteByte(' ')
-			}
-			result.WriteRune(runes[i])
+			result.WriteRune(r)
 		} else {
 			if result.Len() > 0 && result.String()[result.Len()-1] != ' ' {
 				result.WriteByte(' ')
 			}
-			result.WriteRune(runes[i])
+			result.WriteRune(r)
 		}
 	}
 	return result.String()

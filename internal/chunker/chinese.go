@@ -56,26 +56,13 @@ func SegmentChinese(text string) string {
 	return result.String()
 }
 
-// segmentChineseRunes 将中文字符序列分词（2-gram + 单字后备）
+// segmentChineseRunes 将中文字符序列分词（单字分词，确保FTS5精确匹配）
+// 之前使用 2-gram 导致搜索词和索引词不一致（搜"商品"→"商品"，索引"品销"）
+// 改为单字分词后：索引"商品"→"商 品"，搜索"商品"→"商 品"，FTS5 AND 完美匹配
 func segmentChineseRunes(runes []rune) string {
-	if len(runes) == 0 {
-		return ""
-	}
-	if len(runes) == 1 {
-		return string(runes)
-	}
-
-	var parts []string
-	i := 0
-	for i < len(runes) {
-		if i+1 < len(runes) {
-			// 输出2-gram
-			parts = append(parts, string(runes[i:i+2]))
-			i++
-		} else {
-			parts = append(parts, string(runes[i]))
-			i++
-		}
+	parts := make([]string, len(runes))
+	for i, r := range runes {
+		parts[i] = string(r)
 	}
 	return strings.Join(parts, " ")
 }

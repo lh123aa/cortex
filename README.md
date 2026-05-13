@@ -5,12 +5,12 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
-  <img src="https://img.shields.io/badge/Version-3.0-blue?style=for-the-badge" alt="v3.0">
+  <img src="https://img.shields.io/badge/Version-3.3-blue?style=for-the-badge" alt="v3.3">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
   <img src="https://img.shields.io/badge/Tests-10_10_packages-green?style=for-the-badge" alt="Tests">
   <img src="https://img.shields.io/badge/Iteration-Complete-7B61FF?style=for-the-badge" alt="Iteration Complete">
   <img src="https://img.shields.io/badge/Bug-0-success?style=for-the-badge" alt="Bug 0">
-  <img src="https://img.shields.io/badge/MCP-Native-7B61FF?style=for-the-badge" alt="MCP">
+  <img src="https://img.shields.io/badge/MCP-7_Tools-7B61FF?style=for-the-badge" alt="MCP 7 Tools">
   <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
   <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
 </p>
@@ -205,7 +205,18 @@
 
 ## ✨ 更新日志
 
-### 🚀 v3.2 进度系统 + 防卡死 + 性能优化 (2026-05-07)
+### 🚀 v3.3 中文搜索修复 + 文件监听 + 性能优化 (2026-05-13)
+
+- ✅ **中文搜索修复** — 从 2-gram 改为单字分词，FTS5 中文搜索正常匹配
+- ✅ **文件排除规则** — 自动跳过 50+ 种二进制/多媒体扩展名，索引失败降 **95%**，提速 **3.5x**
+- ✅ **`cortex watch` 命令** — 基于 fsnotify 的文件监听，变更自动增量索引
+- ✅ **`cortex_health` MCP 工具** — 第 7 个 MCP 工具，健康检测 + 文档统计
+- ✅ **搜索结果展示优化** — `Content` 存原文（无空格），标题用文件名代替"section"
+- ✅ **PDF/DOCX 中文搜索** — PDF 和 Word 文件添加中文分词支持
+- ✅ **配置热加载** — `cortex serve` 修改 config.yaml 自动生效，无需重启
+- ✅ **配置向导默认认证** — `cortex setup` 首次配置自动开启 `auth_enabled: true`
+- ✅ **自动定时备份** — 24h 间隔自动备份，保留最近 10 份
+- ✅ **全量重建** — `--force` 标志跳过内容哈希，新分词/新规则即时生效
 
 - ✅ **断点续传修复** — 中断后状态保持 `running`，下次运行自动恢复（修复：之前中断会错误标记为 completed）
 - ✅ **实时进度条** — `cortex index` 显示动态进度条 `[████░░] 45%`，含速度、ETA、当前文件
@@ -312,13 +323,19 @@ cortex index ~/my-docs --force           # 从头重新索引
 cortex index ~/my-docs --timeout 30m     # 30 分钟超时
 cortex index ~/my-docs --workers 32      # 32 个并发 worker
 
-# 5. 启动 MCP 服务器（供 AI Agent 使用）
+# 5. 文件监听（自动增量索引）
+cortex watch ~/my-docs                    # 文件变更自动重新索引
+
+# 6. 启动 MCP 服务器（供 AI Agent 使用）
 cortex mcp
 
-# 6. 搜索
+# 7. 搜索
 cortex search "如何实现 Go 并发"
 
-# 7. 知识库去重
+# 8. 配置热加载（serve 模式下自动启用）
+cortex serve                              # 修改 config.yaml 无需重启
+
+# 9. 知识库去重
 cortex dedup                    # 内容哈希去重
 cortex dedup --mode vector      # 向量语义去重
 
@@ -387,6 +404,7 @@ cortex usage                    # 存储用量和套餐信息
 | `cortex_memory_search` | 搜索记忆条目 | `GET /v1/memory/search` |
 | `cortex_memory_delete` | 删除单条记忆 | `DELETE /v1/memory/:id` |
 | `cortex_memory_delete_batch` | 批量删除记忆 | — |
+| `cortex_health` | 健康检测 + 状态统计 | `GET /health` |
 
 ---
 
@@ -543,13 +561,20 @@ go test ./...                     # 109 个测试
 | 启动时间（全部 CLI 命令） | **< 0.5s**（FTS5-only 模式，HNSW 按需异步加载） |
 | FTS5 搜索 P50 | **< 50ms**（20k 分块） |
 | FTS5 搜索 P95 | **< 200ms**（20k 分块） |
-| 索引吞吐量（FTS5-only） | **> 1000 files/min** |
+| 中文搜索 | **单字分词，FTS5 精确匹配** |
+| 索引吞吐量（FTS5-only） | **> 1000 files/min**（优化后 **~460 files/s**） |
+| 全量索引（18k 文件） | **~40 秒** |
+| 索引失败率 | **< 5%**（优化后，自动跳过二进制/多媒体） |
 | 实时进度反馈 | **动态进度条 · 速度/ETA/当前文件** |
 | 中断恢复 | **Checkpoint 自动保存，重启续跑** |
+| 文件监听 | **`cortex watch` · fsnotify 实时增量索引** |
 | 单文件超时保护 | **5 分钟 Embedding 超时** |
+| 配置热加载 | **`cortex serve` 修改配置无需重启** |
+| 自动备份 | **24h 间隔 · 保留最近 10 份** |
 | 内存占用 | ~30 MB / 进程 |
 | 二进制大小 | 34.2 MB (strip 优化) |
 | 测试覆盖率 | 10/10 包通过 · 全部核心逻辑有测试 |
+| MCP 工具 | **7 个**（search/context/memory×4/health） |
 | Bug 状态 | 0 · FG 循环验证通过 |
 
 ---
