@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 
@@ -26,9 +25,6 @@ type PrefetchEngine struct {
 	search  *HybridSearchEngine
 	cache   *cache.Cache
 	workers chan struct{}
-	stop    chan struct{}
-	started bool
-	mu      sync.Mutex
 }
 
 func NewPrefetchEngine(se *HybridSearchEngine) *PrefetchEngine {
@@ -36,7 +32,6 @@ func NewPrefetchEngine(se *HybridSearchEngine) *PrefetchEngine {
 		search:  se,
 		cache:   cache.New(prefetchCacheTTL, prefetchCleanupIntv),
 		workers: make(chan struct{}, prefetchMaxWorkers),
-		stop:    make(chan struct{}),
 	}
 }
 
