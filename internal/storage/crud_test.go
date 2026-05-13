@@ -235,5 +235,3 @@ func TestSQLiteStorage_ListDocuments(t *testing.T) {
 		t.Errorf("Expected 2 documents with limit, got %d", len(docs))
 	}
 }
-
-func TestSQLiteStorage_Metadata(t *testing.T) {
