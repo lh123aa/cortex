@@ -199,6 +199,27 @@
 
 ## ✨ Changelog
 
+### 🐛 v3.3.1 — Bug Fixes & Hardening (2026-05-13)
+
+- ✅ **`cortex version` command** — Print version info
+- ✅ **HTTP server hardening** — `ReadTimeout`/`WriteTimeout`/`ReadHeaderTimeout`/`MaxHeaderBytes`
+- ✅ **Channel double-close protection** — `sync.Once` for `StopAutoBackup()`/`watcher.Stop()`
+- ✅ **Watcher memory leak fix** — Periodic cleanup of stale debounce entries
+- ✅ **Chinese search robustness** — `expandChineseQuery` uses `strings.HasSuffix` instead of byte indexing
+- ✅ **Full regression** — 10/10 packages pass, `go vet` zero warnings
+
+### 🚀 v3.3 — Chinese Search Fix + File Watching + Performance (2026-05-13)
+
+- ✅ **Chinese search fix** — Single-character tokenization, FTS5 matching works for CJK
+- ✅ **File exclusion rules** — Skip 50+ binary/media extensions, failures down **95%**, speed up **3.5x**
+- ✅ **`cortex watch` command** — fsnotify-based file watching, auto incremental index
+- ✅ **`cortex_health` MCP tool** — 7th MCP tool, health check with doc stats
+- ✅ **Search result display** — `Content` stores raw text (no spaces), title uses filename
+- ✅ **PDF/DOCX Chinese search** — Added Chinese segmentation support
+- ✅ **Config hot-reload** — `cortex serve` auto-detects config changes without restart
+- ✅ **Auto backup** — 24h interval, keep last 10 backups
+- ✅ **Full re-index** — `--force` flag skips content hash, new tokenizer takes effect
+
 ### 🧠 v2.2 — MCP Memory Tools (2026-05-05)
 
 - ✅ **5 MCP Tools** — `cortex_search` / `cortex_context` / `cortex_memory_write` / `cortex_memory_search` / `cortex_memory_delete`

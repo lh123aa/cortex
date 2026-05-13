@@ -45,7 +45,7 @@ func expandChineseQuery(query string) string {
 			}
 			result.WriteRune(r)
 		} else {
-			if result.Len() > 0 && result.String()[result.Len()-1] != ' ' {
+			if result.Len() > 0 && !strings.HasSuffix(result.String(), " ") {
 				result.WriteByte(' ')
 			}
 			result.WriteRune(r)

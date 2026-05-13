@@ -24,6 +24,7 @@ type IncrementalWatcher struct {
 	debounceDur time.Duration
 	extensions  map[string]bool // 支持的文件扩展名
 	shutdownCh  chan struct{}
+	closeOnce   sync.Once       // 防止 Stop 多次 close panic
 }
 
 // NewIncrementalWatcher 创建增量监视器
@@ -87,9 +88,11 @@ func (iw *IncrementalWatcher) Start() error {
 	return nil
 }
 
-// runLoop 事件处理循环
+// runLoop 事件处理循环，定期清理过期防抖条目
 func (iw *IncrementalWatcher) runLoop() {
 	debounceMap := make(map[string]time.Time)
+	cleanupTicker := time.NewTicker(5 * time.Minute)
+	defer cleanupTicker.Stop()
 
 	for {
 		select {
@@ -108,6 +111,15 @@ func (iw *IncrementalWatcher) runLoop() {
 				return
 			}
 			log.Printf("[IncrementalWatcher] Error: %v", err)
+
+		case <-cleanupTicker.C:
+			// 定期清理过期防抖条目，防止内存泄漏
+			now := time.Now()
+			for path, t := range debounceMap {
+				if now.Sub(t) > iw.debounceDur*10 {
+					delete(debounceMap, path)
+				}
+			}
 		}
 	}
 }
@@ -201,9 +213,11 @@ func (iw *IncrementalWatcher) handleRemove(path string) {
 	iw.mu.Unlock()
 }
 
-// Stop 停止监听
+// Stop 停止监听（可安全多次调用）
 func (iw *IncrementalWatcher) Stop() error {
-	close(iw.shutdownCh)
+	iw.closeOnce.Do(func() {
+		close(iw.shutdownCh)
+	})
 	return iw.watcher.Close()
 }
 

@@ -206,6 +206,15 @@
 
 ## ✨ 更新日志
 
+### 🐛 v3.3.1 Bug 修复 + 安全加固 (2026-05-13)
+
+- ✅ **`cortex version` 命令** — 新增版本号查询
+- ✅ **HTTP 服务器安全加固** — `ReadTimeout`/`WriteTimeout`/`ReadHeaderTimeout`/`MaxHeaderBytes`
+- ✅ **channel 双 close 防护** — `StopAutoBackup()`/`watcher.Stop()` 使用 `sync.Once` 防 panic
+- ✅ **文件监听内存泄漏修复** — `debounceMap` 定时清理过期条目
+- ✅ **中文搜索健壮性** — `expandChineseQuery` 改用 `strings.HasSuffix` 代替字节索引
+- ✅ **回归测试** — 10/10 包通过，`go vet` 零警告
+
 ### 🚀 v3.3 中文搜索修复 + 文件监听 + 性能优化 (2026-05-13)
 
 - ✅ **中文搜索修复** — 从 2-gram 改为单字分词，FTS5 中文搜索正常匹配

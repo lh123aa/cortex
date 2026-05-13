@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -13,8 +14,9 @@ import (
 type BackupManager struct {
 	dbPath    string
 	backupDir string
-	maxKeep   int       // 保留的最大备份数，0=不限制
+	maxKeep   int // 保留的最大备份数，0=不限制
 	stopCh    chan struct{}
+	closeOnce sync.Once // 防止 StopAutoBackup 双 close panic
 }
 
 func NewBackupManager(dbPath string) *BackupManager {
@@ -84,9 +86,11 @@ func (b *BackupManager) StartAutoBackup(interval time.Duration) {
 	}()
 }
 
-// StopAutoBackup 停止定时自动备份
+// StopAutoBackup 停止定时自动备份（可安全多次调用）
 func (b *BackupManager) StopAutoBackup() {
-	close(b.stopCh)
+	b.closeOnce.Do(func() {
+		close(b.stopCh)
+	})
 }
 
 // cleanupOldBackups 清理超过 maxKeep 的旧备份

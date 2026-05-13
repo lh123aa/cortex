@@ -140,6 +140,14 @@ var usageCmd = &cobra.Command{
 	Run:   runUsage,
 }
 
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print version information",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Cortex v%s (commit: %s, built: %s)\n", api.Version, api.Commit, api.Date)
+	},
+}
+
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Interactive embedding provider configuration wizard",
@@ -178,6 +186,7 @@ func init() {
 	rootCmd.AddCommand(dedupCmd)
 	rootCmd.AddCommand(watchCmd)
 	rootCmd.AddCommand(usageCmd)
+	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(setupCmd)
 }
 
