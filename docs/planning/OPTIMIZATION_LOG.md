@@ -144,3 +144,42 @@ cortex watch e:\程序\Cortex              # 监听自身项目
 所有 6 项优化完成，Cortex 已编译并重建索引，可直接在 Trae 中配置 MCP 使用。
 
 ---
+
+## v3.3.1 Bug 修复轮 (2026-05-13)
+
+### P0 — 安全修复
+| # | 问题 | 修复 |
+|:-:|:----|:-----|
+| P0-1 | `survey.AskOne` 7处错误未处理 → Ctrl+C 不会退出 | 全部添加 `if err != nil { return err }` |
+| P0-2 | `TimeoutMiddleware` goroutine 泄漏（超时后 `close(done)` 阻塞） | `done` 改为带缓冲 channel + send 替代 close |
+
+### P2 — 代码质量
+| # | 问题 | 修复 |
+|:-:|:----|:-----|
+| P2-1 | `StartWatcher` 死代码（封装后未调用） | 添加 `Deprecated` 注解 |
+| P2-2 | `coverage` 文件误提交 | `.gitignore` 添加 `coverage` |
+| P2-3 | `cortex context` CLI 已存在 | 确认可用，`--tokens` 标志正常 |
+
+### P3 — 测试
+| # | 问题 | 修复 |
+|:-:|:----|:-----|
+| P3-3 | `cortex_health` MCP 工具无测试 | 新增 `TestMCPHealthTool` |
+
+### 回归
+- `go build` ✅ 编译通过
+- `go test` ✅ 10/10 全部通过
+- `go vet` ✅ 零警告
+- `cortex version` ✅ 输出 v3.3 (commit: ...)
+- `cortex status` ✅ 正常
+- `cortex search` ✅ 中文搜索正常
+
+### 延期
+| # | 原因 |
+|:-:|:-----|
+| P1-1 FTS5 tokenchars | `modernc.org/sqlite` 不支持 `tokenchars` 选项 |
+| P1-2 零测试包 | 需大范围重构测试框架 |
+| P1-3 API 端点缺失 | 非紧急，PRD 远期规划 |
+| P3-1 docs/API.md 更新 | 与功能开发同步更新即可 |
+| P3-2 AGENTS.md 链接 | README 中仅为历史引用，非导航链接 |
+
+---

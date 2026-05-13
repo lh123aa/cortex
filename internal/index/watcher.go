@@ -238,6 +238,7 @@ func (iw *IncrementalWatcher) SupportedExtensions() []string {
 }
 
 // StartWatcher 启动增量索引守护线程（兼容旧接口）
+// Deprecated: 使用 NewIncrementalWatcher + Start 替代
 func (idx *Indexer) StartWatcher(root string, userID string) error {
 	iw, err := NewIncrementalWatcher(idx, root, userID)
 	if err != nil {

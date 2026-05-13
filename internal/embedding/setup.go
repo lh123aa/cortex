@@ -17,12 +17,12 @@ type SetupConfig struct {
 	Provider   string
 	AutoUpdate bool
 	// 各 Provider 的配置
-	APIKey    string
-	SecretKey string
-	Model     string
-	Dimension int
-	BaseURL   string
-	OllamaURL string
+	APIKey      string
+	SecretKey   string
+	Model       string
+	Dimension   int
+	BaseURL     string
+	OllamaURL   string
 	OllamaModel string
 }
 
@@ -95,7 +95,9 @@ func RunSetupWizard() (*SetupConfig, error) {
 			Message: "是否启用自动检测最新模型？（联网时检查更新）",
 			Default: true,
 		}
-		survey.AskOne(prompt, &autoUpdate)
+		if err := survey.AskOne(prompt, &autoUpdate); err != nil {
+			return nil, err
+		}
 		cfg.AutoUpdate = autoUpdate
 	}
 
@@ -165,7 +167,9 @@ func (cfg *SetupConfig) promptOllamaConfig() error {
 		Default: cfg.OllamaURL,
 		Help:    "默认 http://localhost:11434",
 	}
-	survey.AskOne(urlPrompt, &cfg.OllamaURL)
+	if err := survey.AskOne(urlPrompt, &cfg.OllamaURL); err != nil {
+		return err
+	}
 
 	// Ollama 模型
 	p := GetProviderByID("ollama")
@@ -185,7 +189,9 @@ func (cfg *SetupConfig) promptOllamaConfig() error {
 		Message: "选择模型:",
 		Options: modelLabels,
 	}
-	survey.AskOne(modelPrompt, &modelIdx)
+	if err := survey.AskOne(modelPrompt, &modelIdx); err != nil {
+		return err
+	}
 	cfg.OllamaModel = p.Models[modelIdx].ID
 	cfg.Dimension = p.Models[modelIdx].Dimension
 
@@ -227,7 +233,9 @@ func (cfg *SetupConfig) promptAPIConfig(provider ProviderInfo) error {
 			Default: getDefaultBaseURL(provider.ID),
 			Help:    "如需自定义 API 代理地址可修改此项",
 		}
-		survey.AskOne(urlPrompt, &baseURL)
+		if err := survey.AskOne(urlPrompt, &baseURL); err != nil {
+			return err
+		}
 		cfg.BaseURL = strings.TrimSpace(baseURL)
 	}
 
@@ -259,7 +267,9 @@ func (cfg *SetupConfig) promptAPIConfig(provider ProviderInfo) error {
 		Message: "要测试连接吗？",
 		Default: true,
 	}
-	survey.AskOne(confirmPrompt, &testConn)
+	if err := survey.AskOne(confirmPrompt, &testConn); err != nil {
+		return err
+	}
 
 	if testConn {
 		fmt.Print("   ⏳ 正在测试连接...")
@@ -274,7 +284,9 @@ func (cfg *SetupConfig) promptAPIConfig(provider ProviderInfo) error {
 					Message: "连接测试失败，是否继续保存配置？（可在 cortex setup 中重新配置）",
 					Default: true,
 				}
-				survey.AskOne(retryPrompt, &retry)
+				if err := survey.AskOne(retryPrompt, &retry); err != nil {
+					return err
+				}
 				if !retry {
 					return fmt.Errorf("setup cancelled by user")
 				}
@@ -464,7 +476,9 @@ func SuggestInstallOllama() {
 		Message: "是否打开 Ollama 官网下载页面？",
 		Default: true,
 	}
-	survey.AskOne(prompt, &openBrowser)
+	if err := survey.AskOne(prompt, &openBrowser); err != nil {
+		return
+	}
 	if openBrowser {
 		openURL("https://ollama.ai/download")
 	}

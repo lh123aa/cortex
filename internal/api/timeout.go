@@ -19,12 +19,12 @@ func TimeoutMiddleware(timeout time.Duration) gin.HandlerFunc {
 		// 替换请求的 context
 		c.Request = c.Request.WithContext(ctx)
 
-		// 创建一个 channel 来通知完成
+		// 创建一个带缓冲的 channel 来通知完成
 		done := make(chan struct{}, 1)
 
 		go func() {
 			c.Next()
-			close(done)
+			done <- struct{}{}
 		}()
 
 		// 等待 context 超时或请求完成

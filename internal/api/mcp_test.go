@@ -291,4 +291,21 @@ func TestMCPMemoryWriteThenDelete(t *testing.T) {
 	}
 }
 
+func TestMCPHealthTool(t *testing.T) {
+	srv, _, cleanup := setupMCPTest(t)
+	defer cleanup()
+
+	result, _, err := srv.handleHealthTool(context.Background(), nil, struct{}{})
+	if err != nil {
+		t.Fatalf("health check failed: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected health check content")
+	}
+	text := result.Content[0].(*mcp.TextContent).Text
+	if !strings.Contains(text, "Cortex MCP Server is healthy") {
+		t.Errorf("expected health message, got: %s", text)
+	}
+}
+
 
