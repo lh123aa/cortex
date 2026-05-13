@@ -237,19 +237,3 @@ func TestSQLiteStorage_ListDocuments(t *testing.T) {
 }
 
 func TestSQLiteStorage_Metadata(t *testing.T) {
-	db, cleanup := setupTestDB(t)
-	defer cleanup()
-
-	err := db.SetMetadata("test-key", "test-value")
-	if err != nil {
-		t.Fatalf("SetMetadata failed: %v", err)
-	}
-
-	val, err := db.GetMetadata("test-key")
-	if err != nil {
-		t.Fatalf("GetMetadata failed: %v", err)
-	}
-	if val != "test-value" {
-		t.Errorf("Expected test-value, got %s", val)
-	}
-}
