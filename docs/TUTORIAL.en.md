@@ -12,6 +12,7 @@
 | Copy-pasting code files to AI just to give it context | ✅ |
 | Yesterday's architecture discussion — AI forgot everything today | ✅ |
 | Project docs scattered everywhere, hard to find, AI can't find them either | ✅ |
+| On a plane/subway/remote area with no internet — AI tools are useless | ✅ |
 | Asking the same question to AI multiple times because it doesn't remember | ✅ |
 | Team members repeating the same mistakes because knowledge isn't shared | ✅ |
 
@@ -22,11 +23,12 @@
 ## Table of Contents
 
 - [Scenario 1: AI Can't See Your Codebase](#scenario-1-ai-cant-see-your-codebase)
-- [Scenario 2: AI Always Forgets Previous Discussions](#scenario-2-ai-always-forgets-previous-discussions)
-- [Scenario 3: Project Documents Scattered Everywhere](#scenario-3-project-documents-scattered-everywhere)
-- [Scenario 4: Repetitive Work — Same Questions Over and Over](#scenario-4-repetitive-work--same-questions-over-and-over)
-- [Scenario 5: Team Collaboration — Knowledge Not Shared](#scenario-5-team-collaboration--knowledge-not-shared)
-- [Scenario 6: Production — Turn Your Knowledge Base into a Service](#scenario-6-production--turn-your-knowledge-base-into-a-service)
+- [Scenario 2: Offline AI Knowledge Base](#scenario-2-offline-ai-knowledge-base)
+- [Scenario 3: AI Always Forgets Previous Discussions](#scenario-3-ai-always-forgets-previous-discussions)
+- [Scenario 4: Project Documents Scattered Everywhere](#scenario-4-project-documents-scattered-everywhere)
+- [Scenario 5: Repetitive Work — Same Questions Over and Over](#scenario-5-repetitive-work--same-questions-over-and-over)
+- [Scenario 6: Team Collaboration — Knowledge Not Shared](#scenario-6-team-collaboration--knowledge-not-shared)
+- [Scenario 7: Production — Turn Your Knowledge Base into a Service](#scenario-7-production--turn-your-knowledge-base-into-a-service)
 - [Daily Workflow Summary](#daily-workflow-summary)
 - [Appendix: Command Reference](#appendix-command-reference)
 
@@ -103,7 +105,115 @@ cortex watch ~/projects/my-app
 
 ---
 
-## Scenario 2: AI Always Forgets Previous Discussions
+## Scenario 2: Offline AI Knowledge Base
+
+### The Pain
+
+You're on a flight and need to check the deployment docs. You open your laptop and — nothing.
+
+> No internet → AI tools can't connect → knowledge base is in the cloud → can't search anything
+
+Or you're in:
+
+- **Subway commute** — Signal drops every 30 seconds, AI answers cut off mid-sentence
+- **Business trip** — High-speed rail tunnels, no signal when you need it most
+- **Client site** — Client's internal network has no internet access, all your AI tools are useless
+- **Remote/field location** — No network coverage at all
+
+The harsh truth hits you: **every cloud-dependent AI tool is dead without internet**. But your project files, code, and notes are all right there on your laptop — you just have no way to search them.
+
+### The Solution
+
+Cortex is a **100% local** knowledge base engine. Zero cloud dependency.
+
+```
+Your files → Index locally (no internet) → Search locally (no internet) → Serve locally (no internet)
+                                          ↓
+                              Zero external dependencies
+```
+
+**Step 1: Index your docs while you have internet**
+
+```bash
+# At home/office with internet, index everything you'll need
+cortex index ~/projects
+cortex index ~/Documents
+
+# After indexing, your knowledge base lives entirely on local disk
+cortex status
+# Documents: 27142  ← All local, zero cloud dependency
+```
+
+**Step 2: Use it offline, just like normal**
+
+```bash
+# All commands work 100% offline
+cortex search "deployment environment variables"    # Search ✅
+cortex context "architecture design" --tokens 2000  # RAG context ✅
+cortex status                                       # Status ✅
+cortex mcp                                          # MCP server ✅
+cortex serve                                        # REST API ✅
+```
+
+**Step 3: Pair with a local AI**
+
+If your AI client uses cloud models (like Claude), it won't work offline. But here's what you can do:
+
+```bash
+# Option A: Export context from cortex as a file
+cortex context "product module API" --tokens 4000 > context.txt
+
+# Take context.txt with you, paste it to AI when you're back online
+
+# Option B: Use a local AI model (Ollama + local LLM)
+# Run cortex as the knowledge backend, local model as the AI frontend
+cortex mcp   # cortex as knowledge base
+ollama run qwen2.5   # local model as AI
+```
+
+**Check how much space Cortex uses:**
+
+```bash
+cortex usage
+# Storage: 156 MB / 1 GB (15.2%)  ← Entire knowledge base: 156MB
+# Tier:    free
+```
+
+### The Result
+
+```
+Before: No internet = AI dead, docs unsearchable, code unfindable
+After:  No internet = full speed ahead, all local, zero latency
+        156MB knowledge base ≈ 27,000 documents — fits on a USB stick
+```
+
+### Why It Works
+
+Why can Cortex work completely offline?
+
+```
+Single binary 34MB             → No runtime to install
+Built-in SQLite FTS5           → No external database
+Zero external dependencies     → No pip/npm/go needed
+Chinese word segmentation      → Done locally, no API calls
+Config hot-reload              → Change settings without restart
+Full index 18k files in 40s    → Index once, use forever offline
+```
+
+### Pro Tips
+
+```bash
+# Before a trip, batch-index everything you'll need
+cortex index --force ~/projects --workers 32
+cortex index --force ~/Documents --workers 16
+
+# Index a USB drive too for backup
+cortex index D:\project-docs
+```
+
+---
+
+## Scenario 3: AI Always Forgets Previous Discussions
 
 ### The Pain
 
@@ -163,7 +273,7 @@ After: AI "remembers" everything discussed — decisions, designs, API contracts
 
 ---
 
-## Scenario 3: Project Documents Scattered Everywhere
+## Scenario 4: Project Documents Scattered Everywhere
 
 ### The Pain
 
@@ -222,7 +332,7 @@ cortex context "deployment" --tokens 2000
 
 ---
 
-## Scenario 4: Repetitive Work — Same Questions Over and Over
+## Scenario 5: Repetitive Work — Same Questions Over and Over
 
 ### The Pain
 
@@ -281,7 +391,7 @@ Weekly saved: 25 minutes
 
 ---
 
-## Scenario 5: Team Collaboration — Knowledge Not Shared
+## Scenario 6: Team Collaboration — Knowledge Not Shared
 
 ### The Pain
 
@@ -342,7 +452,7 @@ After: Someone hits a bug → logs it → AI auto-reminds → no one steps twice
 
 ---
 
-## Scenario 6: Production — Turn Your Knowledge Base into a Service
+## Scenario 7: Production — Turn Your Knowledge Base into a Service
 
 ### The Pain
 
