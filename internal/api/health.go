@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"sync"
 	"time"
 
@@ -41,8 +40,6 @@ func NewHealthChecker(st storage.Storage, em embedding.EmbeddingProvider) *Healt
 // CheckStorage 检查存储是否可用
 func (hc *HealthChecker) CheckStorage() Check {
 	start := time.Now()
-	_, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 
 	// 尝试一个简单的查询（使用空 userID 进行健康检查）
 	_, err := hc.storage.GetDocumentsCount("")
@@ -72,8 +69,6 @@ func (hc *HealthChecker) CheckEmbedding() Check {
 	}
 
 	start := time.Now()
-	_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
 	// Health check 通常不应该真正调用 Embed，只能检查连通性
 	err := hc.embedding.Health()
