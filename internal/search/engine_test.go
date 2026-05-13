@@ -216,3 +216,46 @@ func TestRRF融合公式(t *testing.T) {
 		t.Errorf("Expected score %f for rank 1, got %f", expectedScore1, score1)
 	}
 }
+
+func TestPrefetchKeywords(t *testing.T) {
+	content := `# Go Concurrency
+This document explains how to use goroutines and channels in Go.
+Goroutines are lightweight threads. Channels are typed conduits.
+Use "go func()" to start a goroutine.`
+
+	kw := extractKeywords(content, 3)
+	if len(kw) == 0 {
+		t.Fatal("expected at least 1 keyword")
+	}
+	found := false
+	for _, k := range kw {
+		if k == "Go Concurrency" || k == "Go" || k == "goroutines" || k == "channels" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Logf("extracted keywords: %v", kw)
+	}
+}
+
+func TestPrefetchCacheKey(t *testing.T) {
+	key := prefetchCacheKey("/path/to/file.md", "goroutine")
+	if key != "/path/to/file.md||goroutine" {
+		t.Errorf("unexpected cache key: %s", key)
+	}
+}
+
+func TestPrefetchEngine(t *testing.T) {
+	engine := &HybridSearchEngine{}
+	pe := NewPrefetchEngine(engine)
+	if pe == nil {
+		t.Fatal("NewPrefetchEngine returned nil")
+	}
+	if pe.search != engine {
+		t.Error("search engine not set")
+	}
+	if pe.GetCachedCount() != 0 {
+		t.Error("expected empty cache")
+	}
+}

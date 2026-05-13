@@ -84,6 +84,7 @@ type IndexConfig struct {
 type SearchConfig struct {
 	CacheTTL    string `mapstructure:"cache_ttl"`
 	DefaultTopK int    `mapstructure:"default_top_k"`
+	Prefetch    bool   `mapstructure:"prefetch"`      // 是否启用预联想（默认 false）
 }
 
 // BackupConfig holds backup settings

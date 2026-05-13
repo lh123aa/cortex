@@ -19,6 +19,7 @@ type HybridSearchEngine struct {
 	rrfK      int          // RRF 常数（默认 60）
 	reranker  Reranker     // 可选的重排序器
 	l1Cache   *SearchCache // L1 内存缓存
+	prefetch  *PrefetchEngine // 预联想引擎，nil 时跳过
 }
 
 // NewHybridSearchEngine 初始化搜索引擎
@@ -54,6 +55,16 @@ func (s *HybridSearchEngine) SetCacheTTL(ttl time.Duration) {
 // DisableCache 禁用缓存
 func (s *HybridSearchEngine) DisableCache() {
 	s.useCache = false
+}
+
+// SetPrefetchEngine 设置预联想引擎
+func (s *HybridSearchEngine) SetPrefetchEngine(pe *PrefetchEngine) {
+	s.prefetch = pe
+}
+
+// GetPrefetchEngine 获取预联想引擎
+func (s *HybridSearchEngine) GetPrefetchEngine() *PrefetchEngine {
+	return s.prefetch
 }
 
 // GetL1Cache 获取 L1 缓存实例

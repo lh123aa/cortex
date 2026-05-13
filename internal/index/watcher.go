@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/lh123aa/cortex/internal/search"
 )
 
 // IncrementalWatcher 增量索引监视器
@@ -25,6 +26,7 @@ type IncrementalWatcher struct {
 	extensions  map[string]bool // 支持的文件扩展名
 	shutdownCh  chan struct{}
 	closeOnce   sync.Once       // 防止 Stop 多次 close panic
+	prefetch    *search.PrefetchEngine // 预联想引擎，nil 时跳过
 }
 
 // NewIncrementalWatcher 创建增量监视器
@@ -192,6 +194,11 @@ func (iw *IncrementalWatcher) handleWriteOrCreate(path string) {
 			IndexedAt:   time.Now(),
 		}
 		iw.mu.Unlock()
+
+		// 预联想：后台静默搜索关联知识并缓存
+		if iw.prefetch != nil {
+			iw.prefetch.OnFileChange(path, content)
+		}
 	} else {
 		log.Printf("[IncrementalWatcher] Skipped (unchanged): %s", path)
 	}
@@ -235,6 +242,11 @@ func (iw *IncrementalWatcher) SupportedExtensions() []string {
 		exts = append(exts, ext)
 	}
 	return exts
+}
+
+// SetPrefetch 设置预联想引擎
+func (iw *IncrementalWatcher) SetPrefetch(pe *search.PrefetchEngine) {
+	iw.prefetch = pe
 }
 
 // StartWatcher 启动增量索引守护线程（兼容旧接口）

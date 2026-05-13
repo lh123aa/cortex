@@ -354,6 +354,12 @@ func initSearchEngine(st storage.Storage, emb embedding.EmbeddingProvider, logge
 	return se, nil
 }
 
+func initPrefetchEngine(se *search.HybridSearchEngine) *search.PrefetchEngine {
+	pe := search.NewPrefetchEngine(se)
+	se.SetPrefetchEngine(pe)
+	return pe
+}
+
 func runIndex(cmd *cobra.Command, args []string) {
 	cfg, logger, err := loadConfig()
 	if err != nil {
@@ -932,6 +938,17 @@ func runWatch(cmd *cobra.Command, args []string) {
 	watcher, err := index.NewIncrementalWatcher(idx, rootPath, "")
 	if err != nil {
 		logger.Fatal("failed to create watcher", zap.Error(err))
+	}
+
+	if cfg.Search.Prefetch {
+		se, err := initSearchEngine(st, emb, logger)
+		if err != nil {
+			logger.Warn("failed to init search engine for prefetch", zap.Error(err))
+		} else {
+			pe := initPrefetchEngine(se)
+			watcher.SetPrefetch(pe)
+			logger.Info("prefetch engine enabled for watcher")
+		}
 	}
 
 	if err := watcher.Start(); err != nil {
