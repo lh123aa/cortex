@@ -31,12 +31,12 @@ func (s *RESTServer) Router() *gin.Engine {
 func (s *RESTServer) ListenAndServe(addr string) error {
 	s.httpServer = &HTTPServer{
 		Server: &http.Server{
-			Addr:           addr,
-			Handler:        s.router,
-			ReadTimeout:    30 * time.Second,
-			WriteTimeout:   30 * time.Second,
+			Addr:              addr,
+			Handler:           s.router,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      30 * time.Second,
 			ReadHeaderTimeout: 10 * time.Second,
-			MaxHeaderBytes: 1 << 20, // 1MB
+			MaxHeaderBytes:    1 << 20, // 1MB
 		},
 	}
 	return s.httpServer.ListenAndServe()
@@ -258,6 +258,7 @@ func (s *RESTServer) registerRoutes() {
 	{
 		// Search
 		protected.GET("/search", s.handleSearch)
+		protected.GET("/suggest", s.handleSuggest)
 
 		// Context (RAG)
 		protected.GET("/context", s.handleContext)
@@ -470,11 +471,67 @@ func (s *RESTServer) handleSearch(c *gin.Context) {
 		}
 	}
 
-	c.JSON(200, gin.H{
-		"query":   q,
-		"total":   len(results),
-		"results": enriched,
-	})
+	c.JSON(200, gin.H{"query": q, "total": len(results), "results": enriched})
+}
+
+func (s *RESTServer) handleSuggest(c *gin.Context) {
+	q := c.Query("q")
+	if q == "" {
+		c.JSON(400, gin.H{"error": "q (query) is required"})
+		return
+	}
+
+	topK := 5
+	if tk := c.Query("top_k"); tk != "" {
+		if n, err := parsePositiveInt(tk); err == nil {
+			topK = n
+		}
+	}
+	if topK > 20 {
+		topK = 20
+	}
+
+	currentFile := c.Query("file")
+
+	pe := s.engine.GetPrefetchEngine()
+	if pe != nil {
+		results := pe.Suggest(c.Request.Context(), q, currentFile, topK)
+		if len(results) > 0 {
+			enriched := make([]gin.H, len(results))
+			for i, r := range results {
+				enriched[i] = gin.H{
+					"rank":        i + 1,
+					"score":       r.Score,
+					"section":     r.Chunk.HeadingPath,
+					"content_raw": r.Chunk.ContentRaw,
+				}
+			}
+			c.JSON(200, gin.H{"query": q, "source": "cache", "total": len(results), "results": enriched})
+			return
+		}
+	}
+
+	userID := ""
+	if uc := GetUserContext(c); uc != nil {
+		userID = uc.UserID
+	}
+	opts := models.SearchOptions{TopK: topK, Mode: "hybrid", UserID: userID}
+	results, err := s.engine.Search(c.Request.Context(), q, opts)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	enriched := make([]gin.H, len(results))
+	for i, r := range results {
+		enriched[i] = gin.H{
+			"rank":        i + 1,
+			"score":       r.Score,
+			"section":     r.Chunk.HeadingPath,
+			"content_raw": r.Chunk.ContentRaw,
+		}
+	}
+	c.JSON(200, gin.H{"query": q, "source": "search", "total": len(results), "results": enriched})
 }
 
 func (s *RESTServer) handleContext(c *gin.Context) {

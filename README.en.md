@@ -197,6 +197,13 @@
 
 ---
 
+## ⚠️ Known Limitations
+
+- **FTS5-only Chinese search**: Uses SQLite FTS5 `unicode61` tokenizer with single-character expansion. Chinese searches will "find" results but won't be as "precise" as dedicated tokenizers (e.g. jieba). For higher precision, configure a vector embedding provider (Ollama/OpenAI).
+- **API docs**: `GET /health/ready` and `GET /health/live` are planned endpoints, not yet implemented.
+
+---
+
 ## ✨ Changelog
 
 ### 🐛 v3.3.1 — Bug Fixes & Hardening (2026-05-13)

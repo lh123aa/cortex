@@ -68,7 +68,13 @@ type MemoryDeleteArgs struct {
 }
 
 type MemoryDeleteBatchArgs struct {
-	IDs []string `json:"ids" jsonschema:"A list of memory IDs to delete"`
+	IDs []string `json:"ids" jsonschema:"List of memory IDs to delete"`
+}
+
+type SuggestArgs struct {
+	Query       string `json:"query" jsonschema:"The partial query to get suggestions for"`
+	CurrentFile string `json:"current_file,omitempty" jsonschema:"Current file path for context-aware suggestions"`
+	TopK        int    `json:"top_k,omitempty" jsonschema:"Number of suggestions to return"`
 }
 
 type MCPServer struct {
@@ -162,6 +168,12 @@ func (s *MCPServer) registerTools() {
 		Name:        "cortex_health",
 		Description: "Check if the cortex server is healthy and responsive. Returns system status, document count, and uptime.",
 	}, s.handleHealthTool)
+
+	// cortex_suggest: 预联想搜索建议
+	mcp.AddTool(s.server, &mcp.Tool{
+		Name:        "cortex_suggest",
+		Description: "Get smart search suggestions based on partial query and current context. Returns instant results from prefetched cache or fast search.",
+	}, s.handleSuggestTool)
 }
 
 func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
@@ -414,6 +426,51 @@ Embedding:  %s (FTS5)
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{&mcp.TextContent{Text: result}},
+	}, nil, nil
+}
+
+func (s *MCPServer) handleSuggestTool(ctx context.Context, req *mcp.CallToolRequest, args SuggestArgs) (*mcp.CallToolResult, any, error) {
+	if args.Query == "" {
+		return toolError("query is required"), nil, nil
+	}
+
+	topK := args.TopK
+	if topK <= 0 {
+		topK = 5
+	}
+	if topK > 20 {
+		topK = 20
+	}
+
+	pe := s.search.GetPrefetchEngine()
+	if pe != nil {
+		results := pe.Suggest(ctx, args.Query, args.CurrentFile, topK)
+		if len(results) > 0 {
+			var sb strings.Builder
+			for i, r := range results {
+				sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nSection: %s\n%s\n---\n",
+					i+1, r.Score, r.Chunk.HeadingPath, truncateText(r.Chunk.ContentRaw, 200)))
+			}
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: sb.String()}},
+			}, nil, nil
+		}
+	}
+
+	opts := models.SearchOptions{TopK: topK, Mode: "hybrid"}
+	results, err := s.search.Search(ctx, args.Query, opts)
+	if err != nil {
+		return toolError(fmt.Sprintf("search error: %v", err)), nil, nil
+	}
+
+	var sb strings.Builder
+	for i, r := range results {
+		sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nSection: %s\n%s\n---\n",
+			i+1, r.Score, r.Chunk.HeadingPath, truncateText(r.Chunk.ContentRaw, 200)))
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: sb.String()}},
 	}, nil, nil
 }
 
