@@ -1,0 +1,55 @@
+#!/bin/sh
+# Cortex pre-push hook
+# 推送前自动运行 CI 检查，未通过则阻止推送
+# 安装：git config core.hooksPath .githooks
+#
+# 兼容 Windows (PowerShell) 和 Linux/macOS (bash)
+
+echo ""
+echo "🔍 Running pre-push CI checks..."
+echo ""
+
+PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+
+run_ci_check() {
+  # 优先使用 PowerShell 脚本（Windows）
+  if command -v powershell.exe > /dev/null 2>&1; then
+    powershell.exe -ExecutionPolicy Bypass -File "$PROJECT_ROOT/scripts/ci-check.ps1"
+    return $?
+  fi
+
+  # 如果 make 可用，用 make
+  if command -v make > /dev/null 2>&1; then
+    make ci-check
+    return $?
+  fi
+
+  # 兜底：直接运行 Go 命令
+  echo "--- go vet ---"
+  go vet ./... || return 1
+  echo ""
+  echo "--- go test (CGO_ENABLED=1) ---"
+  CGO_ENABLED=1 go test -count=1 -timeout=300s ./... || return 1
+  echo ""
+  echo "--- go test (CGO_ENABLED=0) ---"
+  CGO_ENABLED=0 go test -count=1 -timeout=300s ./... || return 1
+  return 0
+}
+
+run_ci_check
+RESULT=$?
+
+if [ $RESULT -ne 0 ]; then
+  echo ""
+  echo "❌ CI checks FAILED! Push aborted."
+  echo "   Fix the issues above, then try pushing again."
+  echo ""
+  echo "   Quick fix: .\\scripts\\ci-check.ps1"
+  echo "   Or skip (not recommended): git push --no-verify"
+  exit 1
+fi
+
+echo ""
+echo "✅ All CI checks passed! Pushing to remote..."
+echo ""
+exit 0

@@ -60,15 +60,51 @@ go build -ldflags="-s -w" -o bin\cortex.exe .\cmd\cortex
 .\bin\cortex.exe setup
 ```
 
-### 推送前检查清单
+## 推送规则（强制）
 
-改完代码推送到 GitHub **之前**，务必在本地运行以下命令：
+### 核心原则：先检查，再推送
+
+**任何推送到 GitHub 的代码，必须在本地先通过完整的 CI 检查。** 这条规则是硬性的，由 git pre-push hook 自动强制执行。
+
+### git pre-push hook（自动安全网）
+
+项目已内置 pre-push hook，推送前自动运行 `make ci-check`，未通过则阻止推送。
+
+**安装 hook（只需执行一次）：**
 
 ```powershell
-# 方式一：一键 CI 模拟（推荐）
+git config core.hooksPath .githooks
+```
+
+安装后，每次执行 `git push` 都会自动触发检查，通不过就推不上去。
+
+如需紧急跳过（不推荐）：`git push --no-verify`
+
+### 更新三件套工作流
+
+每次处理"更新三件套"（README更新 → 推GitHub → 更新本地软件）时，严格遵循以下流程：
+
+```text
+1. 修改代码 / 更新 README
+2. 运行 make ci-check（或手动逐项检查）
+       ↓ 通过
+3. git add + git commit
+4. git push（hook 自动二次验证）
+       ↓ CI 通过
+5. 更新本地软件（编译 + 替换二进制）
+```
+
+任何一个步骤失败 → **不得继续下一步**，先修复问题。
+
+### 手动检查命令（兜底）
+
+如果 hook 没装或需要单独排查：
+
+```powershell
+# 一键 CI 模拟（推荐）
 make ci-check
 
-# 方式二：手动逐项检查
+# 手动逐项
 go mod tidy               # 确保 go.mod/go.sum 一致
 go vet ./...              # 静态检查（零警告）
 $env:CGO_ENABLED=1; go test -count=1 -timeout=300s ./...   # CGO 模式测试
@@ -76,10 +112,15 @@ $env:CGO_ENABLED=0; go test -count=1 -timeout=300s ./...   # 纯 Go 模式测试
 go build ./cmd/cortex     # 编译验证
 ```
 
-注意：
-- 有 3 个测试文件带 `//go:build cgo` 约束（`mcp_test.go`、`crud_test.go`、`index_progress_test.go`），`CGO_ENABLED=0` 时不会执行
-- **改 CGO 测试文件后，必须用 `CGO_ENABLED=1` 跑一遍**，否则推上 CI 才炸
-- Windows 本地的 modernc.org/sqlite 行为可能和 Linux CI 的 CGO SQLite 有差异
+### 常见 CI 失败根因（历史教训）
+
+| 问题 | 根因 | 预防 |
+|:----|:-----|:-----|
+| `go vet` 报 missing import | 新增代码引用了包但没加 import | `make ci-check` 中 `go vet` 会抓到 |
+| CGO 测试文件没跑 | 3 个文件带 `//go:build cgo` 约束，`CGO_ENABLED=0` 时不执行 | 必须用 `CGO_ENABLED=1` 跑一遍 |
+| SQLite DSN 参数拼接错误 | Windows 的 modernc.org/sqlite 和 Linux CI 的 CGO SQLite 行为不同 | 两种模式都测 |
+| 外键约束测试失败 | CGO 模式下 SQLite 外键生效 | 保存 chunks 前先 save document |
+| SaveIndexProgress 空 ID | `INSERT OR REPLACE` 传空 ID 导致主键碰撞 | 用 `UPDATE+INSERT` 模式 |
 
 ### 数据位置
 

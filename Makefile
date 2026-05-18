@@ -53,16 +53,20 @@ check: vet lint security
 
 # ci-check: 模拟 GitHub CI quality job 环境，推送前必跑
 ci-check:
-	@echo "=== CI Check: go vet ==="
-	go vet ./...
-	@echo ""
-	@echo "=== CI Check: go test (CGO_ENABLED=1) ==="
-	CGO_ENABLED=1 go test -count=1 -timeout=300s ./...
-	@echo ""
-	@echo "=== CI Check: go test (CGO_ENABLED=0) ==="
-	CGO_ENABLED=0 go test -count=1 -timeout=300s ./...
-	@echo ""
-	@echo "✅ All CI checks passed!"
+	@if command -v powershell.exe > /dev/null 2>&1; then \
+		powershell.exe -ExecutionPolicy Bypass -File scripts/ci-check.ps1; \
+	else \
+		echo "=== CI Check: go vet ==="; \
+		go vet ./...; \
+		echo ""; \
+		echo "=== CI Check: go test (CGO_ENABLED=1) ==="; \
+		CGO_ENABLED=1 go test -count=1 -timeout=300s ./...; \
+		echo ""; \
+		echo "=== CI Check: go test (CGO_ENABLED=0) ==="; \
+		CGO_ENABLED=0 go test -count=1 -timeout=300s ./...; \
+		echo ""; \
+		echo "✅ All CI checks passed!"; \
+	fi
 
 clean:
 	@echo "Cleaning up..."
