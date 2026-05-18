@@ -5,6 +5,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/lh123aa/cortex/internal/chunker"

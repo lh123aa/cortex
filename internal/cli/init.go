@@ -409,7 +409,7 @@ func runMCP(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	st, err := initStorage(cfg, logger)
+	st, err := initStorageLight(cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}

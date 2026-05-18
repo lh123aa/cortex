@@ -3,12 +3,12 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go" alt="Go">
+  <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
-  <img src="https://img.shields.io/badge/Version-2.2-blue?style=for-the-badge" alt="v2.2">
+  <img src="https://img.shields.io/badge/Version-3.5-blue?style=for-the-badge" alt="v3.5">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
-  <img src="https://img.shields.io/badge/Tests-114_passing-green?style=for-the-badge" alt="Tests">
-  <img src="https://img.shields.io/badge/MCP-Native-7B61FF?style=for-the-badge" alt="MCP">
+  <img src="https://img.shields.io/badge/Tests-10_10_packages-green?style=for-the-badge" alt="Tests">
+  <img src="https://img.shields.io/badge/MCP-8_Tools-7B61FF?style=for-the-badge" alt="MCP 8 Tools">
   <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
   <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
 </p>
@@ -101,7 +101,7 @@
 </tr>
 <tr>
   <td>MCP Tools</td>
-  <td align="center">🔧 <strong>5 tools</strong><br><sub>search/context/memory</sub></td>
+  <td align="center">🔧 <strong>8 tools</strong><br><sub>search/context/memory/suggest</sub></td>
   <td align="center">🔧 1-2</td>
   <td align="center">🔧 1</td>
   <td align="center">—</td>
@@ -206,6 +206,25 @@
 
 ## ✨ Changelog
 
+### 🚀 v3.5 — Testing Hardening + Code Refactoring (2026-05-14)
+
+- ✅ **Phase C Testing** — models/storage/index/search/embedding 5-module test hardening
+- ✅ **Phase A main.go split** — 1000 lines → 7 lines, split into internal/cli/ (11 files)
+- ✅ **`cortex_suggest` MCP tool** — 8th MCP tool, predictive search suggestions
+- ✅ **`GET /v1/suggest` REST endpoint** — Instant suggestions via prefetch cache
+- ✅ **Prefetch docs sync** — cortex watch auto-enables prefetch
+- ✅ **CI fixes** — `go vet` zero warnings, CRUD test dedup fix
+- ✅ **Full regression** — build/vet/test all pass
+
+### 🚀 v3.4 — Prefetch Predictive Search Engine (2026-05-14)
+
+- ✅ **`PrefetchEngine`** — Auto-extract keywords on file change, async pre-search
+- ✅ **Smart keyword extraction** — Markdown headings + high-frequency terms
+- ✅ **Dedicated prefetch cache** — Priority cache hit, results at half-typed input
+- ✅ **`cortex watch` integration** — Enable via `search.prefetch: true`
+- ✅ **Config** — `SearchConfig.Prefetch` (default false)
+- ✅ **Unit tests** — Keyword extraction / cache key / engine init (3 tests)
+
 ### 🐛 v3.3.1 — Bug Fixes & Hardening (2026-05-13)
 
 - ✅ **`cortex version` command** — Print version info
@@ -285,7 +304,7 @@ cortex search "How to implement Go concurrency"
 </td>
 <td align="center" width="33%">
 <h3>🔌 MCP Native</h3>
-<p><sub>5 MCP tools for AI Agents<br><code>cortex_search</code> · <code>cortex_memory_write</code></sub></p>
+<p><sub>8 MCP tools for AI Agents<br><code>cortex_search</code> · <code>cortex_memory_write</code></sub></p>
 </td>
 <td align="center" width="33%">
 <h3>🧠 Memory System</h3>
@@ -318,6 +337,9 @@ cortex search "How to implement Go concurrency"
 | `cortex_memory_write` | Write a memory entry | `POST /v1/memory` |
 | `cortex_memory_search` | Search memory entries | `GET /v1/memory/search` |
 | `cortex_memory_delete` | Delete a memory entry | `DELETE /v1/memory/:id` |
+| `cortex_memory_delete_batch` | Batch delete memories | — |
+| `cortex_health` | Health check + status | `GET /health` |
+| `cortex_suggest` | Predictive search suggestions | `GET /v1/suggest` |
 
 ---
 
@@ -339,7 +361,7 @@ cortex search "How to implement Go concurrency"
 │   Documents │  Chunks  │  Vectors  │  Cache  │  Users    │
 ├──────────────────────────────────────────────────────────┤
 │              MCP Protocol · REST API                      │
-│    5 MCP Tools  │  15+ REST Endpoints  │  Prometheus     │
+│     8 MCP Tools  │  15+ REST Endpoints  │  Prometheus     │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -475,7 +497,7 @@ go test ./...                     # 114 tests
 ---
 
 <p align="center">
-  <strong>🧠 Cortex v2.2 — Give AI Agents a Memory</strong>
+  <strong>🧠 Cortex v3.5 — Give AI Agents a Memory</strong>
   <br>
   <sub>Single Binary · Zero Config · MCP Native · 100% Local · MIT License</sub>
 </p>

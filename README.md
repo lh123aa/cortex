@@ -5,12 +5,12 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
-  <img src="https://img.shields.io/badge/Version-3.3-blue?style=for-the-badge" alt="v3.3">
+  <img src="https://img.shields.io/badge/Version-3.5-blue?style=for-the-badge" alt="v3.5">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
   <img src="https://img.shields.io/badge/Tests-10_10_packages-green?style=for-the-badge" alt="Tests">
   <img src="https://img.shields.io/badge/Iteration-Complete-7B61FF?style=for-the-badge" alt="Iteration Complete">
   <img src="https://img.shields.io/badge/Bug-0-success?style=for-the-badge" alt="Bug 0">
-  <img src="https://img.shields.io/badge/MCP-7_Tools-7B61FF?style=for-the-badge" alt="MCP 7 Tools">
+  <img src="https://img.shields.io/badge/MCP-8_Tools-7B61FF?style=for-the-badge" alt="MCP 8 Tools">
   <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
   <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
 </p>
@@ -213,6 +213,25 @@
 
 ## ✨ 更新日志
 
+### 🚀 v3.5 测试加固 + 代码重构 (2026-05-14)
+
+- ✅ **Phase C 测试加固** — models/storage/index/search/embedding 五模块测试强化
+- ✅ **Phase A main.go 拆分** — 1000 行 → 7 行，拆分到 internal/cli/ (11 文件)
+- ✅ **`cortex_suggest` MCP 工具** — 第 8 个 MCP 工具，预联想搜索建议
+- ✅ **`GET /v1/suggest` REST 端点** — 基于 prefetch 缓存的即时搜索建议
+- ✅ **Prefetch 文档同步** — cortex watch 自动启用 prefetch
+- ✅ **CI 修复** — `go vet` 零警告，CRUD 测试重复声明修复
+- ✅ **回归测试** — build/vet/test 全部通过
+
+### 🚀 v3.4 Prefetch 预联想搜索引擎 (2026-05-14)
+
+- ✅ **`PrefetchEngine` 预联想** — 文件变更时自动提取关键词并异步预搜索
+- ✅ **智能关键词提取** — Markdown 标题 + 高频词自动识别
+- ✅ **独立预取缓存** — 搜索时优先命中缓存，输入一半即出结果
+- ✅ **`cortex watch` 集成** — 搭配 `search.prefetch: true` 启用
+- ✅ **配置项** — `SearchConfig.Prefetch`（默认 false）
+- ✅ **单元测试** — 关键词提取/缓存 key/引擎初始化 3 个测试用例
+
 ### 🐛 v3.3.1 Bug 修复 + 安全加固 (2026-05-13)
 
 - ✅ **`cortex version` 命令** — 新增版本号查询
@@ -373,7 +392,7 @@ cortex usage                    # 存储用量和套餐信息
 </td>
 <td align="center" width="33%">
 <h3>🔌 MCP 原生</h3>
-<p><sub>5 个 MCP 工具，AI Agent 开箱即用<br><code>cortex_search</code> · <code>cortex_memory_write</code></sub></p>
+<p><sub>8 个 MCP 工具，AI Agent 开箱即用<br><code>cortex_search</code> · <code>cortex_memory_write</code></sub></p>
 </td>
 <td align="center" width="33%">
 <h3>🧠 记忆系统</h3>
@@ -422,6 +441,7 @@ cortex usage                    # 存储用量和套餐信息
 | `cortex_memory_delete` | 删除单条记忆 | `DELETE /v1/memory/:id` |
 | `cortex_memory_delete_batch` | 批量删除记忆 | — |
 | `cortex_health` | 健康检测 + 状态统计 | `GET /health` |
+| `cortex_suggest` | 预联想搜索建议 | `GET /v1/suggest` |
 
 ---
 
@@ -443,7 +463,7 @@ cortex usage                    # 存储用量和套餐信息
 │    文档表   │  分块表   │  向量表   │  缓存表   │  用户表  │
 ├──────────────────────────────────────────────────────────┤
 │                  MCP 协议 · REST API                      │
-│     5 个 MCP 工具  │  15+ REST 端点  │  Prometheus       │
+│     8 个 MCP 工具  │  15+ REST 端点  │  Prometheus       │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -591,7 +611,7 @@ go test ./...                     # 109 个测试
 | 内存占用 | ~30 MB / 进程 |
 | 二进制大小 | 34.2 MB (strip 优化) |
 | 测试覆盖率 | 10/10 包通过 · 全部核心逻辑有测试 |
-| MCP 工具 | **7 个**（search/context/memory×4/health） |
+| MCP 工具 | **8 个**（search/context/memory×4/health/suggest） |
 | Bug 状态 | 0 · FG 循环验证通过 |
 
 ---
@@ -640,7 +660,7 @@ go test ./...                     # 109 个测试
 ---
 
 <p align="center">
-  <strong>🧠 Cortex v3.0 — 让 AI Agent 拥有记忆</strong>
+  <strong>🧠 Cortex v3.5 — 让 AI Agent 拥有记忆</strong>
   <br>
   <sub>单二进制 · 零配置 · MCP 原生 · 完全本地 · MIT 开源</sub>
 </p>
