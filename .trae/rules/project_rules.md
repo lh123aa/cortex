@@ -60,6 +60,27 @@ go build -ldflags="-s -w" -o bin\cortex.exe .\cmd\cortex
 .\bin\cortex.exe setup
 ```
 
+### 推送前检查清单
+
+改完代码推送到 GitHub **之前**，务必在本地运行以下命令：
+
+```powershell
+# 方式一：一键 CI 模拟（推荐）
+make ci-check
+
+# 方式二：手动逐项检查
+go mod tidy               # 确保 go.mod/go.sum 一致
+go vet ./...              # 静态检查（零警告）
+$env:CGO_ENABLED=1; go test -count=1 -timeout=300s ./...   # CGO 模式测试
+$env:CGO_ENABLED=0; go test -count=1 -timeout=300s ./...   # 纯 Go 模式测试
+go build ./cmd/cortex     # 编译验证
+```
+
+注意：
+- 有 3 个测试文件带 `//go:build cgo` 约束（`mcp_test.go`、`crud_test.go`、`index_progress_test.go`），`CGO_ENABLED=0` 时不会执行
+- **改 CGO 测试文件后，必须用 `CGO_ENABLED=1` 跑一遍**，否则推上 CI 才炸
+- Windows 本地的 modernc.org/sqlite 行为可能和 Linux CI 的 CGO SQLite 有差异
+
 ### 数据位置
 
 - 数据库: `C:\Users\49046\.cortex\cortex.db`
