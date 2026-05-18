@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/yaml.v3"
 )
 
 func loadConfig() (*config.Config, *zap.Logger, error) {
@@ -735,6 +736,146 @@ func runSetup(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
+}
+
+func runInstall(cmd *cobra.Command, args []string) {
+	home, _ := os.UserHomeDir()
+	configPath := filepath.Join(home, ".cortex", "config.yaml")
+
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		fmt.Println("  📝 No config found, creating default (FTS5-only, zero dependencies)...")
+		cfgDir := filepath.Dir(configPath)
+		if err := os.MkdirAll(cfgDir, 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating config dir: %v\n", err)
+			os.Exit(1)
+		}
+		defaultCfg := map[string]interface{}{
+			"cortex": map[string]interface{}{
+				"db_path":   filepath.Join(cfgDir, "cortex.db"),
+				"log_level": "info",
+			},
+			"embedding": map[string]interface{}{
+				"provider":    "none",
+				"auto_update": false,
+			},
+			"index": map[string]interface{}{
+				"max_tokens":     512,
+				"overlap_tokens": 64,
+				"min_chars":      50,
+				"workers":        8,
+			},
+			"search": map[string]interface{}{
+				"cache_ttl":     "5m",
+				"default_top_k": 10,
+			},
+		}
+		data, err := yaml.Marshal(defaultCfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating config: %v\n", err)
+			os.Exit(1)
+		}
+		if err := os.WriteFile(configPath, data, 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing config: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("  ✅ Config created: %s\n", configPath)
+	} else {
+		fmt.Println("  ✅ Config found, using existing configuration")
+	}
+
+	cfg, logger, err := loadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	st, err := initStorageLight(cfg, logger)
+	if err != nil {
+		logger.Fatal("failed to init storage", zap.Error(err))
+	}
+	defer st.Close()
+
+	emb, err := initEmbedding(cfg, logger)
+	if err != nil {
+		logger.Fatal("failed to init embedding", zap.Error(err))
+	}
+
+	idx, err := initIndexer(st, emb, cfg, logger)
+	if err != nil {
+		logger.Fatal("failed to init indexer", zap.Error(err))
+	}
+
+	docDir := "."
+	if len(args) > 0 {
+		docDir = args[0]
+	}
+
+	absDir, err := filepath.Abs(docDir)
+	if err != nil {
+		logger.Fatal("failed to resolve path", zap.Error(err))
+	}
+
+	fmt.Printf("  📂 Indexing documents from: %s\n\n", absDir)
+	idx.OnProgress = func(evt models.IndexProgressEvent) {
+		completed := evt.Indexed + evt.Skipped + evt.Failed
+		if evt.Total <= 0 {
+			return
+		}
+		pct := float64(completed) / float64(evt.Total) * 100
+		barWidth := 20
+		filled := int(pct / 100 * float64(barWidth))
+		if filled > barWidth {
+			filled = barWidth
+		}
+		filledStr := strings.Repeat("█", filled)
+		emptyStr := strings.Repeat("░", barWidth-filled)
+		filename := evt.CurrentFile
+		if len(filename) > 45 {
+			filename = "..." + filename[len(filename)-42:]
+		}
+		elapsedStr := formatDuration(evt.Elapsed)
+		line := fmt.Sprintf("\r  Indexing [%s%s] %3.0f%%  %d/%d · %s · %.1f/s · %s",
+			filledStr, emptyStr, pct, completed, evt.Total, elapsedStr, evt.Speed, filename)
+		fmt.Print(line)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		select {
+		case sig := <-sigCh:
+			fmt.Printf("\n  ⚠️  Received %v, saving checkpoint...\n", sig)
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	result, err := idx.IndexDirectoryWithCheckpoint(ctx, absDir, "")
+	if err != nil {
+		logger.Error("indexing failed", zap.Error(err))
+		os.Exit(1)
+	}
+
+	fmt.Print("\r" + strings.Repeat(" ", 80) + "\r")
+	fmt.Printf("  ✅ Indexing complete! %d indexed, %d skipped, %d failed · %dms\n",
+		result.Indexed, result.Skipped, result.Failed, result.Duration)
+
+	fmt.Println()
+	fmt.Println("  ─────────────────────────────────────────────")
+	fmt.Println("  🎉  Cortex is ready!")
+	fmt.Println()
+	fmt.Println("  📖  Next steps:")
+	fmt.Println()
+	fmt.Printf("      Search:  cortex search \"your query\"\n")
+	fmt.Println("      Status:  cortex status")
+	fmt.Println()
+	fmt.Println("  🔌  Trae MCP config (.trae/mcp.json):")
+	fmt.Println(`      { "mcpServers": { "cortex": { "command": "cortex", "args": ["mcp"] } } }`)
+	fmt.Println()
+	fmt.Println("  ─────────────────────────────────────────────")
 }
 
 func highlightText(text, query string) string {

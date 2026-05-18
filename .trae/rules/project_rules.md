@@ -38,6 +38,12 @@ go build -ldflags="-s -w" -o bin\cortex.exe .\cmd\cortex
 ### 常用命令
 
 ```powershell
+# 一步安装（无 Go 环境也能用 install.ps1）
+.\scripts\install.ps1 -DocDir "D:\文档"
+# 或直接用 cortex install（需已编译）
+.\bin\cortex.exe install <目录>
+.\bin\cortex.exe install   # 默认当前目录
+
 # 索引文档
 .\bin\cortex.exe index <目录>
 
@@ -50,7 +56,7 @@ go build -ldflags="-s -w" -o bin\cortex.exe .\cmd\cortex
 # 启动 MCP 服务（供 Trae AI 调用）
 .\bin\cortex.exe mcp
 
-# 配置向导
+# 配置向导（设置 embedding 提供商）
 .\bin\cortex.exe setup
 ```
 
