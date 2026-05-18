@@ -32,7 +32,13 @@ func (s *SQLiteStorage) SetLogger(logger *zap.Logger) {
 
 // NewSQLiteStorage 初始化并打开 SQLite 数据库
 func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
-	db, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)") // 启动外键支持
+	connStr := dbPath
+	if strings.Contains(dbPath, "?") {
+		connStr = dbPath + "&_pragma=foreign_keys(1)"
+	} else {
+		connStr = dbPath + "?_pragma=foreign_keys(1)"
+	}
+	db, err := sql.Open("sqlite", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}

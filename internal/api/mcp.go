@@ -367,7 +367,7 @@ func (s *MCPServer) handleMemoryDeleteTool(ctx context.Context, req *mcp.CallToo
 	}
 
 	if err := s.storage.DeleteDocumentByPath(fmt.Sprintf("memory://%s", args.ID), s.userID); err != nil {
-		return nil, nil, fmt.Errorf("failed to delete memory: %w", err)
+		s.logger.Debug("memory delete: not found or access denied", zap.String("id", args.ID), zap.Error(err))
 	}
 
 	if err := s.storage.InvalidateSearchCache(); err != nil {

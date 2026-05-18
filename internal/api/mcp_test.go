@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/lh123aa/cortex/internal/chunker"
+	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/search"
 	"github.com/lh123aa/cortex/internal/storage"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -74,6 +75,10 @@ func TestMCPSearchHandler_ValidQuery(t *testing.T) {
 	srv, st, cleanup := setupMCPTest(t)
 	defer cleanup()
 
+	if err := st.SaveDocument(&models.Document{ID: "test-doc", Path: "test.md", FileType: "md", Status: "indexed"}); err != nil {
+		t.Fatalf("failed to save document: %v", err)
+	}
+
 	doc, _ := chunker.NewTextChunker(chunker.ChunkConfig{MinChars: 1, MaxTokens: 512})
 	chunks, _ := doc.Chunk("Go is a statically typed compiled programming language", "test.md")
 	for _, c := range chunks {
@@ -115,6 +120,10 @@ func TestMCPSearchHandler_EmptyQuery(t *testing.T) {
 func TestMCPContextHandler_ValidQuery(t *testing.T) {
 	srv, st, cleanup := setupMCPTest(t)
 	defer cleanup()
+
+	if err := st.SaveDocument(&models.Document{ID: "test-doc", Path: "test.md", FileType: "md", Status: "indexed"}); err != nil {
+		t.Fatalf("failed to save document: %v", err)
+	}
 
 	doc, _ := chunker.NewTextChunker(chunker.ChunkConfig{MinChars: 1, MaxTokens: 512})
 	chunks, _ := doc.Chunk("Go is a compiled language designed for concurrency", "test.md")
