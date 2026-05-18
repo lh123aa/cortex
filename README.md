@@ -340,42 +340,37 @@
 ## ⚡ 快速开始
 
 ```bash
-# 1. 下载二进制
-# macOS/Linux
-curl -fsSL https://github.com/lh123aa/cortex/releases/latest/download/cortex-linux-amd64.zip | unzip -
-chmod +x cortex
+# 🚀 新手一秒上手（自动创建配置 + 索引文档）
+./cortex install ~/my-docs
 
-# Windows
-# Invoke-WebRequest -Uri "..." -OutFile "cortex.zip"
-
-# 2. 运行配置向导（选择 embedding provider）
+# 如果需要交互式配置 embedding 提供商
 ./cortex setup
 
-# 3. 索引文档（显示实时进度条，支持断点续传）
+# 索引文档（显示实时进度条，支持断点续传）
 cortex index ~/my-docs
 
-# 4. 高级索引选项
+# 高级索引选项
 cortex index ~/my-docs --force           # 从头重新索引
 cortex index ~/my-docs --timeout 30m     # 30 分钟超时
 cortex index ~/my-docs --workers 32      # 32 个并发 worker
 
-# 5. 文件监听（自动增量索引）
+# 文件监听（自动增量索引）
 cortex watch ~/my-docs                    # 文件变更自动重新索引
 
-# 6. 启动 MCP 服务器（供 AI Agent 使用）
+# 启动 MCP 服务器（供 AI Agent 使用）
 cortex mcp
 
-# 7. 搜索
+# 搜索
 cortex search "如何实现 Go 并发"
 
-# 8. 配置热加载（serve 模式下自动启用）
+# 配置热加载（serve 模式下自动启用）
 cortex serve                              # 修改 config.yaml 无需重启
 
-# 9. 知识库去重
+# 知识库去重
 cortex dedup                    # 内容哈希去重
 cortex dedup --mode vector      # 向量语义去重
 
-# 8. 查看用量
+# 查看用量
 cortex usage                    # 存储用量和套餐信息
 ```
 
@@ -575,10 +570,24 @@ prometheus:
 ```bash
 git clone https://github.com/lh123aa/cortex.git
 cd cortex
-go build -o cortex ./cmd/cortex   # 纯 Go，无需 CGO
+go build -ldflags="-s -w" -o cortex ./cmd/cortex   # 纯 Go，无需 CGO
+
+# 一步安装（自动配置 + 索引）
+./cortex install ./docs
+
+# 或手动启动服务
 ./cortex serve
-go test ./...                     # 109 个测试
-./cortex dedup                    # 一键去重
+
+# 运行测试
+go test ./...                     # 15 个包全部通过
+
+# 一键去重
+./cortex dedup
+```
+
+Windows 小白一键脚本（无需 Go 环境）：
+```powershell
+.\scripts\install.ps1 -DocDir "D:\我的文档"
 ```
 
 ---

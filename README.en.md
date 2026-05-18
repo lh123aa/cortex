@@ -273,21 +273,16 @@
 ## ⚡ Quick Start
 
 ```bash
-# 1. Download
-# macOS/Linux
-curl -fsSL https://github.com/lh123aa/cortex/releases/latest/download/cortex-linux-amd64.zip | unzip -
-chmod +x cortex
+# 🚀 One-step setup (auto-config + index)
+./cortex install ~/my-docs
 
-# Windows
-# Invoke-WebRequest -Uri "..." -OutFile "cortex.zip"
-
-# 2. Index your documents
+# Index documents (with progress bar, checkpoint-resume)
 cortex index ~/my-docs
 
-# 3. Start MCP server (for AI Agent integration)
+# Start MCP server (for AI Agent integration)
 cortex mcp
 
-# 4. Search
+# Search
 cortex search "How to implement Go concurrency"
 ```
 
@@ -442,9 +437,21 @@ prometheus:
 ```bash
 git clone https://github.com/lh123aa/cortex.git
 cd cortex
-go build -o cortex ./cmd/cortex   # Pure Go, no CGO required
+go build -ldflags="-s -w" -o cortex ./cmd/cortex   # Pure Go, no CGO required
+
+# One-step setup (auto-config + index)
+./cortex install ./docs
+
+# Or start the REST server
 ./cortex serve
-go test ./...                     # 114 tests
+
+# Run all tests
+go test ./...                     # 15 packages all pass
+```
+
+Windows one-click script (no Go required):
+```powershell
+.\scripts\install.ps1 -DocDir "D:\MyNotes"
 ```
 
 ---
