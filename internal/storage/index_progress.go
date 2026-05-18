@@ -11,11 +11,6 @@ import (
 
 // SaveIndexProgress 保存或更新索引进度
 func (s *SQLiteStorage) SaveIndexProgress(p *models.IndexProgress) error {
-	query := `
-		INSERT OR REPLACE INTO index_progress
-		(id, root_path, last_file_path, last_file_index, total_files, indexed_files, indexed_chunks, failed_files, status, started_at, updated_at, completed_at, error_message)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
 	var completedAt interface{}
 	if !p.CompletedAt.IsZero() {
 		completedAt = p.CompletedAt
@@ -25,11 +20,29 @@ func (s *SQLiteStorage) SaveIndexProgress(p *models.IndexProgress) error {
 		errorMsg = p.ErrorMessage
 	}
 
-	_, err := s.db.Exec(query,
-		p.ID, p.RootPath, p.LastFilePath, p.LastFileIndex, p.TotalFiles,
+	result, err := s.db.Exec(`
+		UPDATE index_progress SET
+			last_file_path=?, last_file_index=?, total_files=?, indexed_files=?,
+			indexed_chunks=?, failed_files=?, status=?, updated_at=?, completed_at=?, error_message=?
+		WHERE root_path=?
+	`, p.LastFilePath, p.LastFileIndex, p.TotalFiles, p.IndexedFiles,
+		p.IndexedChunks, p.FailedFiles, p.Status, p.UpdatedAt, completedAt, errorMsg,
+		p.RootPath)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows > 0 {
+		return nil
+	}
+
+	_, err = s.db.Exec(`
+		INSERT INTO index_progress
+		(root_path, last_file_path, last_file_index, total_files, indexed_files, indexed_chunks, failed_files, status, started_at, updated_at, completed_at, error_message)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, p.RootPath, p.LastFilePath, p.LastFileIndex, p.TotalFiles,
 		p.IndexedFiles, p.IndexedChunks, p.FailedFiles, p.Status,
-		p.StartedAt, p.UpdatedAt, completedAt, errorMsg,
-	)
+		p.StartedAt, p.UpdatedAt, completedAt, errorMsg)
 	return err
 }
 
