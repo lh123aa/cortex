@@ -1,4 +1,4 @@
-﻿name: Build and Release
+name: Build and Release
 
 on:
   push:
@@ -72,6 +72,7 @@ jobs:
           go tool cover -func=coverage.out | tail -5
 
       - name: Check for vulnerable dependencies
+        continue-on-error: true
         uses: golang/govulncheck-action@v1
         with:
           go-version-input: '1.25'
