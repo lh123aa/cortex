@@ -115,20 +115,24 @@ func (s *SQLiteStorage) vectorSearchInMemory(queryVector []float32, userID strin
 		return nil, nil
 	}
 
+	count := len(s.flatChunkIDs)
+	dim := s.flatDim
+
 	// 对所有向量计算余弦相似度
 	type scored struct {
-		chunkID     string
-		similarity  float64
+		chunkID    string
+		similarity float64
 	}
 
 	topResults := make([]scored, 0, topK+1)
 
-	for i, vec := range s.flatEmbeds {
+	for i := 0; i < count; i++ {
+		base := i * dim
+		vec := s.flatData[base : base+dim]
 		sim := vector.CosineSimilarity(queryVector, vec)
 
 		if len(topResults) < topK {
 			topResults = append(topResults, scored{chunkID: s.flatChunkIDs[i], similarity: sim})
-			// 按 similarity 降序排序
 			for j := len(topResults) - 1; j > 0 && topResults[j].similarity > topResults[j-1].similarity; j-- {
 				topResults[j], topResults[j-1] = topResults[j-1], topResults[j]
 			}

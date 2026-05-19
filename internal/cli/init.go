@@ -50,7 +50,7 @@ func loadConfig() (*config.Config, *zap.Logger, error) {
 	return cfg, logger, nil
 }
 
-func initStorage(cfg *config.Config, logger *zap.Logger) (storage.Storage, error) {
+func initStorage(cfg *config.Config, logger *zap.Logger, buildIndex bool) (storage.Storage, error) {
 	dbDir := filepath.Dir(cfg.Cortex.DBPath)
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create db directory: %w", err)
@@ -63,15 +63,19 @@ func initStorage(cfg *config.Config, logger *zap.Logger) (storage.Storage, error
 
 	st.SetLogger(logger)
 
-	logger.Info("building vector index", zap.Int("vectors", func() int {
-		count, _ := st.GetVectorsCount("")
-		return count
-	}()))
+	if buildIndex {
+		logger.Info("building vector index", zap.Int("vectors", func() int {
+			count, _ := st.GetVectorsCount("")
+			return count
+		}()))
 
-	if err := st.BuildHNSWIndex(); err != nil {
-		logger.Warn("vector index build failed, search may fallback to DB-only", zap.Error(err))
+		if err := st.BuildHNSWIndex(); err != nil {
+			logger.Warn("vector index build failed, search may fallback to DB-only", zap.Error(err))
+		} else {
+			logger.Info("vector index built successfully")
+		}
 	} else {
-		logger.Info("vector index built successfully")
+		logger.Info("skipping vector index build (no embedding provider configured)")
 	}
 
 	logger.Info("storage initialized", zap.String("path", cfg.Cortex.DBPath))
@@ -470,14 +474,14 @@ func runServe(cmd *cobra.Command, args []string) {
 		logger.Warn("failed to start config watcher, config hot-reload disabled", zap.Error(err))
 	}
 
-	st, err := initStorage(cfg, logger)
-	if err != nil {
-		logger.Fatal("failed to init storage", zap.Error(err))
-	}
-
 	emb, err := initEmbedding(cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to init embedding", zap.Error(err))
+	}
+
+	st, err := initStorage(cfg, logger, emb != nil)
+	if err != nil {
+		logger.Fatal("failed to init storage", zap.Error(err))
 	}
 
 	se, err := initSearchEngine(st, emb, logger)
@@ -592,7 +596,7 @@ func runDedup(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	st, err := initStorage(cfg, logger)
+	st, err := initStorage(cfg, logger, true)
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}
@@ -681,7 +685,7 @@ func runWatch(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	st, err := initStorage(cfg, logger)
+	st, err := initStorage(cfg, logger, true)
 	if err != nil {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}
