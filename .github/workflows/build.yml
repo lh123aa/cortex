@@ -27,36 +27,46 @@ jobs:
       - name: Run tests
         run: |
           echo ">>> Running tests..."
-          set +e
-          go test ./... 2>&1 | tee /tmp/test_output.log
-          EXIT_CODE=${PIPESTATUS[0]}
-          set -e
-          if [ $EXIT_CODE -ne 0 ]; then
+          FAILED=""
+          for pkg in $(go list ./...); do
+            echo "--- Testing $pkg ---"
+            set +e
+            go test "$pkg" 2>&1
+            EXIT_CODE=$?
+            set -e
+            if [ $EXIT_CODE -ne 0 ]; then
+              echo "::error::TEST FAILED: $pkg (exit code: $EXIT_CODE)"
+              FAILED="$FAILED $pkg"
+            fi
+          done
+          if [ -n "$FAILED" ]; then
             echo "============================================"
-            echo ">>> TESTS FAILED (exit code: $EXIT_CODE) <<<"
+            echo ">>> FAILED PACKAGES:$FAILED"
             echo "============================================"
-            echo ">>> Full output (last 50 lines):"
-            tail -50 /tmp/test_output.log
-            echo "============================================"
-            exit $EXIT_CODE
+            exit 1
           fi
           echo "All basic tests passed"
 
       - name: Run tests with coverage
         run: |
           echo ">>> Running tests with coverage..."
-          set +e
-          go test -coverprofile=coverage.out ./... 2>&1 | tee /tmp/coverage_output.log
-          COV_EXIT_CODE=${PIPESTATUS[0]}
-          set -e
-          if [ $COV_EXIT_CODE -ne 0 ]; then
+          FAILED=""
+          for pkg in $(go list ./...); do
+            echo "--- Testing $pkg ---"
+            set +e
+            go test -coverprofile=coverage.out "$pkg" 2>&1
+            EXIT_CODE=$?
+            set -e
+            if [ $EXIT_CODE -ne 0 ]; then
+              echo "::error::COVERAGE TEST FAILED: $pkg (exit code: $EXIT_CODE)"
+              FAILED="$FAILED $pkg"
+            fi
+          done
+          if [ -n "$FAILED" ]; then
             echo "============================================"
-            echo ">>> COVERAGE TESTS FAILED (exit code: $COV_EXIT_CODE) <<<"
+            echo ">>> FAILED PACKAGES:$FAILED"
             echo "============================================"
-            echo ">>> Full output (last 50 lines):"
-            tail -50 /tmp/coverage_output.log
-            echo "============================================"
-            exit $COV_EXIT_CODE
+            exit 1
           fi
           echo "--- coverage summary ---"
           go tool cover -func=coverage.out | tail -5
