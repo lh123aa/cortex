@@ -8,7 +8,6 @@ import (
 
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/vector"
-	"go.uber.org/zap"
 )
 
 // isCJKRune 判断是否为中日韩文字
@@ -95,23 +94,106 @@ func (s *SQLiteStorage) FTSSearch(query string, userID string, topK int) ([]*mod
 	return results, nil
 }
 
-// VectorSearch 使用 HNSW 索引进行向量搜索
-// v2.0: 从 O(n) 全表扫描优化为 O(log n) HNSW 近似最近邻搜索
-// v2.1: HNSW 失败时自动降级到 brute-force
-// v2.2: 添加用户隔离
+// VectorSearch 使用内存向量索引进行搜索
+// v3.0: 使用轻量级内存索引替代 HNSW（HNSW 在 1万+ 向量规模下构建不稳定）
 func (s *SQLiteStorage) VectorSearch(queryVector []float32, userID string, topK int) ([]*models.SearchResult, error) {
-	// 如果 HNSW 索引可用，尝试使用 HNSW 搜索
-	if s.useHNSW && s.hnsw != nil {
-		results, err := s.vectorSearchHNSW(queryVector, userID, topK)
+	// 如果内存向量索引可用，使用内存搜索（最快）
+	if s.flatReady {
+		results, err := s.vectorSearchInMemory(queryVector, userID, topK)
 		if err == nil && len(results) > 0 {
 			return results, nil
 		}
-		// HNSW 失败，触发降级
-		s.logWarn("hnsw search degraded, falling back to brute force", zap.Error(err))
 	}
 
-	// 降级到旧的暴力搜索
+	// 回退到数据库暴力搜索
 	return s.vectorSearchBruteForce(queryVector, userID, topK)
+}
+
+// vectorSearchInMemory 使用内存向量索引进行暴力搜索（带用户隔离）
+func (s *SQLiteStorage) vectorSearchInMemory(queryVector []float32, userID string, topK int) ([]*models.SearchResult, error) {
+	if !s.flatReady || len(s.flatChunkIDs) == 0 {
+		return nil, nil
+	}
+
+	// 对所有向量计算余弦相似度
+	type scored struct {
+		chunkID     string
+		similarity  float64
+	}
+
+	topResults := make([]scored, 0, topK+1)
+
+	for i, vec := range s.flatEmbeds {
+		sim := vector.CosineSimilarity(queryVector, vec)
+
+		if len(topResults) < topK {
+			topResults = append(topResults, scored{chunkID: s.flatChunkIDs[i], similarity: sim})
+			// 按 similarity 降序排序
+			for j := len(topResults) - 1; j > 0 && topResults[j].similarity > topResults[j-1].similarity; j-- {
+				topResults[j], topResults[j-1] = topResults[j-1], topResults[j]
+			}
+		} else if sim > topResults[topK-1].similarity {
+			topResults[topK-1] = scored{chunkID: s.flatChunkIDs[i], similarity: sim}
+			for j := topK - 1; j > 0 && topResults[j].similarity > topResults[j-1].similarity; j-- {
+				topResults[j], topResults[j-1] = topResults[j-1], topResults[j]
+			}
+		}
+	}
+
+	if len(topResults) == 0 {
+		return nil, nil
+	}
+
+	// 批量查询 chunk 信息并过滤 userID
+	chunkIDs := make([]string, len(topResults))
+	for i, r := range topResults {
+		chunkIDs[i] = r.chunkID
+	}
+
+	q := `SELECT c.id, c.document_id, c.heading_path, c.content, c.content_raw, d.user_id
+		FROM chunks c
+		JOIN documents d ON c.document_id = d.id
+		WHERE c.id IN (?` + strings.Repeat(",?", len(chunkIDs)-1) + `)`
+
+	args := make([]interface{}, len(chunkIDs))
+	for i, id := range chunkIDs {
+		args[i] = id
+	}
+
+	rows, err := s.db.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	chunkMap := make(map[string]*models.Chunk)
+	for rows.Next() {
+		var chunk models.Chunk
+		var docUserID string
+		if err := rows.Scan(&chunk.ID, &chunk.DocumentID, &chunk.HeadingPath, &chunk.Content, &chunk.ContentRaw, &docUserID); err != nil {
+			return nil, err
+		}
+		chunkMap[chunk.ID] = &chunk
+	}
+
+	results := make([]*models.SearchResult, 0, topK)
+	for _, r := range topResults {
+		chunk, ok := chunkMap[r.chunkID]
+		if !ok {
+			continue
+		}
+		doc, err := s.GetDocumentByID(chunk.DocumentID, userID)
+		if err != nil || doc == nil {
+			continue
+		}
+		results = append(results, &models.SearchResult{
+			Chunk:       chunk,
+			Score:       r.similarity,
+			VectorScore: r.similarity,
+		})
+	}
+
+	return results, nil
 }
 
 // vectorSearchHNSW 使用 HNSW 索引搜索（带用户隔离）

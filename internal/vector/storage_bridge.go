@@ -3,8 +3,10 @@ package vector
 import (
 	"database/sql"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 	"sync"
 
 	_ "modernc.org/sqlite"
@@ -17,6 +19,8 @@ type StorageBridge struct {
 	idToIdx map[string]int
 	mu      sync.RWMutex
 	dim     int
+
+	onProgress func(current, total int) // 进度回调
 }
 
 // NewStorageBridge 创建新的存储桥接器
@@ -28,10 +32,21 @@ func NewStorageBridge(db *sql.DB) *StorageBridge {
 	}
 }
 
+// SetProgressCallback 设置进度回调
+func (s *StorageBridge) SetProgressCallback(cb func(current, total int)) {
+	s.onProgress = cb
+}
+
 // LoadFromDB 从数据库加载所有向量并构建 HNSW 索引
 func (s *StorageBridge) LoadFromDB() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// 先统计总数
+	var total int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM vectors`).Scan(&total); err != nil {
+		total = 0
+	}
 
 	rows, err := s.db.Query(`
 		SELECT v.chunk_id, v.embedding, LENGTH(v.embedding) / 4 as dim
@@ -43,6 +58,7 @@ func (s *StorageBridge) LoadFromDB() error {
 	defer rows.Close()
 
 	count := 0
+	lastLog := 0
 	for rows.Next() {
 		var chunkID string
 		var embedding []byte
@@ -67,9 +83,44 @@ func (s *StorageBridge) LoadFromDB() error {
 		s.hnsw.Add(chunkID, vec)
 		s.idToIdx[chunkID] = count
 		count++
+
+		// 进度回调（每 500 条触发一次）
+		if s.onProgress != nil && count-lastLog >= 500 {
+			s.onProgress(count, total)
+			lastLog = count
+		}
+	}
+
+	// 最后一次进度回调
+	if s.onProgress != nil && count > lastLog {
+		s.onProgress(count, total)
 	}
 
 	return nil
+}
+
+// SaveIndex 将 HNSW 索引向量保存到磁盘文件（与 VectorIndex.Save 格式兼容）
+func (s *StorageBridge) SaveIndex(path string) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	data := struct {
+		ChunkIDs []string    `json:"chunk_ids"`
+		Vectors  [][]float32 `json:"vectors"`
+	}{
+		ChunkIDs: s.hnsw.ids,
+		Vectors:  s.hnsw.vectors,
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("failed to create index file: %w", err)
+	}
+	defer f.Close()
+
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(data)
 }
 
 // Add 添加向量到索引

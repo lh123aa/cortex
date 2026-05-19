@@ -20,7 +20,7 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		MaxLayers:      16,
-		EfConstruction: 200,
+		EfConstruction: 80,
 		M:              32,
 		ML:             1 / math.Log(32),
 	}

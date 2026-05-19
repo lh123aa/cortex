@@ -78,13 +78,14 @@ type SuggestArgs struct {
 }
 
 type MCPServer struct {
-	server  *mcp.Server
-	search  *search.HybridSearchEngine
-	rag     *rag.RAGBuilder
-	storage storage.Storage
-	memory  *MemoryHandler
-	logger  *zap.Logger
-	userID  string // 用户隔离：当前 MCP 会话的 userID
+	server    *mcp.Server
+	search    *search.HybridSearchEngine
+	rag       *rag.RAGBuilder
+	storage   storage.Storage
+	memory    *MemoryHandler
+	embedding embedding.EmbeddingProvider
+	logger    *zap.Logger
+	userID    string // 用户隔离：当前 MCP 会话的 userID
 
 	startupTime time.Time // MCP 服务器启动时间，用于健康检测
 }
@@ -102,6 +103,7 @@ func NewMCPServer(se *search.HybridSearchEngine, st storage.Storage, em embeddin
 		rag:         rag.NewRAGBuilder(se),
 		storage:     st,
 		memory:      mh,
+		embedding:   em,
 		logger:      log,
 		startupTime: time.Now(),
 	}
@@ -411,17 +413,22 @@ func (s *MCPServer) handleHealthTool(ctx context.Context, req *mcp.CallToolReque
 
 	docCount, _ := s.storage.GetDocumentsCount("")
 
+	embeddingStatus := "disabled (FTS5-only)"
+	if s.embedding != nil {
+		embeddingStatus = s.embedding.Name()
+	}
+
 	result := fmt.Sprintf(`✅ Cortex MCP Server is healthy
 
 Server:     %s v%s
 Uptime:     %s
 Status:     Running
 Documents:  %d
-Embedding:  %s (FTS5)
+Embedding:  %s
 `,
 		ServerName, Version, uptime,
 		docCount,
-		"none",
+		embeddingStatus,
 	)
 
 	return &mcp.CallToolResult{

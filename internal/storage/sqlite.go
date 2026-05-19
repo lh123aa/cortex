@@ -3,9 +3,10 @@ package storage
 import (
 	"database/sql"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"log"
-	"path/filepath"
+	"os"
 	"strings"
 
 	"github.com/lh123aa/cortex/internal/vector"
@@ -23,6 +24,12 @@ type SQLiteStorage struct {
 	vecIndex *vector.VectorIndex // 向量索引管理器（用于持久化）
 	dbPath   string              // 数据库路径（用于计算向量索引路径）
 	logger   *zap.Logger         // 结构化日志（可选，设日志记录，默认回退到 log.Printf）
+
+	// 轻量级内存向量索引（替代有 Bug 的 HNSW 大索引构建）
+	flatChunkIDs []string    // chunk ID 列表
+	flatEmbeds   [][]float32 // 向量列表（与 flatChunkIDs 一一对应）
+	flatReady    bool        // 索引是否已加载完毕
+	flatPath     string      // 持久化文件路径
 }
 
 // SetLogger 设置结构化日志记录器
@@ -49,9 +56,10 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 	}
 
 	s := &SQLiteStorage{
-		db:      db,
-		useHNSW: false, // 默认关闭，等 BuildHNSWIndex 后开启
-		dbPath:  dbPath,
+		db:       db,
+		useHNSW:  false, // 默认关闭，等 BuildHNSWIndex 后开启
+		dbPath:   dbPath,
+		flatPath: dbPath + "_flat_idx.json",
 	}
 
 	// 初始化 index_progress 表
@@ -88,34 +96,95 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 	return s, nil
 }
 
-// BuildHNSWIndex 从数据库加载向量构建 HNSW 索引
-// v2.1: 优先从磁盘加载已持久化的索引，避免每次启动重建
+// BuildHNSWIndex 从数据库加载向量并构建加速索引
+// 使用轻量级内存索引替代 HNSW（HNSW 在 1万+ 向量规模下构建不稳定）
 func (s *SQLiteStorage) BuildHNSWIndex() error {
-	// 先尝试从磁盘加载向量索引
-	vecPath := s.getVectorIndexPath()
-	idx := vector.NewVectorIndex(vector.DefaultConfig())
-	if err := idx.Load(vecPath); err == nil {
-		s.logInfo("loaded vector index from disk", zap.String("path", vecPath), zap.Int("count", idx.Count()))
-		s.vecIndex = idx
+	// 1. 先尝试从磁盘加载已持久化的索引
+	if err := s.loadFlatVectorIndex(); err == nil {
+		s.logInfo("loaded flat vector index from disk",
+			zap.String("path", s.flatPath),
+			zap.Int("vectors", len(s.flatChunkIDs)))
+		return nil
 	}
 
-	// 加载或构建 HNSW
-	bridge := vector.NewStorageBridge(s.db)
-	if err := bridge.LoadFromDB(); err != nil {
-		return fmt.Errorf("failed to load vectors from DB: %w", err)
+	// 2. 从数据库读取所有向量
+	s.logInfo("building flat vector index from database")
+	rows, err := s.db.Query(`
+		SELECT v.chunk_id, v.embedding
+		FROM vectors v
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to query vectors: %w", err)
+	}
+	defer rows.Close()
+
+	var chunkIDs []string
+	var embeddings [][]float32
+
+	for rows.Next() {
+		var chunkID string
+		var embeddingData []byte
+		if err := rows.Scan(&chunkID, &embeddingData); err != nil {
+			return fmt.Errorf("failed to scan vector: %w", err)
+		}
+		chunkIDs = append(chunkIDs, chunkID)
+		embeddings = append(embeddings, BytesToFloat32Array(embeddingData))
+	}
+	s.flatChunkIDs = chunkIDs
+	s.flatEmbeds = embeddings
+	s.flatReady = true
+
+	s.logInfo("built flat vector index", zap.Int("vectors", len(chunkIDs)))
+
+	// 3. 持久化到磁盘
+	if err := s.saveFlatVectorIndex(); err != nil {
+		s.logWarn("failed to persist flat vector index", zap.Error(err))
+	} else {
+		s.logInfo("flat vector index saved to disk", zap.String("path", s.flatPath))
 	}
 
-	s.hnsw = bridge
-	s.useHNSW = true
-	s.logInfo("HNSW index built", zap.Int("vectors", bridge.Count()))
+	return nil
+}
 
-	// 如果从磁盘加载了索引但向量数量不匹配，需要重新构建
-	if s.vecIndex != nil && s.vecIndex.Count() != bridge.Count() {
-		s.logWarn("vector index count mismatch, will update on next save",
-			zap.Int("loaded", s.vecIndex.Count()),
-			zap.Int("built", bridge.Count()))
+// saveFlatVectorIndex 将内存向量索引保存到磁盘
+func (s *SQLiteStorage) saveFlatVectorIndex() error {
+	data := struct {
+		ChunkIDs []string    `json:"chunk_ids"`
+		Vectors  [][]float32 `json:"vectors"`
+	}{
+		ChunkIDs: s.flatChunkIDs,
+		Vectors:  s.flatEmbeds,
 	}
 
+	f, err := os.Create(s.flatPath)
+	if err != nil {
+		return fmt.Errorf("failed to create index file: %w", err)
+	}
+	defer f.Close()
+
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(data)
+}
+
+// loadFlatVectorIndex 从磁盘加载向量索引到内存
+func (s *SQLiteStorage) loadFlatVectorIndex() error {
+	data, err := os.ReadFile(s.flatPath)
+	if err != nil {
+		return fmt.Errorf("failed to read index file: %w", err)
+	}
+
+	var saved struct {
+		ChunkIDs []string    `json:"chunk_ids"`
+		Vectors  [][]float32 `json:"vectors"`
+	}
+	if err := json.Unmarshal(data, &saved); err != nil {
+		return fmt.Errorf("failed to parse index file: %w", err)
+	}
+
+	s.flatChunkIDs = saved.ChunkIDs
+	s.flatEmbeds = saved.Vectors
+	s.flatReady = true
 	return nil
 }
 
@@ -139,18 +208,15 @@ func (s *SQLiteStorage) logInfo(msg string, fields ...zap.Field) {
 
 // SaveVectorIndex 将向量索引保存到磁盘
 func (s *SQLiteStorage) SaveVectorIndex() error {
-	if s.vecIndex == nil {
+	if len(s.flatChunkIDs) == 0 {
 		return nil
 	}
-	path := s.getVectorIndexPath()
-	return s.vecIndex.Save(path)
+	return s.saveFlatVectorIndex()
 }
 
 // getVectorIndexPath 获取向量索引文件路径
 func (s *SQLiteStorage) getVectorIndexPath() string {
-	dir := filepath.Dir(s.dbPath)
-	name := filepath.Base(s.dbPath)
-	return filepath.Join(dir, name+"_vector_idx.json")
+	return s.flatPath
 }
 
 // GetVectorIndex 获取向量索引管理器
@@ -194,7 +260,7 @@ func (s *SQLiteStorage) hasColumn(table, col string) bool {
 // Close 关闭连接
 func (s *SQLiteStorage) Close() error {
 	// 关闭前保存向量索引
-	if s.vecIndex != nil {
+	if s.flatReady && len(s.flatChunkIDs) > 0 {
 		if err := s.SaveVectorIndex(); err != nil {
 			s.logWarn("failed to save vector index", zap.Error(err))
 		}

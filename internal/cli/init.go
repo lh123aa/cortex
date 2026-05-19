@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/lh123aa/cortex/internal/api"
+	"github.com/lh123aa/cortex/internal/auth"
 	"github.com/lh123aa/cortex/internal/config"
 	"github.com/lh123aa/cortex/internal/embedding"
 	"github.com/lh123aa/cortex/internal/index"
@@ -21,8 +23,6 @@ import (
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/search"
 	"github.com/lh123aa/cortex/internal/storage"
-	"github.com/lh123aa/cortex/internal/api"
-	"github.com/lh123aa/cortex/internal/auth"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -63,8 +63,15 @@ func initStorage(cfg *config.Config, logger *zap.Logger) (storage.Storage, error
 
 	st.SetLogger(logger)
 
+	logger.Info("building vector index", zap.Int("vectors", func() int {
+		count, _ := st.GetVectorsCount("")
+		return count
+	}()))
+
 	if err := st.BuildHNSWIndex(); err != nil {
-		logger.Warn("failed to build HNSW index, using brute force search", zap.Error(err))
+		logger.Warn("vector index build failed, search may fallback to DB-only", zap.Error(err))
+	} else {
+		logger.Info("vector index built successfully")
 	}
 
 	logger.Info("storage initialized", zap.String("path", cfg.Cortex.DBPath))
@@ -492,6 +499,13 @@ func runServe(cmd *cobra.Command, args []string) {
 
 	metricsServer := metrics.StartMetricsServer(":9090")
 	logger.Info("metrics server started", zap.String("addr", ":9090"))
+
+	go func() {
+		if err := restServer.ListenAndServe(":8080"); err != nil && err != http.ErrServerClosed {
+			logger.Fatal("REST server failed", zap.Error(err))
+		}
+	}()
+	logger.Info("REST API server started", zap.String("addr", ":8080"))
 
 	if cfg.Backup.AutoBackup {
 		backupMgr := storage.NewBackupManager(cfg.Cortex.DBPath)

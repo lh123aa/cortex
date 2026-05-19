@@ -461,8 +461,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.MaxLayers != 16 {
 		t.Errorf("Expected MaxLayers 16, got %d", cfg.MaxLayers)
 	}
-	if cfg.EfConstruction != 200 {
-		t.Errorf("Expected EfConstruction 200, got %d", cfg.EfConstruction)
+	if cfg.EfConstruction != 80 {
+		t.Errorf("Expected EfConstruction 80, got %d", cfg.EfConstruction)
 	}
 	if cfg.M != 32 {
 		t.Errorf("Expected M 32, got %d", cfg.M)
