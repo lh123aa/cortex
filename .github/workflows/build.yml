@@ -24,18 +24,15 @@ jobs:
       - name: Run go vet
         run: go vet ./...
 
+      - name: Run tests
+        run: |
+          echo ">>> Running tests without coverage..."
+          go test ./...
+          echo "All basic tests passed"
+
       - name: Run tests with coverage
         run: |
-          set -e
-          for pkg in $(go list ./...); do
-            echo ">>> Testing $pkg..."
-            if ! go test -cover "$pkg" 2>&1; then
-              echo "❌ FAILED: $pkg"
-              exit 1
-            fi
-            echo ""
-          done
-          echo ">>> All packages passed. Running final coverage..."
+          echo ">>> Running tests with coverage..."
           go test -coverprofile=coverage.out ./...
           echo "--- coverage summary ---"
           go tool cover -func=coverage.out | tail -5
