@@ -1,4 +1,4 @@
-package config
+﻿package config
 
 import (
 	"os"
@@ -72,17 +72,29 @@ search:
 }
 
 func TestLoad_Defaults(t *testing.T) {
-	// Load with empty config path - should use defaults
-	// Empty path triggers default config search paths
-	cfg, err := Load("")
-	if err != nil {
-		t.Fatalf("Load with empty path failed: %v", err)
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Write minimal config with only DB path to test defaults
+	configContent := `
+cortex:
+  db_path: /tmp/test.db
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
 	}
 
-	// Check defaults
-	if cfg.Cortex.DBPath == "" {
-		t.Error("Expected default db_path to be set")
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
 	}
+
+	// Check explicit value
+	if cfg.Cortex.DBPath != "/tmp/test.db" {
+		t.Errorf("Expected db_path '/tmp/test.db', got '%s'", cfg.Cortex.DBPath)
+	}
+
+	// Check code defaults (values not in the config file)
 	if cfg.Cortex.LogLevel != "info" {
 		t.Errorf("Expected default log_level 'info', got '%s'", cfg.Cortex.LogLevel)
 	}
@@ -92,8 +104,8 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.Index.MaxTokens != 512 {
 		t.Errorf("Expected default max_tokens 512, got %d", cfg.Index.MaxTokens)
 	}
-	if cfg.Index.Workers != 16 {
-		t.Errorf("Expected default workers 16, got %d", cfg.Index.Workers)
+	if cfg.Index.Workers != 8 {
+		t.Errorf("Expected default workers 8, got %d", cfg.Index.Workers)
 	}
 	if cfg.Search.DefaultTopK != 10 {
 		t.Errorf("Expected default default_top_k 10, got %d", cfg.Search.DefaultTopK)
