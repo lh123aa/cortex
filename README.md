@@ -213,6 +213,16 @@
 
 ## ✨ 更新日志
 
+### 🧪 v3.5.2 回归测试 + 内存优化 (2026-05-19)
+
+- ✅ **5 个修复点全覆盖回归测试** — 11 个新测试 + 2 个已有，CI 22 包全过
+- ✅ **内存效率⭐⭐→⭐⭐⭐⭐⭐** — 无 embedding 时 446MB→**19.6MB**（-95.6%）
+- ✅ **索引持久化二进制化** — JSON 260MB→**binary 80MB**（-69%），加载 9.6s→~1s
+- ✅ **扁平向量存储** — `[][]float32`→`[]float32`，去掉 23K 个 slice header
+- ✅ **条件索引加载** — 无 embedding provider 时完全跳过（`initStorage` 新增 `buildIndex` 参数）
+- ✅ **REST API htptest 集成测试** — /health、/v1/search 端点回归覆盖
+- ✅ **Health tool 状态显示回归测试** — 有/无 embedding 两种场景
+
 ### 🐛 v3.5.1 REST API 修复 + HNSW 替换 + 向量索引持久化 (2026-05-19)
 
 - ✅ **`cortex serve` 修复** — REST API 现在正确监听 `:8080`，/health、/v1/search 等端点可用
