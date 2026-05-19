@@ -1,4 +1,4 @@
-name: Build and Release
+﻿name: Build and Release
 
 on:
   push:
@@ -26,14 +26,38 @@ jobs:
 
       - name: Run tests
         run: |
-          echo ">>> Running tests without coverage..."
-          go test ./...
+          echo ">>> Running tests..."
+          set +e
+          go test ./... 2>&1 | tee /tmp/test_output.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "============================================"
+            echo ">>> TESTS FAILED (exit code: $EXIT_CODE) <<<"
+            echo "============================================"
+            echo ">>> Full output (last 50 lines):"
+            tail -50 /tmp/test_output.log
+            echo "============================================"
+            exit $EXIT_CODE
+          fi
           echo "All basic tests passed"
 
       - name: Run tests with coverage
         run: |
           echo ">>> Running tests with coverage..."
-          go test -coverprofile=coverage.out ./...
+          set +e
+          go test -coverprofile=coverage.out ./... 2>&1 | tee /tmp/coverage_output.log
+          COV_EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          if [ $COV_EXIT_CODE -ne 0 ]; then
+            echo "============================================"
+            echo ">>> COVERAGE TESTS FAILED (exit code: $COV_EXIT_CODE) <<<"
+            echo "============================================"
+            echo ">>> Full output (last 50 lines):"
+            tail -50 /tmp/coverage_output.log
+            echo "============================================"
+            exit $COV_EXIT_CODE
+          fi
           echo "--- coverage summary ---"
           go tool cover -func=coverage.out | tail -5
 
@@ -87,31 +111,3 @@ jobs:
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
-
-      - name: Generate release notes
-        id: release_notes
-        run: |
-          echo 'notes<<EOF' >> $GITHUB_OUTPUT
-          echo "# Cortex ${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "See [CHANGELOG.md](CHANGELOG.md) for full release notes." >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Prepare release artifacts
-        run: |
-          mkdir -p release-artifacts
-          for dir in cortex-*/; do
-            platform="${dir%/}"
-            mv "${dir}"/* "./release-artifacts/${platform}.tar.gz" 2>/dev/null || true
-          done
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release-artifacts/*
-          body: ${{ steps.release_notes.outputs.notes }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
