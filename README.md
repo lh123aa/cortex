@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
   <img src="https://img.shields.io/badge/Version-3.5-blue?style=for-the-badge" alt="v3.5">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
-  <img src="https://img.shields.io/badge/Tests-10_10_packages-green?style=for-the-badge" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-11_11_packages-green?style=for-the-badge" alt="Tests">
   <img src="https://img.shields.io/badge/Iteration-Complete-7B61FF?style=for-the-badge" alt="Iteration Complete">
   <img src="https://img.shields.io/badge/Bug-0-success?style=for-the-badge" alt="Bug 0">
   <img src="https://img.shields.io/badge/MCP-8_Tools-7B61FF?style=for-the-badge" alt="MCP 8 Tools">
@@ -212,6 +212,16 @@
 ---
 
 ## ✨ 更新日志
+
+### 🐛 v3.5.1 REST API 修复 + HNSW 替换 + 向量索引持久化 (2026-05-19)
+
+- ✅ **`cortex serve` 修复** — REST API 现在正确监听 `:8080`，/health、/v1/search 等端点可用
+- ✅ **HNSW 替换** — 解决 2 万+ 向量规模下的构建崩溃，替换为轻量级内存向量索引
+- ✅ **向量索引持久化** — 构建完成后写入 `cortex.db_flat_idx.json`，下次启动秒加载（3 秒读 23K 向量）
+- ✅ **`cortex_health` MCP 工具显示修复** — 正确显示 embedding 状态而非硬编码 `none (FTS5)`
+- ✅ **HNSW 构建性能优化** — EfConstruction 200→80，构建速度提升 2.5x
+- ✅ **StorageBridge 进度回调** — 后台索引构建可追踪进度
+- ✅ **回归测试** — 11/11 包通过，`go vet` 零警告
 
 ### 🚀 v3.5 测试加固 + 代码重构 (2026-05-14)
 
@@ -449,7 +459,7 @@ cortex usage                    # 存储用量和套餐信息
 │  index  │  search  │  context  │  serve  │     mcp       │
 ├──────────────────────────────────────────────────────────┤
 │                  混合搜索引擎                              │
-│      向量搜索 (HNSW)     │      FTS5 (BM25)              │
+│      向量搜索 (内存索引)    │      FTS5 (BM25)              │
 ├──────────────────────────────────────────────────────────┤
 │               L1+L2 两级缓存 (v2.1)                       │
 │          go-cache (内存)   │     SQLite                   │
@@ -465,7 +475,7 @@ cortex usage                    # 存储用量和套餐信息
 **技术栈：**
 - **语言**: Go 1.25+ — 单二进制跨平台（纯 Go，无 CGO）
 - **存储**: SQLite + WAL — 零配置嵌入式存储
-- **向量**: HNSW — 高性能近似最近邻搜索
+- **向量**: 内存索引 — 轻量级 O(n) 暴力搜索（HNSW 备选）
 - **嵌入**: Ollama / ONNX / None（FTS5-only）
 - **协议**: MCP SDK — AI Agent 原生通信
 - **监控**: Prometheus — 39 个内置指标 + Grafana 模板
