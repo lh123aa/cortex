@@ -1,5 +1,5 @@
 # Binaries
-cortex
+/cortex
 *.exe
 *.dll
 *.so
