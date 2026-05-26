@@ -324,9 +324,10 @@ func runSearch(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("\n🔍 Search results for: %s\n\n", query)
-	if len(results) == 0 {
-		fmt.Println("   No results found.")
-		return
+
+	if cfg.Embedding.Provider == "none" {
+		fmt.Println("  💡  FTS-only mode. Install Ollama + nomic-embed-text for semantic search.")
+		fmt.Println()
 	}
 
 	if jsonOutput {
@@ -339,12 +340,16 @@ func runSearch(cmd *cobra.Command, args []string) {
 		}
 		var jr []jsonResult
 		for i, r := range results {
+			content := r.Chunk.ContentRaw
+			if len(content) > 300 {
+				content = content[:300] + "..."
+			}
 			jr = append(jr, jsonResult{
 				Rank:    i + 1,
 				Score:   r.Score,
 				Path:    r.Chunk.DocumentID,
 				Section: r.Chunk.HeadingPath,
-				Content: r.Chunk.ContentRaw,
+				Content: content,
 			})
 		}
 		enc := json.NewEncoder(os.Stdout)
@@ -353,12 +358,17 @@ func runSearch(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	if len(results) == 0 {
+		fmt.Println("   No results found.")
+		return
+	}
+
 	for i, r := range results {
 		fmt.Printf("%d. [Score: %.4f] %s\n", i+1, r.Score, r.Chunk.HeadingPath)
 		fmt.Printf("   %s\n", r.Chunk.DocumentID)
 		content := r.Chunk.ContentRaw
-		if len(content) > 200 {
-			content = content[:200] + "..."
+		if len(content) > 300 {
+			content = content[:300] + "..."
 		}
 		content = highlightText(content, query)
 		fmt.Printf("   %s\n\n", content)

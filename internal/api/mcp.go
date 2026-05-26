@@ -482,6 +482,10 @@ func (s *MCPServer) handleSuggestTool(ctx context.Context, req *mcp.CallToolRequ
 }
 
 func (s *MCPServer) Run() error {
-	// mcp-go-sdk Server 底层自动借助 stdin/stdout 进行 JsonRPC 通讯交互
 	return s.server.Run(context.Background(), &mcp.StdioTransport{})
+}
+
+// Server returns the underlying MCP server instance for use with StreamableHTTPHandler
+func (s *MCPServer) Server() *mcp.Server {
+	return s.server
 }

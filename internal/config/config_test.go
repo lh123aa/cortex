@@ -1,4 +1,4 @@
-﻿package config
+package config
 
 import (
 	"os"
@@ -107,8 +107,8 @@ cortex:
 	if cfg.Index.Workers != 8 {
 		t.Errorf("Expected default workers 8, got %d", cfg.Index.Workers)
 	}
-	if cfg.Search.DefaultTopK != 10 {
-		t.Errorf("Expected default default_top_k 10, got %d", cfg.Search.DefaultTopK)
+	if cfg.Search.DefaultTopK != 20 {
+		t.Errorf("Expected default default_top_k 20, got %d", cfg.Search.DefaultTopK)
 	}
 }
 

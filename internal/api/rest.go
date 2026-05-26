@@ -14,6 +14,7 @@ import (
 	"github.com/lh123aa/cortex/internal/rag"
 	"github.com/lh123aa/cortex/internal/search"
 	"github.com/lh123aa/cortex/internal/storage"
+	mcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.uber.org/zap"
 )
 
@@ -75,6 +76,9 @@ type RESTServer struct {
 	memory     *MemoryHandler // 记忆系统处理器
 	httpServer *HTTPServer    // 用于 graceful shutdown
 
+	embeddingProvider string // embedding provider name, "none" for FTS-only
+	mcpServer         *MCPServer
+
 	// Auth
 	authService    *auth.AuthService
 	authMiddleware *AuthMiddleware
@@ -93,6 +97,13 @@ func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, em embeddi
 
 	mh := NewMemoryHandler(st, se, em, log)
 
+	providerName := "none"
+	if em != nil {
+		providerName = em.Name()
+	}
+
+	mcpSrv := NewMCPServer(se, st, em, log)
+
 	s := &RESTServer{
 		engine:      se,
 		rag:         rag.NewRAGBuilder(se),
@@ -104,6 +115,9 @@ func NewRESTServer(se *search.HybridSearchEngine, st storage.Storage, em embeddi
 		auth:        NewAPIKeyAuth("X-API-Key", "api_key"),
 		authEnabled: false,
 		authKeys:    make(map[string]string),
+
+		embeddingProvider: providerName,
+		mcpServer:         mcpSrv,
 	}
 	s.registerRoutes()
 	return s
@@ -119,6 +133,13 @@ func NewRESTServerWithAuth(se *search.HybridSearchEngine, st storage.Storage, em
 
 	mh := NewMemoryHandler(st, se, em, log)
 
+	providerName := "none"
+	if em != nil {
+		providerName = em.Name()
+	}
+
+	mcpSrv := NewMCPServer(se, st, em, log)
+
 	s := &RESTServer{
 		engine:         se,
 		rag:            rag.NewRAGBuilder(se),
@@ -132,6 +153,9 @@ func NewRESTServerWithAuth(se *search.HybridSearchEngine, st storage.Storage, em
 		auth:           NewAPIKeyAuth("X-API-Key", "api_key"),
 		authEnabled:    true,
 		authKeys:       make(map[string]string),
+
+		embeddingProvider: providerName,
+		mcpServer:         mcpSrv,
 	}
 	s.registerRoutes()
 	return s
@@ -295,14 +319,13 @@ func (s *RESTServer) registerRoutes() {
 	{
 		internal.GET("/progress/:root_path", s.handleIndexProgress)
 	}
-}
 
-func (s *RESTServer) Run(addr string) error {
-	s.logger.Info("starting REST API server", zap.String("addr", addr), zap.Bool("auth_enabled", s.authEnabled))
-	return s.router.Run(addr)
+	// MCP over HTTP (Streamable HTTP Transport)
+	mcpHandler := mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
+		return s.mcpServer.Server()
+	}, nil)
+	s.router.Any("/mcp", gin.WrapH(mcpHandler))
 }
-
-// --- Auth Handlers ---
 
 func (s *RESTServer) handleRegister(c *gin.Context) {
 	var req struct {
@@ -417,6 +440,13 @@ func (s *RESTServer) handleLive(c *gin.Context) {
 	}
 }
 
+func (s *RESTServer) ftsHint() string {
+	if s.embeddingProvider == "none" {
+		return "FTS-only mode. Install Ollama + nomic-embed-text for semantic search."
+	}
+	return ""
+}
+
 func (s *RESTServer) handleSearch(c *gin.Context) {
 	q := c.Query("q")
 	if q == "" {
@@ -499,14 +529,18 @@ func (s *RESTServer) handleSuggest(c *gin.Context) {
 		if len(results) > 0 {
 			enriched := make([]gin.H, len(results))
 			for i, r := range results {
+				content := r.Chunk.ContentRaw
+				if len(content) > 300 {
+					content = content[:300] + "..."
+				}
 				enriched[i] = gin.H{
 					"rank":        i + 1,
 					"score":       r.Score,
 					"section":     r.Chunk.HeadingPath,
-					"content_raw": r.Chunk.ContentRaw,
+					"content_raw": content,
 				}
 			}
-			c.JSON(200, gin.H{"query": q, "source": "cache", "total": len(results), "results": enriched})
+			c.JSON(200, gin.H{"query": q, "source": "cache", "total": len(results), "results": enriched, "hint": s.ftsHint()})
 			return
 		}
 	}
@@ -524,14 +558,18 @@ func (s *RESTServer) handleSuggest(c *gin.Context) {
 
 	enriched := make([]gin.H, len(results))
 	for i, r := range results {
+		content := r.Chunk.ContentRaw
+		if len(content) > 300 {
+			content = content[:300] + "..."
+		}
 		enriched[i] = gin.H{
 			"rank":        i + 1,
 			"score":       r.Score,
 			"section":     r.Chunk.HeadingPath,
-			"content_raw": r.Chunk.ContentRaw,
+			"content_raw": content,
 		}
 	}
-	c.JSON(200, gin.H{"query": q, "source": "search", "total": len(results), "results": enriched})
+	c.JSON(200, gin.H{"query": q, "source": "search", "total": len(results), "results": enriched, "hint": s.ftsHint()})
 }
 
 func (s *RESTServer) handleContext(c *gin.Context) {

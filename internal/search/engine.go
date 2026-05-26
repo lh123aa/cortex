@@ -150,6 +150,15 @@ func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts mode
 		finalResults = finalResults[:opts.TopK]
 	}
 
+	// 6.5 补充文件路径信息（用于文件类型权重）
+	for _, r := range finalResults {
+		if r.Chunk != nil && r.Chunk.DocumentID != "" {
+			if doc, err := s.storage.GetDocumentByID(r.Chunk.DocumentID, userID); err == nil && doc != nil {
+				r.FilePath = doc.Path
+			}
+		}
+	}
+
 	// 7. 可选: 重排序
 	if s.reranker != nil && len(finalResults) > 0 {
 		reranked, err := s.reranker.Rerank(ctx, query, finalResults, opts.TopK)

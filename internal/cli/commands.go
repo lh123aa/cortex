@@ -16,4 +16,5 @@ func init() {
 	RootCmd.AddCommand(NewVersionCmd())
 	RootCmd.AddCommand(NewSetupCmd())
 	RootCmd.AddCommand(NewInstallCmd())
+	RootCmd.AddCommand(NewStartCmd())
 }

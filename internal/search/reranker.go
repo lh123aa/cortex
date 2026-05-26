@@ -2,7 +2,9 @@ package search
 
 import (
 	"context"
+	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/lh123aa/cortex/internal/models"
 )
@@ -116,6 +118,22 @@ func (r *CrossEncoderReranker) calculateRelevance(query string, result *models.S
 		score -= 0.5
 	} else if contentLen > 500 {
 		score += 0.1
+	}
+
+	// 7. 文件类型权重（Markdown > 代码文件 > 纯文本 > HTML/CSS）
+	if result.FilePath != "" {
+		ext := strings.ToLower(filepath.Ext(result.FilePath))
+		switch ext {
+		case ".md":
+			score += 0.5
+		case ".go", ".py", ".rs", ".ts", ".js", ".tsx", ".jsx", ".java", ".rb", ".c", ".cpp", ".h", ".hpp":
+			score += 0.3
+		case ".txt", ".yaml", ".yml", ".json", ".toml", ".ini", ".cfg", ".conf":
+			score += 0.1
+		case ".html", ".htm", ".css":
+		default:
+			score += 0.1
+		}
 	}
 
 	return score

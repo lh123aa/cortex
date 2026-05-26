@@ -19,6 +19,7 @@ type Config struct {
 	Search    SearchConfig    `mapstructure:"search"`
 	Backup    BackupConfig    `mapstructure:"backup"`
 	Vector    VectorConfig    `mapstructure:"vector"`
+	Starter   StarterConfig   `mapstructure:"starter"`
 }
 
 // CortexConfig holds core Cortex settings
@@ -30,16 +31,16 @@ type CortexConfig struct {
 
 // EmbeddingConfig holds embedding provider settings
 type EmbeddingConfig struct {
-	Provider    string          `mapstructure:"provider"`
-	AutoUpdate  bool            `mapstructure:"auto_update"`
-	Ollama      OllamaConfig    `mapstructure:"ollama"`
-	ONNX        ONNXConfig      `mapstructure:"onnx"`
-	OpenAI      APIConfig       `mapstructure:"openai"`
-	Cohere      APIConfig       `mapstructure:"cohere"`
-	Voyage      APIConfig       `mapstructure:"voyage"`
-	DashScope   APIConfig       `mapstructure:"dashscope"`
-	Zhipu       APIConfig       `mapstructure:"zhipu"`
-	Baidu       BaiduConfig     `mapstructure:"baidu"`
+	Provider   string       `mapstructure:"provider"`
+	AutoUpdate bool         `mapstructure:"auto_update"`
+	Ollama     OllamaConfig `mapstructure:"ollama"`
+	ONNX       ONNXConfig   `mapstructure:"onnx"`
+	OpenAI     APIConfig    `mapstructure:"openai"`
+	Cohere     APIConfig    `mapstructure:"cohere"`
+	Voyage     APIConfig    `mapstructure:"voyage"`
+	DashScope  APIConfig    `mapstructure:"dashscope"`
+	Zhipu      APIConfig    `mapstructure:"zhipu"`
+	Baidu      BaiduConfig  `mapstructure:"baidu"`
 }
 
 // OllamaConfig holds Ollama-specific settings
@@ -65,11 +66,11 @@ type APIConfig struct {
 
 // BaiduConfig 百度文心特有配置（需 access_key + secret_key 换取 token）
 type BaiduConfig struct {
-	APIKey      string `mapstructure:"api_key"`
-	SecretKey   string `mapstructure:"secret_key"`
-	Model       string `mapstructure:"model"`
-	Dimension   int    `mapstructure:"dimension"`
-	BaseURL     string `mapstructure:"base_url"`
+	APIKey    string `mapstructure:"api_key"`
+	SecretKey string `mapstructure:"secret_key"`
+	Model     string `mapstructure:"model"`
+	Dimension int    `mapstructure:"dimension"`
+	BaseURL   string `mapstructure:"base_url"`
 }
 
 // IndexConfig holds indexing settings
@@ -84,7 +85,7 @@ type IndexConfig struct {
 type SearchConfig struct {
 	CacheTTL    string `mapstructure:"cache_ttl"`
 	DefaultTopK int    `mapstructure:"default_top_k"`
-	Prefetch    bool   `mapstructure:"prefetch"`      // 是否启用预联想（默认 false）
+	Prefetch    bool   `mapstructure:"prefetch"` // 是否启用预联想（默认 false）
 }
 
 // BackupConfig holds backup settings
@@ -101,6 +102,13 @@ type VectorConfig struct {
 	Dimension    int    `mapstructure:"dimension"`     // 原始向量维度 (默认768)
 	PQDim        int    `mapstructure:"pq_dim"`        // PQ压缩后维度 (默认64)
 	CodebookSize int    `mapstructure:"codebook_size"` // 码本大小 (默认256)
+}
+
+// StarterConfig holds settings for the `cortex start` command
+type StarterConfig struct {
+	StartPort         int      `mapstructure:"start_port"`
+	AutoRegister      bool     `mapstructure:"auto_register"`
+	RegisterSkipTools []string `mapstructure:"register_skip_tools"`
 }
 
 // UsePQ 是否启用 PQ 压缩
@@ -142,7 +150,7 @@ func Load(configPath string) (*Config, error) {
 	v.SetDefault("index.min_chars", 50)
 	v.SetDefault("index.workers", 8)
 	v.SetDefault("search.cache_ttl", "5m")
-	v.SetDefault("search.default_top_k", 10)
+	v.SetDefault("search.default_top_k", 20)
 	v.SetDefault("backup.enabled", true)
 	v.SetDefault("backup.dir", filepath.Join(defaultDir, "backups"))
 	v.SetDefault("backup.max_backups", 10)
@@ -151,13 +159,16 @@ func Load(configPath string) (*Config, error) {
 	v.SetDefault("vector.dimension", 768)
 	v.SetDefault("vector.pq_dim", 64)
 	v.SetDefault("vector.codebook_size", 256)
+	v.SetDefault("starter.start_port", 0)
+	v.SetDefault("starter.auto_register", true)
+	v.SetDefault("starter.register_skip_tools", []string{})
 
 	if configPath != "" {
 		v.SetConfigFile(configPath)
 	} else {
 		v.SetConfigName("config")
 		v.SetConfigType("yaml")
-		v.AddConfigPath(defaultDir)               // ~/.cortex/config.yaml
+		v.AddConfigPath(defaultDir) // ~/.cortex/config.yaml
 		v.AddConfigPath(".")
 	}
 
@@ -403,6 +414,14 @@ func applyUpdate(cfg *Config, updates map[string]interface{}) {
 		case "vector.codebook_size":
 			if v, ok := value.(int); ok {
 				cfg.Vector.CodebookSize = v
+			}
+		case "starter.start_port":
+			if v, ok := value.(int); ok {
+				cfg.Starter.StartPort = v
+			}
+		case "starter.auto_register":
+			if v, ok := value.(bool); ok {
+				cfg.Starter.AutoRegister = v
 			}
 		}
 	}

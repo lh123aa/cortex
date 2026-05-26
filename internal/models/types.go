@@ -57,6 +57,7 @@ type SearchResult struct {
 	VectorScore float64     `json:"vector_score"` // 向量相似度
 	FTSScore    float64     `json:"fts_score"`    // BM25分数
 	Rank        int         `json:"rank"`         // 排名
+	FilePath    string      `json:"file_path,omitempty"` // 源文件路径（用于文件类型权重）
 	Highlights  []Highlight `json:"highlights,omitempty"`
 }
 
