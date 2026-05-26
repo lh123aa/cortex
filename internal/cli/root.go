@@ -31,6 +31,7 @@ and MCP protocol for AI Agent integration.`,
 }
 
 func Execute() {
+	SetupRootHelp()
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

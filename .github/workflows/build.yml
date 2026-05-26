@@ -51,17 +51,25 @@ jobs:
         run: |
           echo ">>> Running tests with coverage..."
           FAILED=""
+          TMPDIR=$(mktemp -d)
+          echo "mode: set" > "$TMPDIR/coverage.out"
           for pkg in $(go list ./...); do
             echo "--- Testing $pkg ---"
             set +e
-            go test -coverprofile=coverage.out "$pkg" 2>&1
+            go test -coverprofile="$TMPDIR/coverage.tmp" "$pkg" 2>&1
             EXIT_CODE=$?
             set -e
             if [ $EXIT_CODE -ne 0 ]; then
               echo "::error::COVERAGE TEST FAILED: $pkg (exit code: $EXIT_CODE)"
               FAILED="$FAILED $pkg"
             fi
+            if [ -f "$TMPDIR/coverage.tmp" ]; then
+              tail -n +2 "$TMPDIR/coverage.tmp" >> "$TMPDIR/coverage.out"
+              rm "$TMPDIR/coverage.tmp"
+            fi
           done
+          cp "$TMPDIR/coverage.out" coverage.out
+          rm -rf "$TMPDIR"
           if [ -n "$FAILED" ]; then
             echo "============================================"
             echo ">>> FAILED PACKAGES:$FAILED"

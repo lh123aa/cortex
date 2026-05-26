@@ -207,13 +207,6 @@
 
 ---
 
-## ⚠️ 已知限制
-
-- **FTS5-only 中文搜索**：当前使用 SQLite FTS5 `unicode61` tokenizer + 单字展开。中文搜索能"搜到"但不如专用分词器（如 jieba）"精准"。如需更高精度，建议配置向量 embedding provider（Ollama/OpenAI 等）。
-- **API 文档标记**：`GET /health/ready` 和 `GET /health/live` 为计划中的端点，尚未实现。
-
----
-
 ## ✨ 更新日志
 
 ### 🚀 v3.5.3 开箱即用改造 (2026-05-26)
