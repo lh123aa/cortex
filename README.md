@@ -11,6 +11,8 @@
   <img src="https://img.shields.io/badge/Iteration-Complete-7B61FF?style=for-the-badge" alt="Iteration Complete">
   <img src="https://img.shields.io/badge/Bug-0-success?style=for-the-badge" alt="Bug 0">
   <img src="https://img.shields.io/badge/MCP-8_Tools-7B61FF?style=for-the-badge" alt="MCP 8 Tools">
+  <img src="https://img.shields.io/badge/Streamable_HTTP-SSE-7B61FF?style=for-the-badge" alt="SSE">
+  <img src="https://img.shields.io/badge/Auto_Register-Trae/Claude/Cursor-7B61FF?style=for-the-badge" alt="Auto Register">
   <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
   <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
 </p>
@@ -19,7 +21,8 @@
 <h3 align="center">AI Agent 的第二大脑 — 本地知识库 · 单二进制 · MCP 原生</h3>
 
 <p align="center">
-  <b>Cortex</b> 是一个为 AI Agent 设计的本地知识库引擎。单二进制文件部署，原生支持 <b>MCP 协议</b>，内置<b>混合搜索</b>（向量+BM25）和<b>Agent 记忆系统</b>。100% 本地运行，零外部依赖。
+  <b>Cortex</b> 是一个为 AI Agent 设计的本地知识库引擎。单二进制文件部署，原生支持 <b>MCP 协议</b>，内置<b>混合搜索</b>（向量+BM25）和<b>Agent 记忆系统</b>。100% 本地运行，零外部依赖。<br>
+  <code>cortex start</code> — 一条命令同时启动 MCP + REST API，自动适配所有环境 🚀
 </p>
 <p align="center">
   给 Claude Code、OpenCode 等 AI Agent 装上永久记忆 🧠
@@ -108,7 +111,7 @@
 </tr>
 <tr>
   <td>MCP 工具数</td>
-  <td align="center">🔧 <strong>5 个</strong><br><sub>搜索/上下文/记忆</sub></td>
+  <td align="center">🔧 <strong>8 个</strong><br><sub>搜索/上下文/记忆/健康/建议</sub></td>
   <td align="center">🔧 1-2 个</td>
   <td align="center">🔧 1 个</td>
   <td align="center">—</td>
@@ -212,6 +215,18 @@
 ---
 
 ## ✨ 更新日志
+
+### 🚀 v3.5.3 开箱即用改造 (2026-05-26)
+
+- ✅ **`cortex start` 命令** — 一条命令同时启动 MCP + REST API，自动适配所有环境
+- ✅ **端口自动检测** — 端口冲突时自动递增查找可用端口（2021→2022→...）
+- ✅ **AI 工具自动注册** — 检测并注册到 Claude Code / Cursor / OpenCode / Trae，原配置自动 `.bak` 备份
+- ✅ **启动面板** — 启动后打印 REST URL、已注册工具、文档统计、FTS 提示
+- ✅ **MCP over SSE** — 新增 `POST /mcp` 端点，任何 HTTP 客户端均可调用 MCP Tool
+- ✅ **搜索 snippet 截断** — CLI + REST API 输出统一 300 字符限制
+- ✅ **文件类型权重** — 搜索结果评分加入文件类型权重（`.md` > 代码 > `.txt` > `.html/.css`）
+- ✅ **默认 top_k 20** — 从 10 增加到 20，减少漏召回
+- ✅ **FTS 搜索提示** — CLI 和 REST API 响应中标注 FTS-only 模式提示
 
 ### 🧪 v3.5.2 回归测试 + 内存优化 (2026-05-19)
 
@@ -366,6 +381,22 @@
 # 如果需要交互式配置 embedding 提供商
 ./cortex setup
 
+# 🎯 一条命令启动所有服务（推荐）
+cortex start
+# → 自动检测可用端口（2021→2022→...）
+# → 同时启动 MCP stdio + REST API
+# → 自动注册到 Claude Code / Cursor / OpenCode / Trae
+# → 打印接入指引面板
+
+# 仅注册到 AI 工具（不启动服务）
+cortex start --register-only
+
+# 自定义端口或禁用某模式
+cortex start --port 3000           # 指定 REST API 端口
+cortex start --no-mcp              # 仅启动 REST API
+cortex start --no-rest             # 仅启动 MCP
+cortex start --no-register         # 跳过自动注册
+
 # 索引文档（显示实时进度条，支持断点续传）
 cortex index ~/my-docs
 
@@ -410,6 +441,10 @@ cortex usage                    # 存储用量和套餐信息
 <p><sub>8 个 MCP 工具，AI Agent 开箱即用<br><code>cortex_search</code> · <code>cortex_memory_write</code></sub></p>
 </td>
 <td align="center" width="33%">
+<h3>🌐 三模接入</h3>
+<p><sub>MCP stdio · MCP over SSE · REST API<br><code>cortex start</code> 全自动适配</sub></p>
+</td>
+<td align="center" width="33%">
 <h3>🧠 记忆系统</h3>
 <p><sub>长期记忆 + RAG 上下文<br>Agent 跨会话记住用户偏好</sub></p>
 </td>
@@ -420,8 +455,8 @@ cortex usage                    # 存储用量和套餐信息
 <p><sub>向量语义 + BM25 关键词<br>RRF 融合排序，精准召回</sub></p>
 </td>
 <td align="center" width="33%">
-<h3>⚡ L1+L2 缓存</h3>
-<p><sub>内存 + SQLite 两级缓存<br>搜索速度提升 10x</sub></p>
+<h3>🤖 自动注册</h3>
+<p><sub>一键注册 Claude Code / Cursor<br>OpenCode / Trae，备份保护</sub></p>
 </td>
 <td align="center" width="33%">
 <h3>📊 Prometheus</h3>
@@ -447,16 +482,20 @@ cortex usage                    # 存储用量和套餐信息
 
 ### 🔌 MCP 工具一览
 
-| 工具 | 说明 | 对应 REST API |
-|------|------|--------------|
-| `cortex_search` | 混合搜索（向量 + BM25） | `GET /v1/search` |
-| `cortex_context` | RAG 上下文组装 | `GET /v1/context` |
-| `cortex_memory_write` | 写入记忆条目 | `POST /v1/memory` |
-| `cortex_memory_search` | 搜索记忆条目 | `GET /v1/memory/search` |
-| `cortex_memory_delete` | 删除单条记忆 | `DELETE /v1/memory/:id` |
-| `cortex_memory_delete_batch` | 批量删除记忆 | — |
-| `cortex_health` | 健康检测 + 状态统计 | `GET /health` |
-| `cortex_suggest` | 预联想搜索建议 | `GET /v1/suggest` |
+| 工具 | 说明 | 对应 REST API | 传输方式 |
+|------|------|--------------|---------|
+| `cortex_search` | 混合搜索（向量 + BM25） | `GET /v1/search` | stdio / SSE |
+| `cortex_context` | RAG 上下文组装 | `GET /v1/context` | stdio / SSE |
+| `cortex_memory_write` | 写入记忆条目 | `POST /v1/memory` | stdio / SSE |
+| `cortex_memory_search` | 搜索记忆条目 | `GET /v1/memory/search` | stdio / SSE |
+| `cortex_memory_delete` | 删除单条记忆 | `DELETE /v1/memory/:id` | stdio / SSE |
+| `cortex_memory_delete_batch` | 批量删除记忆 | — | stdio / SSE |
+| `cortex_health` | 健康检测 + 状态统计 | `GET /health` | stdio / SSE |
+| `cortex_suggest` | 预联想搜索建议 | `GET /v1/suggest` | stdio / SSE |
+
+> **传输方式**：  
+> - `stdio` — `cortex mcp` / `cortex start`（标准 MCP 客户端如 Claude Code）  
+> - `SSE` — `POST /mcp` 端点（`cortex start` / `cortex serve` 自动挂载，任意 HTTP 客户端可用）
 
 ---
 
@@ -466,7 +505,7 @@ cortex usage                    # 存储用量和套餐信息
 ┌──────────────────────────────────────────────────────────┐
 │                      Cortex CLI                          │
 ├──────────────────────────────────────────────────────────┤
-│  index  │  search  │  context  │  serve  │     mcp       │
+│  index  │  search  │  start  │  serve  │  mcp  │  watch  │
 ├──────────────────────────────────────────────────────────┤
 │                  混合搜索引擎                              │
 │      向量搜索 (内存索引)    │      FTS5 (BM25)              │
@@ -477,8 +516,9 @@ cortex usage                    # 存储用量和套餐信息
 │                    SQLite 存储层                           │
 │    文档表   │  分块表   │  向量表   │  缓存表   │  用户表  │
 ├──────────────────────────────────────────────────────────┤
-│                  MCP 协议 · REST API                      │
-│     8 个 MCP 工具  │  15+ REST 端点  │  Prometheus       │
+│               MCP 协议 · REST API · SSE                  │
+│   MCP stdio  │  MCP over SSE (/mcp)  │  15+ REST 端点    │
+│   8 个 MCP 工具  │  Prometheus  │  AI 工具自动注册        │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -498,6 +538,7 @@ cortex usage                    # 存储用量和套餐信息
 |------|------|------|------|
 | **搜索** | `/v1/search` | GET | 混合搜索（向量 + FTS） |
 | | `/v1/context` | GET | RAG 上下文构建 |
+| **MCP** | `/mcp` | GET/POST | MCP Streamable HTTP (SSE) |
 | **记忆** | `/v1/memory` | POST | 写入单条记忆 |
 | | `/v1/memory/batch` | POST | 批量写入记忆 |
 | | `/v1/memory/search` | GET | 搜索记忆 |
@@ -563,7 +604,13 @@ index:
 
 search:
   cache_ttl: 5m
-  default_top_k: 10
+  default_top_k: 20
+
+# cortex start 命令配置
+starter:
+  start_port: 0              # REST API 起始端口（0=自动检测）
+  auto_register: true        # 自动注册到 AI 工具
+  register_skip_tools: []    # 跳过的工具列表
 
 prometheus:
   enabled: true
@@ -640,7 +687,7 @@ Windows 小白一键脚本（无需 Go 环境）：
 | 内存占用 | ~30 MB / 进程 |
 | 二进制大小 | 34.2 MB (strip 优化) |
 | 测试覆盖率 | 10/10 包通过 · 全部核心逻辑有测试 |
-| MCP 工具 | **8 个**（search/context/memory×4/health/suggest） |
+| MCP 工具 | **8 个**（search/context/memory×4/health/suggest）<br>**双传输**: stdio + SSE (/mcp 端点) |
 | Bug 状态 | 0 · FG 循环验证通过 |
 
 ---
