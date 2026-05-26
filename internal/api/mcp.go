@@ -25,7 +25,7 @@ const (
 
 // 可通过 -ldflags 在构建时注入版本号
 var (
-	Version = "dev"
+	Version = "v2.3"
 	Commit  = "none"
 	Date    = "unknown"
 )

@@ -499,17 +499,18 @@ func runServe(cmd *cobra.Command, args []string) {
 		restServer = api.NewRESTServer(se, st, emb, logger)
 	}
 
-	logger.Info("starting REST API server", zap.String("addr", ":8080"))
+	addr := fmt.Sprintf(":%d", servePort)
+	logger.Info("starting REST API server", zap.String("addr", addr))
 
 	metricsServer := metrics.StartMetricsServer(":9090")
 	logger.Info("metrics server started", zap.String("addr", ":9090"))
 
 	go func() {
-		if err := restServer.ListenAndServe(":8080"); err != nil && err != http.ErrServerClosed {
+		if err := restServer.ListenAndServe(addr); err != nil && err != http.ErrServerClosed {
 			logger.Fatal("REST server failed", zap.Error(err))
 		}
 	}()
-	logger.Info("REST API server started", zap.String("addr", ":8080"))
+	logger.Info("REST API server started", zap.String("addr", addr))
 
 	if cfg.Backup.AutoBackup {
 		backupMgr := storage.NewBackupManager(cfg.Cortex.DBPath)
