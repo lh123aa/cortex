@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lh123aa/cortex/internal/models"
@@ -11,6 +12,26 @@ import (
 
 // SaveDocument 保存或更新文档记录（用户隔离）
 func (s *SQLiteStorage) SaveDocument(doc *models.Document) error {
+	// 时间戳兜底：调用方（如索引器）可能没有设置 IndexedAt/UpdatedAt，
+	// 早期版本会因此把 0001-01-01 写进库，导致「最近索引」列表显示成远古时间。
+	if doc.IndexedAt.IsZero() {
+		doc.IndexedAt = time.Now()
+	}
+	if doc.UpdatedAt.IsZero() {
+		doc.UpdatedAt = doc.IndexedAt
+	}
+	if doc.Status == "" {
+		doc.Status = "indexed"
+	}
+
+	// 显式以 UTC RFC3339 字符串写入：
+	// 直接传 time.Time 时驱动会写成 "2026-10-22 17:15:20.250834 +0300 +03" 这类
+	// 非标准格式（含单调时钟/双时区后缀），跨平台回读时无法可靠解析。
+	indexedAt := doc.IndexedAt.UTC().Format(time.RFC3339Nano)
+	updatedAt := doc.UpdatedAt.UTC().Format(time.RFC3339Nano)
+	doc.IndexedAt = doc.IndexedAt.UTC()
+	doc.UpdatedAt = doc.UpdatedAt.UTC()
+
 	query := `
 		INSERT OR REPLACE INTO documents
 		(id, user_id, path, title, file_type, content_hash, file_size, chunk_count, status, indexed_at, updated_at)
@@ -18,7 +39,7 @@ func (s *SQLiteStorage) SaveDocument(doc *models.Document) error {
 	`
 	_, err := s.db.Exec(query,
 		doc.ID, doc.UserID, doc.Path, doc.Title, doc.FileType, doc.ContentHash,
-		doc.FileSize, doc.ChunkCount, doc.Status, doc.IndexedAt, doc.UpdatedAt,
+		doc.FileSize, doc.ChunkCount, doc.Status, indexedAt, updatedAt,
 	)
 	return err
 }
@@ -97,7 +118,8 @@ func (s *SQLiteStorage) DeleteDocumentByPath(path string, userID string) error {
 // ListDocuments 遍历文档（用户隔离）
 func (s *SQLiteStorage) ListDocuments(userID string, limit, offset int) ([]*models.Document, error) {
 	rows, err := s.db.Query(`
-		SELECT id, user_id, path, title, file_type, content_hash, file_size, chunk_count, status
+		SELECT id, user_id, path, title, file_type, content_hash, file_size, chunk_count, status,
+		       COALESCE(indexed_at, ''), COALESCE(updated_at, '')
 		FROM documents WHERE user_id = ? ORDER BY indexed_at DESC LIMIT ? OFFSET ?`,
 		userID, limit, offset)
 	if err != nil {
@@ -108,13 +130,44 @@ func (s *SQLiteStorage) ListDocuments(userID string, limit, offset int) ([]*mode
 	var docs []*models.Document
 	for rows.Next() {
 		var doc models.Document
+		var indexedAt, updatedAt string
 		if err := rows.Scan(&doc.ID, &doc.UserID, &doc.Path, &doc.Title, &doc.FileType,
-			&doc.ContentHash, &doc.FileSize, &doc.ChunkCount, &doc.Status); err != nil {
+			&doc.ContentHash, &doc.FileSize, &doc.ChunkCount, &doc.Status,
+			&indexedAt, &updatedAt); err != nil {
 			return nil, err
 		}
+		doc.IndexedAt = parseSQLiteTime(indexedAt)
+		doc.UpdatedAt = parseSQLiteTime(updatedAt)
 		docs = append(docs, &doc)
 	}
 	return docs, nil
+}
+
+// parseSQLiteTime 解析 SQLite 中常见的时间字符串形式。
+// modernc.org/sqlite 以 TEXT 存储时间，格式可能是 RFC3339、"2006-01-02 15:04:05" 或
+// 只有日期；解析失败时返回零值，由调用方决定如何展示。
+func parseSQLiteTime(raw string) time.Time {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return time.Time{}
+	}
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05.999999999-07:00",
+		"2006-01-02 15:04:05.999999999 -0700 MST",
+		"2006-01-02 15:04:05.999999999 -0700",
+		"2006-01-02 15:04:05.999999999",
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05",
+		"2006-01-02",
+	}
+	for _, layout := range layouts {
+		if t, err := time.Parse(layout, raw); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
 }
 
 // ListAllDocuments 遍历所有文档（管理员用，不隔离）
@@ -325,45 +378,110 @@ func (s *SQLiteStorage) GetVectorsCountAnyUser() (int, error) {
 	return count, err
 }
 
-// SaveUser 保存用户到数据库
+// SaveUser 保存用户到数据库。
+//
+// 必须用 UPSERT（ON CONFLICT DO UPDATE）而不是 INSERT OR REPLACE：
+// REPLACE 会「先删后插」，而 auth_tokens / api_keys 对 users(id) 有
+// ON DELETE CASCADE，于是每次更新用户（例如登录时写 last_login_at）
+// 都会把他的 token 和 API Key 一起删掉 —— 表现为「登录成功但立刻 401」。
 func (s *SQLiteStorage) SaveUser(user *models.User) error {
+	if user.Role == "" {
+		user.Role = models.RoleEditor
+	}
+	if user.Tier == "" {
+		user.Tier = string(models.TierFree)
+	}
+	if user.StorageLimitBytes == 0 {
+		user.StorageLimitBytes = models.TierFree.StorageLimit()
+	}
+	now := time.Now()
+	if user.CreatedAt.IsZero() {
+		user.CreatedAt = now
+	}
+
 	query := `
-		INSERT OR REPLACE INTO users
-		(id, username, password_hash, role, created_at, is_active)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO users
+		(id, username, password_hash, role, tier, storage_used_bytes, storage_limit_bytes,
+		 license_key, created_at, updated_at, last_login_at, is_active)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			username = excluded.username,
+			password_hash = excluded.password_hash,
+			role = excluded.role,
+			tier = excluded.tier,
+			storage_used_bytes = excluded.storage_used_bytes,
+			storage_limit_bytes = excluded.storage_limit_bytes,
+			license_key = excluded.license_key,
+			updated_at = excluded.updated_at,
+			last_login_at = excluded.last_login_at,
+			is_active = excluded.is_active
 	`
 	_, err := s.db.Exec(query,
-		user.ID, user.Username, user.PasswordHash, user.Role, user.CreatedAt, user.IsActive,
+		user.ID, user.Username, user.PasswordHash, user.Role, user.Tier,
+		user.StorageUsedBytes, user.StorageLimitBytes, user.LicenseKey,
+		user.CreatedAt, now, nullableTime(user.LastLoginAt), user.IsActive,
 	)
 	return err
 }
 
+// nullableTime 把零值时间转成 nil，避免写入 0001-01-01。
+func nullableTime(t time.Time) any {
+	if t.IsZero() {
+		return nil
+	}
+	return t.UTC().Format(time.RFC3339Nano)
+}
+
+// scanUser 统一扫描用户行（字段顺序与 userSelectColumns 一致）。
+func scanUser(row interface{ Scan(...any) error }) (*models.User, error) {
+	var u models.User
+	var createdAt, lastLogin sql.NullString
+	err := row.Scan(
+		&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.Tier,
+		&u.StorageUsedBytes, &u.StorageLimitBytes, &u.LicenseKey,
+		&createdAt, &lastLogin, &u.IsActive,
+	)
+	if err != nil {
+		return nil, err
+	}
+	u.CreatedAt = parseSQLiteTime(nullStringValue(createdAt))
+	u.UpdatedAt = u.CreatedAt
+	if lastLogin.Valid && lastLogin.String != "" {
+		u.LastLoginAt = parseSQLiteTime(lastLogin.String)
+	}
+	return &u, nil
+}
+
+func nullStringValue(s sql.NullString) string {
+	if !s.Valid {
+		return ""
+	}
+	return s.String
+}
+
+const userSelectColumns = `id, username, password_hash, role,
+	COALESCE(tier,'free'), COALESCE(storage_used_bytes,0), COALESCE(storage_limit_bytes,0),
+	COALESCE(license_key,''), COALESCE(created_at,''), COALESCE(last_login_at,''),
+	COALESCE(is_active,1)`
+
 // GetUserByID 根据 ID 获取用户
 func (s *SQLiteStorage) GetUserByID(id string) (*models.User, error) {
-	row := s.db.QueryRow(`
-		SELECT id, username, password_hash, role, created_at, is_active
-		FROM users WHERE id = ?`,
-		id)
-	var user models.User
-	err := row.Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.IsActive)
+	row := s.db.QueryRow(`SELECT `+userSelectColumns+` FROM users WHERE id = ?`, id)
+	u, err := scanUser(row)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
-	return &user, err
+	return u, err
 }
 
 // GetUserByUsername 根据用户名获取用户
 func (s *SQLiteStorage) GetUserByUsername(username string) (*models.User, error) {
-	row := s.db.QueryRow(`
-		SELECT id, username, password_hash, role, created_at, is_active
-		FROM users WHERE username = ?`,
-		username)
-	var user models.User
-	err := row.Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.IsActive)
+	row := s.db.QueryRow(`SELECT `+userSelectColumns+` FROM users WHERE username = ?`, username)
+	u, err := scanUser(row)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
-	return &user, err
+	return u, err
 }
 
 // DeleteUser 删除用户
@@ -374,11 +492,7 @@ func (s *SQLiteStorage) DeleteUser(id string) error {
 
 // ListUsers 列出所有用户（管理员）
 func (s *SQLiteStorage) ListUsers(limit, offset int) ([]*models.User, error) {
-	rows, err := s.db.Query(`
-		SELECT id, username, password_hash, role, created_at, is_active
-		FROM users
-		ORDER BY created_at DESC
-		LIMIT ? OFFSET ?`,
+	rows, err := s.db.Query(`SELECT `+userSelectColumns+` FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?`,
 		limit, offset)
 	if err != nil {
 		return nil, err
@@ -387,11 +501,11 @@ func (s *SQLiteStorage) ListUsers(limit, offset int) ([]*models.User, error) {
 
 	var users []*models.User
 	for rows.Next() {
-		var user models.User
-		if err := rows.Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.IsActive); err != nil {
+		u, err := scanUser(rows)
+		if err != nil {
 			return nil, err
 		}
-		users = append(users, &user)
+		users = append(users, u)
 	}
 	return users, rows.Err()
 }
@@ -496,6 +610,11 @@ func (s *SQLiteStorage) GetVectorsCount(userID string) (int, error) {
 // ========== Token 操作 ==========
 
 // SaveToken 保存认证 token
+//
+// 存储格式约定：expires_at 统一存 **整数 Unix 秒**。
+// 早期实现写入整数、却用 `expires_at > datetime('now')` 比较，
+// SQLite 的类型排序是 INTEGER < TEXT，整数永远「小于」文本，
+// 于是刚登录拿到的 token 永远查不到 —— 表现为「登录成功但每个请求都 401」。
 func (s *SQLiteStorage) SaveToken(token *models.AuthToken) error {
 	query := `
 		INSERT OR REPLACE INTO auth_tokens
@@ -507,23 +626,24 @@ func (s *SQLiteStorage) SaveToken(token *models.AuthToken) error {
 	return err
 }
 
-// GetToken 获取 token
+// GetToken 获取未过期 token
 func (s *SQLiteStorage) GetToken(token string) (*models.AuthToken, error) {
 	row := s.db.QueryRow(`
-		SELECT token, user_id, username, expires_at
+		SELECT token, user_id, username, CAST(expires_at AS INTEGER)
 		FROM auth_tokens
-		WHERE token = ? AND expires_at > datetime('now')`,
+		WHERE token = ? AND CAST(expires_at AS INTEGER) > CAST(strftime('%s','now') AS INTEGER)`,
 		token)
+
 	var authToken models.AuthToken
-	var expiresAt time.Time
-	err := row.Scan(&authToken.Token, &authToken.UserID, &authToken.Username, &expiresAt)
+	var expiresUnix int64
+	err := row.Scan(&authToken.Token, &authToken.UserID, &authToken.Username, &expiresUnix)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	authToken.ExpiresIn = int64(time.Until(expiresAt).Seconds())
+	authToken.ExpiresIn = expiresUnix - time.Now().Unix()
 	return &authToken, nil
 }
 
@@ -535,7 +655,8 @@ func (s *SQLiteStorage) DeleteToken(token string) error {
 
 // DeleteExpiredTokens 删除过期 tokens
 func (s *SQLiteStorage) DeleteExpiredTokens() (int, error) {
-	result, err := s.db.Exec(`DELETE FROM auth_tokens WHERE expires_at <= datetime('now')`)
+	result, err := s.db.Exec(
+		`DELETE FROM auth_tokens WHERE CAST(expires_at AS INTEGER) <= CAST(strftime('%s','now') AS INTEGER)`)
 	if err != nil {
 		return 0, err
 	}

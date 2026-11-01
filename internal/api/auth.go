@@ -110,5 +110,3 @@ func (a *APIKeyAuth) isValidKey(key string) bool {
 	defer a.mu.RUnlock()
 	return a.validKeyHashes[a.hashKey(key)]
 }
-
-

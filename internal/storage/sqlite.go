@@ -40,12 +40,27 @@ func (s *SQLiteStorage) SetLogger(logger *zap.Logger) {
 
 // NewSQLiteStorage 初始化并打开 SQLite 数据库
 func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
-	connStr := dbPath
-	if strings.Contains(dbPath, "?") {
-		connStr = dbPath + "&_pragma=foreign_keys(1)"
-	} else {
-		connStr = dbPath + "?_pragma=foreign_keys(1)"
+	// 连接参数：
+	//   - foreign_keys：保持外键约束
+	//   - busy_timeout：并发索引（多 worker）时遇到写锁先等待而不是立刻 SQLITE_BUSY 失败。
+	//     首次建库 + 并发写入是最容易撞锁的时机，早期版本会静默丢掉大部分文件。
+	//   - journal_mode(WAL)：读写并发更好，崩溃恢复更稳。
+	pragmas := []string{
+		"_pragma=foreign_keys(1)",
+		"_pragma=busy_timeout(10000)",
+		"_pragma=journal_mode(WAL)",
+		// NORMAL：WAL 下不再每次提交都 fsync（保证进程崩溃不丢数据，不保证掉电不丢最后几批）。
+		// 索引是可重跑的批处理，这个取舍换来单文件写入少一次 fsync —— 批量索引吞吐明显提升。
+		"_pragma=synchronous(NORMAL)",
+		// immediate：事务一开始就拿写锁，避免「先读后写」的锁升级死锁
+		// （deferred 事务在并发写入时会立刻拿到 SQLITE_BUSY，busy_timeout 也救不了）。
+		"_txlock=immediate",
 	}
+	sep := "?"
+	if strings.Contains(dbPath, "?") {
+		sep = "&"
+	}
+	connStr := dbPath + sep + strings.Join(pragmas, "&")
 	db, err := sql.Open("sqlite", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
@@ -66,6 +81,11 @@ func NewSQLiteStorage(dbPath string) (*SQLiteStorage, error) {
 	// 初始化 index_progress 表
 	if err := s.InitIndexProgressTable(); err != nil {
 		s.logWarn("failed to init index_progress table", zap.Error(err))
+	}
+
+	// 初始化代码符号表（P1 代码检索）
+	if err := s.InitSymbolsTable(); err != nil {
+		s.logWarn("failed to init symbols table", zap.Error(err))
 	}
 
 	// 数据库迁移：检查并添加缺失的列（无警告）

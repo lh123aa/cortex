@@ -64,11 +64,32 @@ func (m *AuthMiddleware) RequireAdmin() gin.HandlerFunc {
 			return
 		}
 
-		if user.Role != models.RoleAdmin {
+		// 角色比较统一走 models 归一化：
+		// 旧库里的 "user" 等价于 editor，直接字符串比较会把它误判为无权限。
+		if !models.CanAdmin(user.Role) {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "admin access required"})
 			return
 		}
 
+		c.Next()
+	}
+}
+
+// RequireWrite 需要写权限（admin 或 editor）。
+// 用于索引、写记忆、删除条目等会修改数据的接口；viewer 只能读。
+func (m *AuthMiddleware) RequireWrite() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := getUserFromContext(c)
+		if user == nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+			return
+		}
+		if !models.CanWrite(user.Role) {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error": "write access required (viewer role is read-only)",
+			})
+			return
+		}
 		c.Next()
 	}
 }

@@ -315,5 +315,3 @@ func TestMCPHealthTool(t *testing.T) {
 		t.Errorf("expected health message, got: %s", text)
 	}
 }
-
-

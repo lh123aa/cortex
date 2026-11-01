@@ -5,120 +5,302 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cortex Admin</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f1a; color: #e0e0e0; }
-  .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
-  h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: #7B61FF; }
-  .card { background: #1a1a2e; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #2a2a4a; }
-  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-  .stat { text-align: center; padding: 1rem; background: #12122a; border-radius: 8px; }
-  .stat-value { font-size: 2rem; font-weight: 700; color: #7B61FF; }
-  .stat-label { font-size: 0.8rem; color: #888; margin-top: 0.3rem; }
-  .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; margin-right: 0.3rem; }
-  .badge-green { background: #1a3a2a; color: #4ade80; }
-  .badge-blue { background: #1a2a3a; color: #60a5fa; }
-  input, button { padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #333; background: #1a1a2e; color: #e0e0e0; font-size: 0.9rem; }
-  input { width: 100%; margin-bottom: 0.5rem; }
-  button { background: #7B61FF; color: #fff; border: none; cursor: pointer; }
-  button:hover { background: #6a50ee; }
-  .result { margin-top: 0.5rem; padding: 0.5rem; background: #12122a; border-radius: 6px; font-size: 0.85rem; max-height: 300px; overflow-y: auto; white-space: pre-wrap; }
-  .footer { text-align: center; font-size: 0.8rem; color: #555; margin-top: 2rem; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0a0a12;--surface:#13131f;--surface-2:#1a1a2e;--border:#262644;
+    --fg:#e8e8f0;--fg-dim:#9a9ab0;--fg-muted:#66667e;
+    --purple:#7B61FF;--orange:#FF6900;--cyan:#00D4FF;--green:#4ade80;--red:#ff5c7a;
+    --radius:14px;--mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace;
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--fg);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 56px}
+  a{color:var(--purple);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--purple),var(--orange));display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 6px 24px rgba(123,97,255,.35)}
+  .brand h1{font-size:19px;font-weight:700;letter-spacing:.2px}
+  .brand p{font-size:12px;color:var(--fg-muted)}
+  .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--fg-dim)}
+  .pill.plan{background:rgba(123,97,255,.14);border-color:rgba(123,97,255,.35);color:#c9beff}
+  .pill.plan.enterprise{background:rgba(255,105,0,.14);border-color:rgba(255,105,0,.35);color:#ffc39b}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--fg-muted);display:inline-block}
+  .dot.ok{background:var(--green);box-shadow:0 0 10px rgba(74,222,128,.7)}
+  .dot.bad{background:var(--red);box-shadow:0 0 10px rgba(255,92,122,.7)}
+  button{font:inherit;cursor:pointer;border:none;border-radius:10px;transition:.18s}
+  .btn{background:linear-gradient(135deg,var(--purple),#6a50ee);color:#fff;padding:9px 16px;font-size:13px;font-weight:600;box-shadow:0 4px 18px rgba(123,97,255,.28)}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 7px 26px rgba(123,97,255,.4)}
+  .btn.ghost{background:var(--surface-2);color:var(--fg-dim);border:1px solid var(--border);box-shadow:none}
+  .btn.ghost:hover{color:var(--fg);border-color:#3a3a60;transform:none}
+
+  .banner{display:none;margin-bottom:16px;padding:10px 14px;border-radius:10px;font-size:13px;background:rgba(255,105,0,.1);border:1px solid rgba(255,105,0,.3);color:#ffc39b}
+  .banner.show{display:block}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden}
+  .kpi::after{content:'';position:absolute;inset:0;background:radial-gradient(420px 90px at 100% 0%,rgba(123,97,255,.12),transparent 70%);pointer-events:none}
+  .kpi .label{font-size:12px;color:var(--fg-muted);letter-spacing:.4px}
+  .kpi .value{font-family:var(--mono);font-size:27px;font-weight:700;margin-top:6px;letter-spacing:-.5px}
+  .kpi .sub{font-size:11.5px;color:var(--fg-muted);margin-top:2px}
+  .bar{height:5px;border-radius:99px;background:#22223a;margin-top:12px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--purple),var(--cyan));transition:width .5s}
+
+  .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;margin-bottom:18px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+  .card h2{font-size:13.5px;font-weight:600;color:var(--fg-dim);letter-spacing:.3px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .card h2 .tag{margin-left:auto;font-size:11px;color:var(--fg-muted);font-family:var(--mono);font-weight:400}
+  .row{display:flex;gap:8px}
+  input[type=text],textarea{width:100%;background:#0e0e1a;border:1px solid var(--border);border-radius:9px;padding:10px 12px;color:var(--fg);font:inherit;font-size:13px;outline:none;transition:.18s}
+  input[type=text]:focus,textarea:focus{border-color:rgba(123,97,255,.6);box-shadow:0 0 0 3px rgba(123,97,255,.12)}
+  textarea{resize:vertical;min-height:66px}
+  .results{margin-top:12px;display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto}
+  .result{padding:11px 12px;background:var(--surface-2);border:1px solid #22223a;border-radius:10px}
+  .result .top{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--fg-muted);margin-bottom:5px}
+  .result .path{color:var(--cyan);font-family:var(--mono);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .result .score{margin-left:auto;font-family:var(--mono);color:var(--purple);font-weight:700}
+  .result .snippet{font-size:12.5px;color:#c6c6da;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow:hidden}
+  .empty{padding:16px 4px;font-size:12.5px;color:var(--fg-muted)}
+  .mono{font-family:var(--mono)}
+  .muted{color:var(--fg-muted)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-weight:600;color:var(--fg-muted);font-size:11.5px;letter-spacing:.4px;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+  td{padding:9px 10px;border-bottom:1px solid #1e1e33;color:#cfcfe2;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td.path{font-family:var(--mono);font-size:11.5px;color:#b9b9d4;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:rgba(74,222,128,.12);color:var(--green);border:1px solid rgba(74,222,128,.25)}
+  .badge.err{background:rgba(255,92,122,.12);color:var(--red);border-color:rgba(255,92,122,.25)}
+  footer{margin-top:26px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:14px;flex-wrap:wrap;justify-content:space-between;font-size:11.5px;color:var(--fg-muted);font-family:var(--mono)}
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>🧠 Cortex Admin</h1>
-
-  <div class="card">
-    <h2 style="font-size:1rem;margin-bottom:0.8rem;">📊 系统状态</h2>
-    <div class="stat-grid">
-      <div class="stat"><div class="stat-value" id="docCount">-</div><div class="stat-label">文档</div></div>
-      <div class="stat"><div class="stat-value" id="chunkCount">-</div><div class="stat-label">分块</div></div>
-      <div class="stat"><div class="stat-value" id="vecCount">-</div><div class="stat-label">向量</div></div>
-      <div class="stat"><div class="stat-value" id="version">-</div><div class="stat-label">版本</div></div>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">🧠</div>
+      <div>
+        <h1>Cortex Admin</h1>
+        <p>本地优先 · 数据不上云 · 管理面板</p>
+      </div>
     </div>
-    <div>
-      <span class="badge badge-green">MCP Active</span>
-      <span class="badge badge-blue">Ollama</span>
+    <div class="toolbar">
+      <span class="pill" id="healthPill"><span class="dot" id="healthDot"></span><span id="healthText">检测中</span></span>
+      <span class="pill plan" id="planPill">Free</span>
+      <span class="pill mono" id="verPill">dev</span>
+      <button class="btn ghost" onclick="refreshAll()">刷新</button>
     </div>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="label">文档</div><div class="value" id="docCount">—</div><div class="sub" id="docSub">已索引文件数</div></div>
+    <div class="kpi"><div class="label">分块</div><div class="value" id="chunkCount">—</div><div class="sub">可检索片段</div></div>
+    <div class="kpi"><div class="label">向量</div><div class="value" id="vecCount">—</div><div class="sub" id="vecSub">embedding 维度数据</div></div>
+    <div class="kpi"><div class="label">存储</div><div class="value" id="storageUsed">—</div><div class="sub" id="storageLimit">上限 —</div><div class="bar"><i id="storageBar"></i></div></div>
   </div>
 
-  <div class="card">
-    <h2 style="font-size:1rem;margin-bottom:0.8rem;">🔍 搜索测试</h2>
-    <input type="text" id="searchInput" placeholder="输入搜索关键词..." onkeydown="if(event.key==='Enter')doSearch()">
-    <button onclick="doSearch()">搜索</button>
-    <div class="result" id="searchResult">输入关键词后点击搜索</div>
+  <div class="grid">
+    <section class="card">
+      <h2>🔍 混合检索 <span class="tag" id="searchMeta"></span></h2>
+      <div class="row">
+        <input type="text" id="searchInput" placeholder="输入查询，回车搜索（FTS + 向量 + RRF）" onkeydown="if(event.key==='Enter')doSearch()">
+        <button class="btn" onclick="doSearch()">搜索</button>
+      </div>
+      <div class="results" id="searchResults"><div class="empty">输入关键词后点击搜索。</div></div>
+    </section>
+
+    <section class="card">
+      <h2>🧠 记忆 <span class="tag" id="memMeta"></span></h2>
+      <textarea id="memInput" placeholder="写入一条记忆，例如：用户偏好深色主题、使用中文交流。"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" onclick="writeMemory()">写入记忆</button>
+        <button class="btn ghost" onclick="searchMemory()">搜索记忆</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input type="text" id="memQuery" placeholder="搜索记忆…" onkeydown="if(event.key==='Enter')searchMemory()">
+      </div>
+      <div class="results" id="memResults" style="max-height:230px"><div class="empty">记忆写入/搜索结果会显示在这里。</div></div>
+    </section>
   </div>
 
-  <div class="card">
-    <h2 style="font-size:1rem;margin-bottom:0.8rem;">🧠 记忆管理</h2>
-    <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
-      <input type="text" id="memInput" placeholder="输入要记住的内容..." style="flex:1;">
-      <button onclick="writeMemory()" style="white-space:nowrap;">写入记忆</button>
-    </div>
-    <input type="text" id="memSearchInput" placeholder="搜索记忆..." onkeydown="if(event.key==='Enter')searchMemory()">
-    <button onclick="searchMemory()">搜索记忆</button>
-    <div class="result" id="memResult">记忆数据将显示在这里</div>
-  </div>
+  <section class="card">
+    <h2>📄 最近索引的文档 <span class="tag" id="docsMeta"></span></h2>
+    <table>
+      <thead><tr><th>路径</th><th>类型</th><th>大小</th><th>分块</th><th>状态</th><th>索引时间</th></tr></thead>
+      <tbody id="docsBody"><tr><td colspan="6" class="muted">加载中…</td></tr></tbody>
+    </table>
+  </section>
 
-  <div class="card">
-    <h2 style="font-size:1rem;margin-bottom:0.8rem;">🔗 快捷链接</h2>
-    <p style="font-size:0.85rem;line-height:2;">
-      <a href="/health" style="color:#7B61FF;">/health</a> ·
-      <a href="/metrics" style="color:#7B61FF;">/metrics</a> ·
-      <a href="/v1/search?q=test" style="color:#7B61FF;">/v1/search?q=test</a> ·
-      <a href="/v1/context?q=test" style="color:#7B61FF;">/v1/context?q=test</a>
-    </p>
-  </div>
-
-  <div class="footer">Cortex v2.4 · 单二进制 · MCP 原生 · 完全本地</div>
+  <footer>
+    <span id="footVer">Cortex</span>
+    <span id="footPlan"></span>
+    <span>uptime <b id="uptime">—</b></span>
+    <span><a href="/health" target="_blank">/health</a> · <a href="/metrics" target="_blank">:9090/metrics</a> · <a href="/v1/stats" target="_blank">/v1/stats</a></span>
+  </footer>
 </div>
 
 <script>
-async function loadStatus() {
-  try {
-    const r = await fetch('/admin/api/status');
-    const d = await r.json();
-    document.getElementById('docCount').textContent = d.documents ?? 'N/A';
-    document.getElementById('chunkCount').textContent = d.chunks ?? 'N/A';
-    document.getElementById('vecCount').textContent = d.vectors ?? 'N/A';
-    document.getElementById('version').textContent = d.version ?? 'N/A';
-  } catch(e) {}
+function el(id){return document.getElementById(id)}
+function esc(s){var d=document.createElement('div');d.textContent=(s===undefined||s===null)?'':String(s);return d.innerHTML}
+function bytes(n){
+  if(n===null||n===undefined||isNaN(n))return '—';
+  if(n===0)return '0 B';
+  var u=['B','KB','MB','GB','TB'],i=Math.floor(Math.log(n)/Math.log(1024));
+  i=Math.min(i,u.length-1);
+  var v=n/Math.pow(1024,i);
+  return (v>=100?Math.round(v):v.toFixed(1))+' '+u[i];
 }
-async function doSearch() {
-  const q = document.getElementById('searchInput').value;
-  const el = document.getElementById('searchResult');
-  if(!q) { el.textContent = '请输入搜索词'; return; }
-  try {
-    const r = await fetch('/v1/search?q='+encodeURIComponent(q));
-    const d = await r.json();
-    el.textContent = JSON.stringify(d, null, 2);
-  } catch(e) {
-    el.textContent = 'Error: ' + e.message;
-  }
+function ago(iso){
+  if(!iso)return '—';
+  var t=new Date(iso);if(isNaN(t.getTime()))return '—';
+  var s=Math.max(0,Math.floor((Date.now()-t.getTime())/1000));
+  if(s<60)return s+'s 前';
+  if(s<3600)return Math.floor(s/60)+'m 前';
+  if(s<86400)return Math.floor(s/3600)+'h 前';
+  return Math.floor(s/86400)+'d 前';
 }
-async function writeMemory() {
-  const input = document.getElementById('memInput');
-  const el = document.getElementById('memResult');
-  if(!input.value) return;
-  try {
-    const r = await fetch('/v1/memory', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:input.value})});
-    const d = await r.json();
-    el.textContent = '✅ Written: ' + JSON.stringify(d);
-    input.value = '';
-  } catch(e) { el.textContent = 'Error: ' + e.message; }
+function showBanner(msg){var b=el('banner');b.textContent=msg;b.classList.add('show')}
+function hideBanner(){el('banner').classList.remove('show')}
+async function jget(url){
+  var r=await fetch(url,{headers:{'Accept':'application/json'}});
+  var text=await r.text();
+  var data;try{data=JSON.parse(text)}catch(e){throw new Error('HTTP '+r.status+' '+text.slice(0,120))}
+  if(!r.ok)throw new Error(data.error||('HTTP '+r.status));
+  return data;
 }
-async function searchMemory() {
-  const q = document.getElementById('memSearchInput').value;
-  const el = document.getElementById('memResult');
-  if(!q) { el.textContent = '请输入搜索词'; return; }
-  try {
-    const r = await fetch('/v1/memory/search?q='+encodeURIComponent(q));
-    const d = await r.json();
-    el.textContent = JSON.stringify(d, null, 2);
-  } catch(e) { el.textContent = 'Error: ' + e.message; }
+async function jpost(url,body){
+  var r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  var text=await r.text();
+  var data;try{data=JSON.parse(text)}catch(e){data={raw:text}}
+  if(!r.ok)throw new Error(data.error||data.message||('HTTP '+r.status));
+  return data;
 }
+
+var statusCache=null;
+async function loadStatus(){
+  try{
+    var s=await jget('/admin/api/status');
+    statusCache=s;
+    el('docCount').textContent=s.documents.toLocaleString();
+    el('chunkCount').textContent=s.chunks.toLocaleString();
+    el('vecCount').textContent=s.vectors.toLocaleString();
+    el('vecSub').textContent='provider: '+s.embedding_provider;
+    el('storageUsed').textContent=bytes(s.storage_used_bytes);
+    if(s.storage_limit_bytes>0){
+      var pct=Math.min(100,s.storage_used_bytes/s.storage_limit_bytes*100);
+      el('storageLimit').textContent='上限 '+bytes(s.storage_limit_bytes)+' · '+pct.toFixed(1)+'%';
+      el('storageBar').style.width=pct+'%';
+    }else{
+      el('storageLimit').textContent='上限 不限';
+      el('storageBar').style.width='100%';
+    }
+    var plan=(s.plan||'free');
+    el('planPill').textContent=plan.toUpperCase()+(s.plan_expires_at?(' · 至 '+s.plan_expires_at.slice(0,10)):'');
+    el('planPill').className='pill plan'+(plan==='enterprise'?' enterprise':'');
+    el('verPill').textContent=s.version||'dev';
+    el('footVer').textContent='Cortex '+(s.version||'dev')+' · commit '+(s.commit||'none')+' · built '+(s.built_at||'unknown');
+    el('footPlan').textContent='套餐 '+plan.toUpperCase()+(s.plan_features&&s.plan_features.length?(' · '+s.plan_features.join(', ')):'');
+    el('uptime').textContent=fmtUptime(s.uptime_seconds);
+    if(s.license_error)showBanner('License 校验失败：'+s.license_error);else hideBanner();
+    setHealth(s.health);
+    if(s.auth_enabled){
+      showBanner('认证已开启：控制台搜索走本地接口可用，但记忆面板调用 /v1 接口需要 API Key。');
+    }
+  }catch(e){showBanner('加载状态失败：'+e.message)}
+}
+function fmtUptime(sec){
+  if(!sec&&sec!==0)return '—';
+  var d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600),m=Math.floor(sec%3600/60),s=sec%60;
+  if(d>0)return d+'d '+h+'h';
+  if(h>0)return h+'h '+m+'m';
+  if(m>0)return m+'m '+s+'s';
+  return s+'s';
+}
+function setHealth(h){
+  var ok=h==='healthy';
+  el('healthDot').className='dot '+(ok?'ok':'bad');
+  el('healthText').textContent=ok?'Healthy':(h||'unknown');
+}
+
+async function doSearch(){
+  var q=el('searchInput').value.trim();
+  if(!q){el('searchResults').innerHTML='<div class="empty">请输入搜索词。</div>';return}
+  el('searchResults').innerHTML='<div class="empty">搜索中…</div>';
+  el('searchMeta').textContent='';
+  try{
+    var d=await jget('/admin/api/search?q='+encodeURIComponent(q)+'&top_k=10');
+    el('searchMeta').textContent=d.count+' 条 · '+d.took_ms+' ms · '+d.mode;
+    if(!d.results.length){el('searchResults').innerHTML='<div class="empty">没有命中结果。</div>';return}
+    var html='';
+    for(var i=0;i<d.results.length;i++){
+      var r=d.results[i];
+      var loc=r.path||r.heading||'(未知来源)';
+      if(r.line_start)loc+=':'+r.line_start;
+      html+='<div class="result">'+
+        '<div class="top"><span class="path" title="'+esc(loc)+'">'+esc(loc)+'</span>'+
+        '<span class="score">'+Number(r.score).toFixed(3)+'</span></div>'+
+        '<div class="snippet">'+esc(r.snippet)+'</div></div>';
+    }
+    el('searchResults').innerHTML=html;
+  }catch(e){el('searchResults').innerHTML='<div class="empty">搜索失败：'+esc(e.message)+'</div>'}
+}
+
+async function writeMemory(){
+  var v=el('memInput').value.trim();
+  if(!v){el('memResults').innerHTML='<div class="empty">请输入要记住的内容。</div>';return}
+  el('memResults').innerHTML='<div class="empty">写入中…</div>';
+  try{
+    var d=await jpost('/v1/memory',{content:v});
+    el('memResults').innerHTML='<div class="result"><div class="top"><span class="path">已写入</span><span class="score">'+esc(d.id||d.memory_id||'ok')+'</span></div><div class="snippet">'+esc(v)+'</div></div>';
+    el('memInput').value='';
+    el('memMeta').textContent='已保存';
+  }catch(e){el('memResults').innerHTML='<div class="empty">写入失败：'+esc(e.message)+'</div>'}
+}
+
+async function searchMemory(){
+  var q=el('memQuery').value.trim();
+  if(!q){el('memResults').innerHTML='<div class="empty">请输入记忆搜索词。</div>';return}
+  el('memResults').innerHTML='<div class="empty">搜索中…</div>';
+  try{
+    var d=await jget('/v1/memory/search?q='+encodeURIComponent(q));
+    var items=d.results||d.memories||[];
+    el('memMeta').textContent=items.length+' 条';
+    if(!items.length){el('memResults').innerHTML='<div class="empty">没有匹配的记忆。</div>';return}
+    var html='';
+    for(var i=0;i<items.length;i++){
+      var m=items[i];
+      var text=m.content||m.content_raw||m.text||'';
+      html+='<div class="result"><div class="snippet">'+esc(text)+'</div></div>';
+    }
+    el('memResults').innerHTML=html;
+  }catch(e){el('memResults').innerHTML='<div class="empty">搜索失败：'+esc(e.message)+'</div>'}
+}
+
+async function loadDocs(){
+  try{
+    var d=await jget('/admin/api/docs?limit=15');
+    el('docsMeta').textContent='共 '+d.total.toLocaleString()+' 个，显示最近 '+d.count+' 个';
+    if(!d.documents.length){el('docsBody').innerHTML='<tr><td colspan="6" class="muted">还没有索引任何文档。运行 cortex index &lt;目录&gt; 开始。</td></tr>';return}
+    var html='';
+    for(var i=0;i<d.documents.length;i++){
+      var x=d.documents[i];
+      var st=x.status==='indexed'?'<span class="badge">indexed</span>':'<span class="badge err">'+esc(x.status||'-')+'</span>';
+      html+='<tr><td class="path" title="'+esc(x.path)+'">'+esc(x.path)+'</td>'+
+        '<td>'+esc(x.file_type||'-')+'</td><td class="mono">'+bytes(x.file_size)+'</td>'+
+        '<td class="mono">'+(x.chunk_count||0)+'</td><td>'+st+'</td>'+
+        '<td class="muted">'+ago(x.indexed_at)+'</td></tr>';
+    }
+    el('docsBody').innerHTML=html;
+  }catch(e){el('docsBody').innerHTML='<tr><td colspan="6" class="muted">加载失败：'+esc(e.message)+'</td></tr>'}
+}
+
+async function refreshAll(){await loadStatus();loadDocs()}
 loadStatus();
+loadDocs();
+setInterval(loadStatus,30000);
 </script>
 </body>
 </html>
