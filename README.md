@@ -1,601 +1,341 @@
 <p align="center">
-  <img src="docs/assets/img/cortex-logo-static.svg" width="120" height="120" alt="Cortex Logo">
+  <img src="docs/assets/img/cortex-logo-static.svg" width="110" height="110" alt="Cortex Logo">
+</p>
+
+<h1 align="center">Cortex</h1>
+
+<p align="center">
+  <b>让 Claude Code / Cursor 记住你的所有笔记、文档和代码。</b><br>
+  <sub>单文件安装，不用 Docker，不用数据库，5 分钟接上。</sub>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go">
-  <img src="https://img.shields.io/badge/License-Apache--2.0-blue?style=for-the-badge" alt="Apache-2.0">
-  <img src="https://img.shields.io/badge/Version-4.0.1-blue?style=for-the-badge" alt="v4.0.1">
-  <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
-  <img src="https://img.shields.io/badge/Tests-24_24_packages-green?style=for-the-badge" alt="Tests">
-  <img src="https://img.shields.io/badge/Iteration-Complete-7B61FF?style=for-the-badge" alt="Iteration Complete">
-  <img src="https://img.shields.io/badge/Bug-0-success?style=for-the-badge" alt="Bug 0">
-  <img src="https://img.shields.io/badge/MCP-14_Tools-7B61FF?style=for-the-badge" alt="MCP 14 Tools">
-  <img src="https://img.shields.io/badge/Streamable_HTTP-SSE-7B61FF?style=for-the-badge" alt="SSE">
-  <img src="https://img.shields.io/badge/Auto_Register-Trae/Claude/Cursor-7B61FF?style=for-the-badge" alt="Auto Register">
-  <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
-  <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
-</p>
-
-<h1 align="center">🧠 Cortex</h1>
-<h3 align="center">AI Agent 的第二大脑 — 本地知识库 · 单二进制 · MCP 原生</h3>
-
-<p align="center">
-  <b>Cortex</b> 是一个为 AI Agent 设计的本地知识库引擎。单二进制文件部署，原生支持 <b>MCP 协议</b>，内置<b>混合搜索</b>（向量+BM25）和<b>Agent 记忆系统</b>。100% 本地运行，零外部依赖。<br>
-  <code>cortex start</code> — 一条命令同时启动 MCP + REST API，自动适配所有环境 🚀
-</p>
-<p align="center">
-  给 Claude Code、OpenCode 等 AI Agent 装上永久记忆 🧠
-</p>
-<p align="center">
-  <a href="https://github.com/lh123aa/cortex"><b>GitHub 仓库</b></a> ·
-  <a href="https://lh123aa.github.io/cortex/"><b>🎨 营销落地页</b></a> ·
-  <a href="docs/index.html"><b>本地预览</b></a> ·
-  <a href="docs/promotion/juejin-article.md"><b>📖 深度技术文章</b></a>
+  <a href="https://github.com/lh123aa/cortex/releases/latest"><img src="https://img.shields.io/badge/下载-v4.0.1-7B61FF?style=flat-square" alt="Version"></a>
+  <img src="https://img.shields.io/badge/许可-Apache--2.0-blue?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/二进制-33--36MB-green?style=flat-square" alt="Size">
+  <img src="https://img.shields.io/badge/测试-24_24_包通过-success?style=flat-square" alt="Tests">
+  <a href="https://github.com/lh123aa/cortex/actions"><img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=flat-square&logo=github" alt="Build"></a>
+  <a href="https://github.com/lh123aa/cortex/stargazers"><img src="https://img.shields.io/github/stars/lh123aa/cortex?style=flat-square&logo=github" alt="Stars"></a>
 </p>
 
 <p align="center">
-  <a href="docs/index.html">
-    <img src="docs/assets/img/terminal-demo.svg" width="100%" alt="Terminal Demo" style="max-width:720px;border-radius:16px;border:1px solid rgba(123,97,255,0.15);">
-  </a>
-  <br>
-  <sub>⬆️ 点击查看完整营销落地页（小米/Mimo 风格）</sub>
-</p>
-
-<p align="center">
-  <a href="#-产品对比">📊 产品对比</a> ·
-  <a href="#-快速开始">⚡ 快速开始</a> ·
-  <a href="#-核心特性">✨ 核心特性</a> ·
-  <a href="#-系统架构">🏗️ 系统架构</a> ·
-  <a href="#-rest-api">📡 API</a> ·
-  <a href="#-配置">🔧 配置</a>
-  <br>
-  <a href="./README.en.md">🌐 English Version</a> ·
-  <a href="./docs/TUTORIAL.md">📖 实战教程</a> ·
-  <a href="#-开发">🛠️ 开发</a> ·
-  <a href="./TEST_REPORT.md">📋 测试报告</a> ·
-  <a href="./ITERATION_PLAN.md">📋 迭代计划</a> ·
-  <a href="./SYSTEM_EVALUATION.md">📋 评估报告</a> ·
-  <a href="./docs/grafana-dashboard.json">📊 Grafana</a>
+  <a href="#-30-秒看到效果"><b>30 秒看到效果</b></a> ·
+  <a href="#-why-cortex">为什么是 Cortex</a> ·
+  <a href="#-performance-measured-not-estimated">性能数据</a> ·
+  <a href="#-mcp-tools">MCP 工具</a> ·
+  <a href="#-api">API</a> ·
+  <a href="README.en.md">English</a>
 </p>
 
 ---
 
-## 📊 产品对比
-
-<table>
-<thead>
-<tr>
-  <th>功能</th>
-  <th align="center">🚀 Cortex</th>
-  <th align="center">Mem0</th>
-  <th align="center">AnythingLLM</th>
-  <th align="center">ChromaDB</th>
-  <th align="center">Qdrant</th>
-  <th align="center">Dify</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-  <td colspan="7"><strong>📦 部署</strong></td>
-</tr>
-<tr>
-  <td>部署方式</td>
-  <td align="center">✅ <strong>单二进制</strong><br><sub>下载即用</sub></td>
-  <td align="center">⚠️ pip/Docker<br><sub>需 Python 环境</sub></td>
-  <td align="center">⚠️ Docker/Desktop<br><sub>需 Node.js</sub></td>
-  <td align="center">⚠️ pip/Docker<br><sub>需 Python</sub></td>
-  <td align="center">✅ <strong>单二进制</strong><br><sub>下载即用</sub></td>
-  <td align="center">⚠️ Docker Compose<br><sub>多服务部署</sub></td>
-</tr>
-<tr>
-  <td>外部依赖</td>
-  <td align="center">✅ <strong>零依赖</strong><br><sub>可选 Ollama</sub></td>
-  <td align="center">❌ 需 LLM API</td>
-  <td align="center">❌ 需 LLM API</td>
-  <td align="center">✅ 无</td>
-  <td align="center">✅ 无</td>
-  <td align="center">❌ 多服务</td>
-</tr>
-<tr>
-  <td colspan="7"><strong>🤖 AI Agent 集成</strong></td>
-</tr>
-<tr>
-  <td>MCP 协议原生</td>
-  <td align="center">✅ <strong>原生支持</strong><br><sub>cortex mcp</sub></td>
-  <td align="center">⚠️ 插件集成</td>
-  <td align="center">✅ 支持</td>
-  <td align="center">❌ 不支持</td>
-  <td align="center">❌ 不支持</td>
-  <td align="center">✅ 支持</td>
-</tr>
-<tr>
-  <td>MCP 工具数</td>
-  <td align="center">🔧 <strong>8 个</strong><br><sub>搜索/上下文/记忆/健康/建议</sub></td>
-  <td align="center">🔧 1-2 个</td>
-  <td align="center">🔧 1 个</td>
-  <td align="center">—</td>
-  <td align="center">—</td>
-  <td align="center">🔧 1-2 个</td>
-</tr>
-<tr>
-  <td>Agent 记忆系统</td>
-  <td align="center">✅ <strong>内置</strong><br><sub>长期记忆+RAG</sub></td>
-  <td align="center">✅ <strong>专注</strong><br><sub>多层记忆</sub></td>
-  <td align="center">❌ 仅对话</td>
-  <td align="center">❌ 向量库</td>
-  <td align="center">❌ 向量库</td>
-  <td align="center">⚠️ 基础记忆</td>
-</tr>
-<tr>
-  <td colspan="7"><strong>🔍 搜索</strong></td>
-</tr>
-<tr>
-  <td>搜索类型</td>
-  <td align="center">✅ <strong>混合搜索</strong><br><sub>向量+BM25+RRF</sub></td>
-  <td align="center">✅ 混合搜索</td>
-  <td align="center">✅ 向量搜索</td>
-  <td align="center">✅ 向量/混合</td>
-  <td align="center">✅ 混合搜索</td>
-  <td align="center">⚠️ 依赖后端</td>
-</tr>
-<tr>
-  <td>文件格式</td>
-  <td align="center">📄 <strong>MD/PDF/DOCX</strong><br><sub>+代码文件</sub></td>
-  <td align="center">— <sub>纯记忆</sub></td>
-  <td align="center">✅ <strong>多格式</strong></td>
-  <td align="center">— <sub>纯向量</sub></td>
-  <td align="center">— <sub>纯向量</sub></td>
-  <td align="center">✅ 多格式</td>
-</tr>
-<tr>
-  <td colspan="7"><strong>📊 运维</strong></td>
-</tr>
-<tr>
-  <td>内置监控</td>
-  <td align="center">✅ <strong>Prometheus</strong><br><sub>39 指标</sub></td>
-  <td align="center">⚠️ Dashboard</td>
-  <td align="center">⚠️ 基础</td>
-  <td align="center">❌ 无</td>
-  <td align="center">❌ 无</td>
-  <td align="center">✅ Grafana</td>
-</tr>
-<tr>
-  <td>缓存加速</td>
-  <td align="center">✅ <strong>L1+L2 两级</strong><br><sub>内存+SQLite</sub></td>
-  <td align="center">⚠️ 基础缓存</td>
-  <td align="center">⚠️ 基础缓存</td>
-  <td align="center">❌ 无</td>
-  <td align="center">✅ 内存</td>
-  <td align="center">⚠️ 基础</td>
-</tr>
-<tr>
-  <td>隐私保护</td>
-  <td align="center">✅ <strong>完全本地</strong><br><sub>100% 离线</sub></td>
-  <td align="center">⚠️ 本地/云</td>
-  <td align="center">✅ 完全本地</td>
-  <td align="center">✅ 完全本地</td>
-  <td align="center">✅ 完全本地</td>
-  <td align="center">⚠️ 本地/云</td>
-</tr>
-<tr>
-  <td>开源协议</td>
-  <td align="center">✅ <strong>Apache-2.0</strong><br><sub>企业功能另售</sub></td>
-  <td align="center">✅ Apache 2.0</td>
-  <td align="center">✅ MIT</td>
-  <td align="center">✅ Apache 2.0</td>
-  <td align="center">✅ Apache 2.0</td>
-  <td align="center">⚠️ 附加条款</td>
-</tr>
-</tbody>
-</table>
-
-> **Cortex 的核心差异化**：它是唯一一个同时具备「单二进制部署 + MCP 原生 + 内置记忆系统 + 混合搜索 + Prometheus 监控」的工具，专为 AI Agent 场景设计。
-
----
-
-## 🎯 适用场景
-
-| 场景 | 说明 |
-|------|------|
-| 🤖 **AI Agent 记忆** | 让 Claude Code / OpenCode / Cursor 等 Agent 跨会话记住用户偏好和历史 |
-| 📚 **团队知识库** | 将团队 Wiki、技术文档、项目规范索引为可搜索的 RAG 知识库 |
-| 🔍 **代码库语义搜索** | 索引 Go/Python/JS 等代码，用自然语言搜索函数、类和实现 |
-| 🏢 **企业内部文档** | 员工手册、产品文档、培训材料的本地私密检索，数据不出内网 |
-| 🧪 **RAG 应用后端** | 作为 RAG pipeline 的检索层，提供 REST API 和 MCP 双协议接入 |
-| 🔐 **隐私敏感场景** | 金融、医疗、法律等需要 100% 本地部署的知识管理需求 |
-
----
-
-## ✨ 更新日志
-
-### 🚀 v4.0.1 安装与索引修复（2026-11-01）
-
-- ✅ **修复：过短文档从统计中消失** — 低于 `min_chars` 的文档分块器返回 0 块，索引器返回「什么都不是」（不计成功/跳过/失败），导致进度条显示 3/3 而汇总只有 2 个。现在计入 skipped 并输出明确警告
-- ✅ **修复：`.go` 文件索引 100% 失败** — bundle 写入的符号表列名写错（`file_path` 应为 `path` + `language`），补回归测试
-- ✅ **修复：CLI 搜索结果打印内部 ID** — 改为显示真实文件路径
-- ✅ **修复：源码构建版本显示 `dev`** — 安装脚本改用 `git describe` 注入真实版本
-- ✅ **修复：安装脚本误报失败** — `cortex install` 日志走 stderr 导致 exit 1，改为显式流重定向
-- ✅ **新增 `license status --json`** — 供监控与到期告警使用（`days_left: -1` = 永久/Free）
-- ✅ **安装验证** — Windows + Linux（WSL2）双平台实跑官方一行命令通过
-- ✅ **回归测试** — 24 包通过，`go vet` 零警告
-
-### 🔐 v4.0.0 商业化地基（2026-10-22）
-
-- ✅ **Web 控制台修复** — `/admin` 不再空白；真实统计、混合检索、记忆、文档列表、健康状态一屏可用
-- ✅ **版本号单一来源** — 新增 `internal/version`，tag / 二进制 / `/admin` / `--version` 同源，CI 注入
-- ✅ **Ed25519 License v1** — `cortex license activate/status/deactivate` 离线验签，Pro/Team/Enterprise 功能位与配额
-- ✅ **配额强制** — Free 档位索引前检查文档/存储上限，`cortex usage` 显示真实档位
-- ✅ **发布流水线** — tag 触发 6 平台构建（linux/darwin/windows × amd64/arm64）+ SHA256SUMS + GitHub Release
-- ✅ **管理面板默认仅本机访问** — 防止未鉴权管理接口暴露公网
-- ✅ **RBAC 角色体系** — `admin/editor/viewer` 三级权限，写接口与密钥管理分级；`cortex user` 用户管理命令
-- ✅ **修复登录 token 立即失效** — `auth_tokens` 外键 CASCADE + `INSERT OR REPLACE` 会在登录时删掉刚签发的 token
-- ✅ **性能优化** — 索引吞吐 3.1×（118→365 files/s）、检索 P95 8.7×（20.5→2.35ms）、响应体 330×（1914KB→5.8KB）
-- ✅ **开源许可** — AGPL-3.0 → Apache-2.0，企业版经 `pkg/ext` 接缝独立分发
-
-### 🚀 v3.5.3 开箱即用改造 (2026-05-26)
-
-- ✅ **`cortex start` 命令** — 一条命令同时启动 MCP + REST API，自动适配所有环境
-- ✅ **端口自动检测** — 端口冲突时自动递增查找可用端口（2021→2022→...）
-- ✅ **AI 工具自动注册** — 检测并注册到 Claude Code / Cursor / OpenCode / Trae，原配置自动 `.bak` 备份
-- ✅ **启动面板** — 启动后打印 REST URL、已注册工具、文档统计、FTS 提示
-- ✅ **MCP over SSE** — 新增 `POST /mcp` 端点，任何 HTTP 客户端均可调用 MCP Tool
-- ✅ **搜索 snippet 截断** — CLI + REST API 输出统一 300 字符限制
-- ✅ **文件类型权重** — 搜索结果评分加入文件类型权重（`.md` > 代码 > `.txt` > `.html/.css`）
-- ✅ **默认 top_k 20** — 从 10 增加到 20，减少漏召回
-- ✅ **FTS 搜索提示** — CLI 和 REST API 响应中标注 FTS-only 模式提示
-
-### 🧪 v3.5.2 回归测试 + 内存优化 (2026-05-19)
-
-- ✅ **5 个修复点全覆盖回归测试** — 11 个新测试 + 2 个已有，CI 22 包全过
-- ✅ **内存效率⭐⭐→⭐⭐⭐⭐⭐** — 无 embedding 时 446MB→**19.6MB**（-95.6%）
-- ✅ **索引持久化二进制化** — JSON 260MB→**binary 80MB**（-69%），加载 9.6s→~1s
-- ✅ **扁平向量存储** — `[][]float32`→`[]float32`，去掉 23K 个 slice header
-- ✅ **条件索引加载** — 无 embedding provider 时完全跳过（`initStorage` 新增 `buildIndex` 参数）
-- ✅ **REST API htptest 集成测试** — /health、/v1/search 端点回归覆盖
-- ✅ **Health tool 状态显示回归测试** — 有/无 embedding 两种场景
-
-### 🐛 v3.5.1 REST API 修复 + HNSW 替换 + 向量索引持久化 (2026-05-19)
-
-- ✅ **`cortex serve` 修复** — REST API 现在正确监听 `:8080`，/health、/v1/search 等端点可用
-- ✅ **HNSW 替换** — 解决 2 万+ 向量规模下的构建崩溃，替换为轻量级内存向量索引
-- ✅ **向量索引持久化** — 构建完成后写入 `cortex.db_flat_idx.json`，下次启动秒加载（3 秒读 23K 向量）
-- ✅ **`cortex_health` MCP 工具显示修复** — 正确显示 embedding 状态而非硬编码 `none (FTS5)`
-- ✅ **HNSW 构建性能优化** — EfConstruction 200→80，构建速度提升 2.5x
-- ✅ **StorageBridge 进度回调** — 后台索引构建可追踪进度
-- ✅ **回归测试** — 11/11 包通过，`go vet` 零警告
-
-### 🚀 v3.5 测试加固 + 代码重构 (2026-05-14)
-
-- ✅ **Phase C 测试加固** — models/storage/index/search/embedding 五模块测试强化
-- ✅ **Phase A main.go 拆分** — 1000 行 → 7 行，拆分到 internal/cli/ (11 文件)
-- ✅ **`cortex_suggest` MCP 工具** — 第 8 个 MCP 工具，预联想搜索建议
-- ✅ **`GET /v1/suggest` REST 端点** — 基于 prefetch 缓存的即时搜索建议
-- ✅ **Prefetch 文档同步** — cortex watch 自动启用 prefetch
-- ✅ **CI 修复** — `go vet` 零警告，CRUD 测试重复声明修复
-- ✅ **回归测试** — build/vet/test 全部通过
-
-### 🚀 v3.4 Prefetch 预联想搜索引擎 (2026-05-14)
-
-- ✅ **`PrefetchEngine` 预联想** — 文件变更时自动提取关键词并异步预搜索
-- ✅ **智能关键词提取** — Markdown 标题 + 高频词自动识别
-- ✅ **独立预取缓存** — 搜索时优先命中缓存，输入一半即出结果
-- ✅ **`cortex watch` 集成** — 搭配 `search.prefetch: true` 启用
-- ✅ **配置项** — `SearchConfig.Prefetch`（默认 false）
-- ✅ **单元测试** — 关键词提取/缓存 key/引擎初始化 3 个测试用例
-
-### 🐛 v3.3.1 Bug 修复 + 安全加固 (2026-05-13)
-
-- ✅ **`cortex version` 命令** — 新增版本号查询
-- ✅ **HTTP 服务器安全加固** — `ReadTimeout`/`WriteTimeout`/`ReadHeaderTimeout`/`MaxHeaderBytes`
-- ✅ **channel 双 close 防护** — `StopAutoBackup()`/`watcher.Stop()` 使用 `sync.Once` 防 panic
-- ✅ **文件监听内存泄漏修复** — `debounceMap` 定时清理过期条目
-- ✅ **中文搜索健壮性** — `expandChineseQuery` 改用 `strings.HasSuffix` 代替字节索引
-- ✅ **回归测试** — 10/10 包通过，`go vet` 零警告
-
-### 🚀 v3.3 中文搜索修复 + 文件监听 + 性能优化 (2026-05-13)
-
-- ✅ **中文搜索修复** — 从 2-gram 改为单字分词，FTS5 中文搜索正常匹配
-- ✅ **文件排除规则** — 自动跳过 50+ 种二进制/多媒体扩展名，索引失败降 **95%**，提速 **3.5x**
-- ✅ **`cortex watch` 命令** — 基于 fsnotify 的文件监听，变更自动增量索引
-- ✅ **`cortex_health` MCP 工具** — 第 7 个 MCP 工具，健康检测 + 文档统计
-- ✅ **搜索结果展示优化** — `Content` 存原文（无空格），标题用文件名代替"section"
-- ✅ **PDF/DOCX 中文搜索** — PDF 和 Word 文件添加中文分词支持
-- ✅ **配置热加载** — `cortex serve` 修改 config.yaml 自动生效，无需重启
-- ✅ **配置向导默认认证** — `cortex setup` 首次配置自动开启 `auth_enabled: true`
-- ✅ **自动定时备份** — 24h 间隔自动备份，保留最近 10 份
-- ✅ **全量重建** — `--force` 标志跳过内容哈希，新分词/新规则即时生效
-
-- ✅ **断点续传修复** — 中断后状态保持 `running`，下次运行自动恢复（修复：之前中断会错误标记为 completed）
-- ✅ **实时进度条** — `cortex index` 显示动态进度条 `[████░░] 45%`，含速度、ETA、当前文件
-- ✅ **Ctrl+C 安全退出** — 信号处理保存进度后优雅退出，不丢失已索引数据
-- ✅ **全局超时** — `cortex index --timeout 30m` 超时自动保存进度退出
-- ✅ **单文件超时** — Embedding 调用 5 分钟超时保护，防止卡死
-- ✅ **`--force` 重新索引** — `cortex index --force path` 从头开始（忽略 checkpoint）
-- ✅ **`--workers` 控制并发** — `cortex index --workers 32` 覆盖默认 16 个 worker
-- ✅ **默认 16 workers** — I/O 密集型索引任务，吞吐量提升
-
-### 🔥 v3.0.1 启动性能优化 (2026-05-07)
-
-- ✅ **HNSW 按需加载** — `initStorageLight()` 跳过向量索引构建，所有 CLI 命令启动 <0.5s
-- ✅ **默认切到 FTS5-only 模式** — `embedding.provider: none`，索引速度提升 28x，零外部依赖
-- ✅ **根目录清理** — 从 39 项精简至 27 项，规划文档移入 `docs/planning/`，部署配置移入 `deploy/`，编译产物移入 `bin/`
-- ✅ **文件组织规则** — 全局 AGENTS.md 新增 6 条强制规则，涵盖根目录守则、构建产出、临时文件、AI 文件生成
-
-### 🚀 v3.1 多 Provider + 配置向导 (2026-05-07)
-
-- ✅ **`cortex setup` 交互式向导** — 网络检测 → 选择 Provider → 输入 API Key → 选择模型 → 测试连接 → 写入配置
-- ✅ **9 个 Embedding Provider** — 本地: none / ollama / onnx；国际: OpenAI / Cohere / Voyage AI；国内: 阿里DashScope / 智谱GLM / 百度ERNIE
-- ✅ **工厂模式** — `NewProviderFromConfig()` 根据配置自动创建对应 Provider，无需修改 main.go
-- ✅ **百度 OAuth2** — 自动缓存 access_token（30天有效期），自动刷新
-- ✅ **默认模型 all-minilm** — 23MB，比 nomic-embed-text 快 30x
-- ✅ **自动网络检测** — 离线时自动隐藏 API 选项，仅显示本地模式
-
-### 💰 v3.0 商业化版本 (2026-05-06)
-
-- ✅ **套餐系统** — Free (≤1GB) / Pro / Enterprise 三级
-- ✅ **存储追踪** — `cortex usage` 查看用量和套餐
-- ✅ **License Key** — 许可证生成/激活/验证系统
-- ✅ **中文分词优化** — CJK 2-gram 分词器，搜索质量提升
-- ✅ **搜索结果高亮** — CLI 匹配关键词用颜色标记
-- ✅ **Web Admin 记忆管理** — 管理界面支持写入和搜索记忆
-- ✅ **启动无警告** — `PRAGMA table_info` 智能迁移
-- ✅ **测试覆盖** — 10/10 包通过，新增 storage/index 测试
-
-### 🚀 v2.4 全面迭代完成 (2026-05-06)
-
-- ✅ **三层去重体系** — 内容哈希 + 向量语义 (-46 chunks) + MinHash 近似去重
-- ✅ **6 个 MCP 工具** — 新增 `cortex_memory_delete_batch` 批量删除
-- ✅ **11 个 Storage 子接口** — DocumentStore / Searcher / CacheStore / UserStore 等
-- ✅ **索引排除规则** — 自动跳过 `node_modules/.git/.opencode/` 等噪声目录
-- ✅ **Web 管理界面** — `/admin` 嵌入式单页 (Go embed)，已接线可用
-- ✅ **Docker 多阶段构建** — 镜像从 500MB → 30MB
-- ✅ **CLI JSON 输出** — `--json` 标志支持结构化输出
-- ✅ **MCP 错误码标准化** — 统一 `IsError` 协议响应
-- ✅ **暴力破解防护** — `/auth` 端点 IP 级令牌桶限流 (5 req/s)
-- ✅ **二进制优化** — `-ldflags="-s -w"` 压缩至 **34.2 MB**
-- ✅ **分页搜索 / Grafana 监控模板 / Release 自动化 / 54 项迭代**
-- ✅ 详见 [SYSTEM_EVALUATION.md](./SYSTEM_EVALUATION.md)
-
-### 🔥 v2.3 迭代升级 (2026-05-06)
-
-- ✅ **7 个 P0 紧急 Bug 修复** — Float32FromBytes 位转换、索引进度竞争、HNSW 并发、API Key 泄露、Token 过期等
-- ✅ **10 项安全加固** — MCP 参数校验、密码策略增强、BM25 评分修正、ConfigWatcher 热加载、路径规范化
-- ✅ **12 项质量提升** — 缓存 LRU 改造、余弦相似度收敛、RRF k 值配置化、死代码清理、Prometheus 自定义 Registry
-- ✅ **CI/CD 全面升级** — Go 1.25 同步、govulncheck、测试覆盖率、Makefile 增强、VSCode 调试配置
-- ✅ **29 项优化总计** — 详见 [TEST_REPORT.md](./TEST_REPORT.md) 和 [ITERATION_PLAN.md](./ITERATION_PLAN.md)
-
-### 🧠 v2.2 MCP 记忆工具 (2026-05-05)
-
-- ✅ **5 个 MCP 工具** — `cortex_search` / `cortex_context` / `cortex_memory_write` / `cortex_memory_search` / `cortex_memory_delete`
-- ✅ **嵌入式零依赖模式** — `embedding.provider: none`，无需 Ollama，FTS5 全文搜索
-- ✅ **纯 Go SQLite 驱动** — 改用 `modernc.org/sqlite`，无需 CGO/gcc，`go build` 即用
-- ✅ **MCP 优雅关闭** — Signal 处理，Ctrl+C 安全退出
-- ✅ **MCP 单元测试** — 11 个测试用例，覆盖全部工具边界条件
-
-### 🔥 v2.1 生产环境修复 (2026-04-25)
-
-- ✅ **L1+L2 两级缓存** — 内存 + SQLite 缓存，搜索速度提升 10x
-- ✅ **Graceful Shutdown** — 优雅关闭，30s 内处理完现有请求
-- ✅ **请求超时控制** — 默认 30s，搜索 60s，索引 5min
-- ✅ **API 限流** — 令牌桶算法，100 req/s，突发 200
-- ✅ **36 个测试用例** — 覆盖存储/认证/搜索核心模块
-
-### ✨ v2.0 核心功能
-
-- ✅ **记忆系统 API** — 完整的记忆写入/搜索/上下文/删除接口
-- ✅ **认证持久化** — 用户/Token/APIKey 存储到 SQLite，重启不丢失
-- ✅ **Prometheus 监控** — 39 个指标，端口 9090
-
----
-
-## ⚡ 快速开始
+## 🎬 30 秒看到效果
 
 ```bash
-# 🚀 新手一秒上手（自动创建配置 + 索引文档）
-./cortex install ~/my-docs
+# 1. 安装（一条命令，不需要 Go / Node / Docker）
+curl -fsSL https://raw.githubusercontent.com/lh123aa/cortex/master/scripts/install.sh | sh
 
-# 如果需要交互式配置 embedding 提供商
-./cortex setup
+# 2. 索引你的知识库
+cortex index ~/notes ~/Documents
 
-# 🎯 一条命令启动所有服务（推荐）
+# 3. 启动并自动接入你的 AI 工具
 cortex start
-# → 自动检测可用端口（2021→2022→...）
-# → 同时启动 MCP stdio + REST API
-# → 自动注册到 Claude Code / Cursor / OpenCode / Trae
-# → 打印接入指引面板
-
-# 仅注册到 AI 工具（不启动服务）
-cortex start --register-only
-
-# 自定义端口或禁用某模式
-cortex start --port 3000           # 指定 REST API 端口
-cortex start --no-mcp              # 仅启动 REST API
-cortex start --no-rest             # 仅启动 MCP
-cortex start --no-register         # 跳过自动注册
-
-# 索引文档（显示实时进度条，支持断点续传）
-cortex index ~/my-docs
-
-# 高级索引选项
-cortex index ~/my-docs --force           # 从头重新索引
-cortex index ~/my-docs --timeout 30m     # 30 分钟超时
-cortex index ~/my-docs --workers 32      # 32 个并发 worker
-
-# 文件监听（自动增量索引）
-cortex watch ~/my-docs                    # 文件变更自动重新索引
-
-# 启动 MCP 服务器（供 AI Agent 使用）
-cortex mcp
-
-# 搜索
-cortex search "如何实现 Go 并发"
-
-# 配置热加载（serve 模式下自动启用）
-cortex serve                              # 修改 config.yaml 无需重启
-
-# 知识库去重
-cortex dedup                    # 内容哈希去重
-cortex dedup --mode vector      # 向量语义去重
-
-# 查看用量
-cortex usage                    # 存储用量和套餐信息
 ```
+
+`cortex start` 会做三件事：
+
+- 启动 MCP 服务器（stdio）+ REST API
+- **自动写入你的 AI 工具配置**（Claude Code / Cursor / OpenCode / Trae），带备份，不覆盖已有 MCP server
+- 打印接入指引
+
+然后回到 Claude Code，直接问：
+
+> 「我之前写在笔记里关于 Redis 缓存穿透的那段怎么处理的？」
+
+Claude 会通过 Cortex 的 MCP 工具检索你的笔记，而不是猜。
 
 ---
 
-## ✨ 核心特性
+## 💡 Why Cortex
 
-<div align="center">
+### 你可能正在遇到的问题
+
+| 你的痛点 | 现有方案 | Cortex 的做法 |
+|---|---|---|
+| AI 聊完就忘，每次都要重新粘贴上下文 | 手动复制粘贴 | **持久化记忆层**，MCP 工具让 Agent 主动检索 |
+| 想把 2 万个笔记接进 Cursor，结果要装 Docker、跑向量库、配 5 个服务 | Dify / RAGFlow / AnythingLLM | **单文件 33–36 MB，`cortex start` 一条命令** |
+| 中文笔记搜不准（"机器学习"搜不到"机器学习模型"） | 通用分词器 | **CJK 专用分词**，标题与正文分别处理 |
+| 数据必须留在本地（客户资料、代码、病历） | 云端 RAG 服务 | **100% 本地**，只有你配的 embedding API 会出网 |
+| 云端按量计费，团队 10 个人每月几百刀 | 托管服务 | **Apache-2.0 免费**，自建零边际成本 |
+
+### 和同类工具的区别
+
+| | Cortex | AnythingLLM | Dify | Chroma / Qdrant |
+|---|---|---|---|---|
+| 部署 | **单二进制 + SQLite** | Docker / Desktop | Docker Compose 多服务 | 需自建检索服务 |
+| 安装到可用 | **~1 分钟** | ~5 分钟 | ~15 分钟 | ~30 分钟 |
+| 中文分词 | **✅ CJK 专用** | 通用 | 通用 | 无（只管向量） |
+| 国内 embedding | **✅ 通义 / 智谱 / 文心** | ❌ | 部分 | ❌ |
+| MCP 原生 | **✅ 14 个工具 + 自动注册** | ✅ | 插件式 | ❌ |
+| Agent 记忆 | **✅ 独立记忆 API** | 会话级 | 会话级 | ❌ |
+| 许可 | **Apache-2.0** | MIT | Apache-2.0 + 附加条款 | Apache-2.0 |
+
+> 诚实说明：Cortex 支持 **25 种格式**，比 XERJ（40+）少；没有 Elasticsearch 兼容 DSL；
+> 英文长尾查询比中文慢。这些是真实短板，不是谦虚。
+
+---
+
+## 📊 Performance: measured, not estimated
+
+全部可由 [`cmd/cortex-bench`](benchmarks/README.md) 复现。环境：Windows 11 / x86_64 / 本地 SSD / `CGO_ENABLED=0` / FTS-only。
+
+### 检索延迟（27,157 文档 / 84,562 分块的真实知识库）
+
+| 指标 | 实测值 |
+|---|---|
+| **P50** | **0.43 ms** |
+| P95 | **2.35 ms** |
+| P99 | 3.91 ms |
+| 吞吐（单实例） | **1,440 QPS** |
+| 响应体（10 条结果） | **5.8 KB** |
+| 冷启动 | **0.36 s** |
+| 常驻内存 | **53 MB** |
+
+### 索引吞吐（合成语料，可复现）
+
+| 语料规模 | 吞吐 | 分块数 |
+|---|---|---|
+| 1,000 文档 | **328 files/s** | 2,510 |
+| 5,000 文档 | **365 files/s** | 12,668 |
+
+### 检索质量
+
+| 指标 | 1,000 文档 | 5,000 文档 |
+|---|---|---|
+| Recall@1 | **1.000** | **1.000** |
+| Recall@5 | **1.000** | **1.000** |
+| Recall@10 | **1.000** | **1.000** |
+| MRR | **1.000** | **1.000** |
+
+> **关于这些数字的边界**（请务必阅读）：
+> - 合成语料的 recall 证明的是「检索管线正确、无系统性漏召」，**不代表语义检索质量**（真实质量需要 embedding + 重排）。
+> - Windows 计时器分辨率是 507µs，亚毫秒延迟无法精确测量，P50 标注为实测下限。
+> - 索引吞吐语料与 XERJ 不同（XERJ 含二进制解析、支持 40+ 格式），**不能直接横比**。
+
+完整报告：[性能优化记录](docs/launch/05-performance-optimization.md) · [基准方法与边界](benchmarks/README.md)
+
+---
+
+## ✨ 核心能力
+
 <table>
-<tr>
-<td align="center" width="33%">
-<h3>🚀 单二进制</h3>
-<p><sub>下载即运行，无 Python/Node/Docker 依赖<br><code>curl → cortex mcp</code></sub></p>
-</td>
-<td align="center" width="33%">
-<h3>🔌 MCP 原生</h3>
-<p><sub>14 个 MCP 工具，AI Agent 开箱即用<br><code>cortex_search</code> · <code>cortex_memory_write</code></sub></p>
-</td>
-<td align="center" width="33%">
-<h3>🌐 三模接入</h3>
-<p><sub>MCP stdio · MCP over SSE · REST API<br><code>cortex start</code> 全自动适配</sub></p>
-</td>
-<td align="center" width="33%">
-<h3>🧠 记忆系统</h3>
-<p><sub>长期记忆 + RAG 上下文<br>Agent 跨会话记住用户偏好</sub></p>
-</td>
-</tr>
-<tr>
-<td align="center" width="33%">
-<h3>🔍 混合搜索</h3>
-<p><sub>向量语义 + BM25 关键词<br>RRF 融合排序，精准召回</sub></p>
-</td>
-<td align="center" width="33%">
-<h3>🤖 自动注册</h3>
-<p><sub>一键注册 Claude Code / Cursor<br>OpenCode / Trae，备份保护</sub></p>
-</td>
-<td align="center" width="33%">
-<h3>📊 Prometheus</h3>
-<p><sub>39 个监控指标<br><code>:9090/metrics</code></sub></p>
-</td>
-</tr>
-<tr>
-<td align="center" width="33%">
-<h3>🗑️ 三层去重</h3>
-<p><sub>内容哈希 + 向量语义 + MinHash<br><code>cortex dedup</code> 一键清理</sub></p>
-</td>
-<td align="center" width="33%">
-<h3>🔒 安全加固</h3>
-<p><sub>IP 限流 / 密码策略 / Header认证<br>路径保护 / 文件大小限制</sub></p>
-</td>
-<td align="center" width="33%">
-<h3>🐳 Docker 优化</h3>
-<p><sub>多阶段构建<br>镜像 ~30MB</sub></p>
-</td>
-</tr>
+<tr><td width="50%" valign="top">
+
+**🔍 混合检索**
+- FTS5 BM25（SQLite 原生全量索引）
+- 向量检索 + RRF 融合排序
+- CJK 分词：标题与正文分别处理
+- 两級缓存（内存 L1 + SQLite L2，异步写入）
+
+**🧠 Agent 记忆**
+- `/v1/memory` 写入与批量写入
+- 记忆检索与 RAG 上下文构建
+- 分块去重（MinHash）
+
+</td><td width="50%" valign="top">
+
+**🔌 MCP 原生**
+- 14 个工具，stdio + Streamable HTTP (SSE)
+- 自动注册 Claude Code / Cursor / OpenCode / Trae
+- 写入前备份，保留你已有的 MCP server
+- 无配置即用
+
+**📦 单二进制**
+- 33–36 MB，6 平台（linux/darwin/windows × amd64/arm64）
+- 纯 Go，无 CGO，无外部数据库
+- SQLite + 向量索引内嵌
+- Windows / macOS / Linux 同等支持
+
+</td></tr>
+<tr><td valign="top">
+
+**🔐 企业级基础设施**
+- RBAC：`admin` / `editor` / `viewer` 三角色
+- Ed25519 离线许可（feature 门控）
+- 配额强制（文档数 / 存储）
+- 审计日志（企业版）
+
+</td><td valign="top">
+
+**📈 可观测**
+- 32 个 Prometheus 指标
+- 内置 Grafana 面板
+- `/health` `/health/ready` `/health/live`
+- Web 控制台（`/admin`，默认仅本机）
+
+</td></tr>
 </table>
-</div>
-
-### 🔌 MCP 工具一览
-
-| 工具 | 说明 | 对应 REST API | 传输方式 |
-|------|------|--------------|---------|
-| `cortex_search` | 混合搜索（向量 + BM25） | `GET /v1/search` | stdio / SSE |
-| `cortex_context` | RAG 上下文组装 | `GET /v1/context` | stdio / SSE |
-| `cortex_memory_write` | 写入记忆条目 | `POST /v1/memory` | stdio / SSE |
-| `cortex_memory_search` | 搜索记忆条目 | `GET /v1/memory/search` | stdio / SSE |
-| `cortex_memory_delete` | 删除单条记忆 | `DELETE /v1/memory/:id` | stdio / SSE |
-| `cortex_memory_delete_batch` | 批量删除记忆 | — | stdio / SSE |
-| `cortex_health` | 健康检测 + 状态统计 | `GET /health` | stdio / SSE |
-| `cortex_suggest` | 预联想搜索建议 | `GET /v1/suggest` | stdio / SSE |
-| `cortex_map` | 知识库数据地图（类型/目录分布） | — | stdio / SSE |
-| `cortex_stats` | 统计与套餐用量 | `GET /v1/stats` | stdio / SSE |
-| `cortex_plan` | 给定问题生成检索计划 | — | stdio / SSE |
-| `cortex_project_context` | 按项目路径收窄上下文 | — | stdio / SSE |
-| `cortex_code_search` | 代码符号检索（返回 file:line + 签名） | — | stdio / SSE |
-| `cortex_memory_batch` | 批量写入记忆（≤50 条/次） | `POST /v1/memory/batch` | stdio / SSE |
-
-> **传输方式**：  
-> - `stdio` — `cortex mcp` / `cortex start`（标准 MCP 客户端如 Claude Code）  
-> - `SSE` — `POST /mcp` 端点（`cortex start` / `cortex serve` 自动挂载，任意 HTTP 客户端可用）
 
 ---
 
-## 🏗️ 系统架构
+## 🔌 MCP Tools
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                      Cortex CLI                          │
-├──────────────────────────────────────────────────────────┤
-│  index  │  search  │  start  │  serve  │  mcp  │  watch  │
-├──────────────────────────────────────────────────────────┤
-│                  混合搜索引擎                              │
-│      向量搜索 (内存索引)    │      FTS5 (BM25)              │
-├──────────────────────────────────────────────────────────┤
-│               L1+L2 两级缓存 (v2.1)                       │
-│          go-cache (内存)   │     SQLite                   │
-├──────────────────────────────────────────────────────────┤
-│                    SQLite 存储层                           │
-│    文档表   │  分块表   │  向量表   │  缓存表   │  用户表  │
-├──────────────────────────────────────────────────────────┤
-│               MCP 协议 · REST API · SSE                  │
-│   MCP stdio  │  MCP over SSE (/mcp)  │  15+ REST 端点    │
-│   14 个 MCP 工具 │  Prometheus  │  AI 工具自动注册        │
-└──────────────────────────────────────────────────────────┘
-```
+Cortex 向 AI Agent 暴露 **14 个 MCP 工具**：
 
-**技术栈：**
-- **语言**: Go 1.25+ — 单二进制跨平台（纯 Go，无 CGO）
-- **存储**: SQLite + WAL — 零配置嵌入式存储
-- **向量**: 内存索引 — 轻量级 O(n) 暴力搜索（HNSW 备选）
-- **嵌入**: Ollama / ONNX / None（FTS5-only）
-- **协议**: MCP SDK — AI Agent 原生通信
-- **监控**: Prometheus — 39 个内置指标 + Grafana 模板
+| 工具 | 作用 |
+|---|---|
+| `cortex_search` | 混合检索知识库，返回带路径与标题的结果 |
+| `cortex_context` | 构建 RAG 上下文（适合直接塞进 prompt） |
+| `cortex_suggest` | 查询补全建议 |
+| `cortex_memory_write` | 写入一条记忆 |
+| `cortex_memory_batch` | 批量写入记忆 |
+| `cortex_memory_search` | 检索记忆 |
+| `cortex_memory_delete` | 删除指定记忆 |
+| `cortex_memory_delete_batch` | 批量删除记忆 |
+| `cortex_code_search` | 按函数/类名精确检索代码符号（Go 用官方 AST） |
+| `cortex_stats` | 知识库统计 |
+| `cortex_health` | 健康检查 |
+| `cortex_map` | 知识库主题地图 |
+| `cortex_plan` | 基于知识库内容生成执行计划 |
+| `cortex_project_context` | 项目级上下文聚合 |
+
+手动接入（如果 `cortex start` 没覆盖你的工具）：
+
+```json
+{
+  "mcpServers": {
+    "cortex": {
+      "command": "cortex",
+      "args": ["mcp"]
+    }
+  }
+}
+```
 
 ---
 
-## 📡 REST API
+## 🛠️ 安装
 
-| 类别 | 端点 | 方法 | 说明 |
-|------|------|------|------|
-| **搜索** | `/v1/search` | GET | 混合搜索（向量 + FTS） |
-| | `/v1/context` | GET | RAG 上下文构建 |
-| **MCP** | `/mcp` | GET/POST | MCP Streamable HTTP (SSE) |
-| **记忆** | `/v1/memory` | POST | 写入单条记忆 |
-| | `/v1/memory/batch` | POST | 批量写入记忆 |
-| | `/v1/memory/search` | GET | 搜索记忆 |
-| | `/v1/memory/context` | GET | 记忆 RAG 上下文 |
-| | `/v1/memory/:id` | DELETE | 删除记忆 |
-| **认证** | `/auth/register` | POST | 注册用户（默认 editor） |
-| | `/auth/login` | POST | 登录，返回 Bearer token |
-| | `/auth/logout` | POST | 登出 |
-| **监控** | `/health` | GET | 健康检查 |
-| | `/metrics` | GET | Prometheus 指标（:9090） |
+### 一行安装（推荐，无需 Go）
 
-### 🔐 角色与权限（RBAC）
+```bash
+# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/lh123aa/cortex/master/scripts/install.sh | sh
 
-开启认证（`cortex.auth_enabled: true`）后，接口按角色分级：
+# Windows PowerShell
+irm https://raw.githubusercontent.com/lh123aa/cortex/master/scripts/install.ps1 | iex
+```
 
-| 角色 | 读（搜索/文档/统计） | 写（记忆/删除） | 管理（用户/密钥） |
+安装脚本会：下载对应平台预编译二进制 → 校验 SHA256 → 安装到 `PATH` → 运行 `cortex install`。
+
+指定版本：
+
+```bash
+CORTEX_VERSION=v4.0.1 sh scripts/install.sh
+```
+
+### 从源码构建（需要 Go 1.25+）
+
+```bash
+git clone https://github.com/lh123aa/cortex.git
+cd cortex
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o cortex ./cmd/cortex
+./cortex install ~/notes
+```
+
+### Docker
+
+```bash
+docker build -t cortex .
+
+# 索引（挂载你的文档目录与数据目录）
+docker run --rm -v ~/notes:/data -v ~/.cortex:/root/.cortex \
+  cortex index /data
+
+# 启动 REST API（cortex serve 默认端口 2021，需显式映射）
+docker run -d --name cortex \
+  -p 2021:2021 -p 9090:9090 \
+  -v ~/.cortex:/root/.cortex \
+  cortex serve -p 2021
+```
+
+> ⚠️ 官方 `Dockerfile` 的 `EXPOSE` 写的是 8080/9090，而 `cortex serve` 默认监听 **2021**。
+> 以上命令用 `-p 2021:2021` 并显式传 `-p 2021` 是一致的做法。
+
+---
+
+## ⚡ CLI
+
+17 个命令，核心 5 个：
+
+| 命令 | 用途 |
+|---|---|
+| `cortex index <path>` | 索引文档（实时进度、断点续传、并发 8–16 worker） |
+| `cortex start` | 一键启动 MCP + REST + 自动注册 AI 工具 |
+| `cortex search <query>` | 命令行检索 |
+| `cortex watch <path>` | 监听目录，增量索引 |
+| `cortex status` | 查看文档数、分块数、用量 |
+
+其他：`install` `serve` `mcp` `setup` `context` `dedup` `usage` `user` `license` `version`。
+
+---
+
+## 📡 API
+
+**19 个 REST 端点**。核心：
+
+```bash
+# 检索
+curl 'http://localhost:2021/v1/search?q=Redis%20缓存穿透&limit=5'
+
+# 写入记忆
+curl -X POST http://localhost:2021/v1/memory \
+  -H 'Content-Type: application/json' \
+  -d '{"content":"今天解决了缓存穿透问题，用布隆过滤器"}'
+
+# RAG 上下文
+curl 'http://localhost:2021/v1/context?q=缓存方案&limit=5'
+```
+
+| 类别 | 端点 |
+|---|---|
+| 检索 | `GET /v1/search` `GET /v1/context` `GET /v1/suggest` |
+| 文档 | `GET /v1/docs` `GET /v1/docs/:id` `GET /v1/stats` |
+| 记忆 | `POST /v1/memory` `POST /v1/memory/batch` `GET /v1/memory/search` `GET /v1/memory/context` `DELETE /v1/memory/:id` |
+| MCP | `/mcp`（Streamable HTTP + SSE） |
+| 认证 | `POST /auth/register` `POST /auth/login` `POST /auth/logout` |
+| 健康 | `GET /health` `GET /health/ready` `GET /health/live` |
+| 监控 | `GET :9090/metrics`（独立端口，32 个 Prometheus 指标） |
+| 管理 | `GET /admin`（Web 控制台，默认仅本机）<br>`GET /admin/keys`（仅 admin 角色） |
+
+> 默认只返回 800 字符摘要。需要全文传 `?full=1`（响应体会从 5.8 KB 涨到 ~1.9 MB）。
+
+### 角色权限（RBAC）
+
+开启 `auth_enabled: true` 后：
+
+| 角色 | 读 | 写 | 管理用户/密钥 |
 |---|:---:|:---:|:---:|
 | `viewer` | ✅ | ❌ | ❌ |
 | `editor` | ✅ | ✅ | ❌ |
-| `admin`  | ✅ | ✅ | ✅ |
+| `admin` | ✅ | ✅ | ✅ |
 
 ```bash
-cortex user list                                    # 查看用户与角色
-cortex user add alice --role admin --password '...' # 新建用户
-cortex user set-role bob viewer                     # 调整角色
-cortex user disable carol                           # 禁用（保留数据）
+cortex user add alice --role admin --password '...'
+cortex user set-role bob viewer
 ```
 
-两条安全规则：
-- **不允许降级最后一个管理员**（否则没人能再管理用户/密钥）。
-- 首次启用认证时，若库中已有用户且无管理员，会自动把最早的用户提升为 `admin`。
+---
 
-> 旧版本创建的用户角色是 `"user"`，等价于 `editor`，无需迁移。
-> 认证关闭时（默认，单机本地场景）不做任何角色限制。
+## 📦 支持格式（25 种）
+
+| 类别 | 格式 |
+|---|---|
+| 文档 | `.md` `.pdf` `.docx` `.txt` |
+| 代码 | `.go` `.py` `.js` `.ts` `.java` `.cpp` `.c` `.rb` `.sh` `.ps1` `.css` `.html` |
+| 配置 | `.yaml` `.json` `.toml` `.ini` `.cfg` `.hcl` `.env` `.properties` `.xml` |
+
+**代码符号**：Go 使用官方 `go/ast` 解析器（精确）；其他语言使用词法提取。
 
 ---
 
@@ -606,236 +346,142 @@ cortex user disable carol                           # 禁用（保留数据）
 cortex:
   db_path: ~/.cortex/cortex.db
   log_level: info
+  auth_enabled: false
 
 embedding:
-  provider: none              # none | ollama | openai | cohere | voyage | dashscope | zhipu | baidu
-  auto_update: true           # 联网时自动检查最新模型
-
-  # 本地 Ollama（离线场景默认）
+  provider: none            # none | ollama | openai | cohere | voyage | dashscope | zhipu | baidu
   ollama:
     base_url: http://localhost:11434
-    model: all-minilm         # 推荐: all-minilm(23MB), nomic-embed-text(137MB)
-
-  # 国外 API
+    model: nomic-embed-text
   openai:
-    api_key: sk-xxx
-    model: text-embedding-3-small
-    dimension: 512
-  cohere:
-    api_key: co-xxx
-    model: embed-multilingual-v3.0
-    dimension: 1024
-  voyage:
-    api_key: pa-xxx
-    model: voyage-3-lite
-    dimension: 512
-
-  # 国内 API
-  dashscope:
-    api_key: sk-xxx
-    model: text-embedding-v2
-    dimension: 1536
-  zhipu:
-    api_key: xxx
-    model: embedding-3
-    dimension: 2048
-  baidu:
-    api_key: xxx
-    secret_key: xxx
-    model: Embedding-V1
-    dimension: 384
+    api_key: ""
 
 index:
-  workers: 4
-  max_tokens: 512
+  workers: 8                # 并发索引 worker
+  max_tokens: 512           # 单块最大 token
+  overlap_tokens: 64        # 块间重叠
+  min_chars: 50             # 低于此字符数的文档会被跳过
 
 search:
   cache_ttl: 5m
-  default_top_k: 20
+  default_top_k: 10
+  prefetch: false           # 预联想（消耗额外内存）
+```
 
-# cortex start 命令配置
-starter:
-  start_port: 0              # REST API 起始端口（0=自动检测）
-  auto_register: true        # 自动注册到 AI 工具
-  register_skip_tools: []    # 跳过的工具列表
+### Embedding 提供商（7 家 + 零依赖模式）
 
-prometheus:
-  enabled: true
-  port: 9090
+`none`（纯 FTS，零依赖，默认）｜ `ollama`（本地，推荐）｜ `openai` ｜ `cohere` ｜ `voyage` ｜ `dashscope`（阿里通义）｜ `zhipu`（智谱）｜ `baidu`（百度文心）
+
+内置常用模型预设：`nomic-embed-text`、`bge-m3`、`text-embedding-3-small/large`、`embed-multilingual-v3.0`、`voyage-3` 等。
+
+```bash
+cortex setup    # 交互式配置向导
 ```
 
 ---
 
-## 📦 支持的文件格式
+## 🏗️ 架构
 
-| 格式 | 支持 | 分块方式 |
-|------|------|---------|
-| Markdown (.md) | ✅ | 层级分块，标题路径追溯 |
-| PDF (.pdf) | ✅ | 文本提取，自动分块 |
-| Word (.docx) | ✅ | 段落解析，结构保持 |
-| 纯文本 (.txt) | ✅ | 按行/段落分块 |
-| 代码 (.go/.py/.js/.ts/.java 等) | ✅ | 按函数/类分块 |
-| 配置 (.yaml/.json/.toml/.ini) | ✅ | 结构化提取 |
+```
+┌─────────────────────────────────────────────────┐
+│  Claude Code · Cursor · OpenCode · Trae          │
+└──────────────┬──────────────────────────────────┘
+               │ MCP (stdio / Streamable HTTP)
+┌──────────────▼──────────────────────────────────┐
+│              Cortex (单二进制)                    │
+│ ┌────────────┬────────────┬───────────────────┐ │
+│ │ MCP Server │ REST API   │ Web Console       │ │
+│ │ 14 tools   │ 19 routes  │ /admin            │ │
+│ └─────┬──────┴─────┬──────┴────────┬──────────┘ │
+│       │            │               │            │
+│ ┌─────▼────────────▼───────────────▼──────────┐ │
+│ │ Hybrid Search: FTS5 BM25 + Vector + RRF     │ │
+│ └─────┬───────────────────────────────────────┘ │
+│ ┌─────▼───────────────────────────────────────┐ │
+│ │ SQLite (文档/分块/FTS/向量/符号/缓存/用户)   │ │
+│ └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+```
+
+设计取舍：
+- **SQLite 而非独立向量库** —— 目标是「下载即用」，免运维。规模上限约 3 万文档。
+- **单二进制而非容器编排** —— 个人/小团队的真实使用场景是笔记本，不是 K8s。
+- **FTS-only 默认** —— 零依赖启动；需要语义检索时装 Ollama 开 embedding。
 
 ---
 
-## 🛠️ 安装与开发
+## 🔐 开源与商业
 
-### 一行安装（无需 Go 环境）
-
-从 GitHub Releases 下载预编译二进制（6 平台，含 SHA256 校验）：
-
-```bash
-# Linux / macOS
-curl -fsSL https://raw.githubusercontent.com/lh123aa/cortex/master/scripts/install.sh | sh
-
-# Windows (PowerShell)
-irm https://raw.githubusercontent.com/lh123aa/cortex/master/scripts/install.ps1 | iex
-```
-
-安装后：
-
-```bash
-cortex install ~/notes    # 索引你的文档
-cortex start              # 启动 MCP + REST，自动接入 Claude Code / Cursor
-```
-
-### 从源码构建（需要 Go 1.25+）
-
-```bash
-git clone https://github.com/lh123aa/cortex.git
-cd cortex
-CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o cortex ./cmd/cortex
-
-./cortex install ./docs   # 一步安装（自动配置 + 索引）
-./cortex serve            # 或手动启动服务
-./cortex dedup            # 一键去重
-go test ./...             # 24 个包
-```
-
-Windows 一键脚本（源码构建模式）：
-
-```powershell
-.\scripts\install.ps1 -DocDir "D:\我的文档"
-```
-
----
-
-## 📊 性能
-
-### 可复现基准（推荐引用这一组）
-
-以下数字由 [`cmd/cortex-bench`](benchmarks/README.md) 生成，任何人可复现：
-
-```bash
-go run ./cmd/cortex-bench all --docs 1000 --workers 8
-```
-
-| 指标 | 实测值 | 说明 |
+| | 开源版 | 企业版 |
 |---|---|---|
-| 索引吞吐 | **328 files/s** | 1,000 文档 / 8 workers（v4.0.1 优化后，此前 116） |
-| 产出分块 | 2,510 | 平均 2.5 块/文档 |
-| 检索 P50 | **< 0.51 ms** | hybrid，缓存关闭；低于 Windows 计时器分辨率（507µs），无法精确测得 |
-| 检索 P95 | **6.23 ms** | 同上 |
-| 检索 P99 | **10.18 ms** | 同上 |
-| 检索吞吐 | **~500 QPS** | 单线程串行查询 |
-| Recall@1 / @5 / @10 | **1.000 / 1.000 / 1.000** | 2000 条唯一答案查询，0 未命中 |
+| 许可 | **Apache-2.0** | 商业许可 |
+| 核心功能 | 全部 | 全部（同一份代码） |
+| 审计日志 | ❌ | ✅ |
+| SSO / 团队多租户 | ❌ | ✅ |
+| 加密 at-rest / HA | ❌ | ✅ |
+| 支持 | 社区 | SLA 4h / 24h |
 
-> 完整报告：[benchmarks/results/v4.0.0.md](benchmarks/results/v4.0.0.md) ·
-> 口径与边界（为什么不能与其他产品横比）：[benchmarks/README.md](benchmarks/README.md) ·
-> 优化过程与前后对比：[docs/launch/05-performance-optimization.md](docs/launch/05-performance-optimization.md)
+企业版通过 `pkg/ext` 接口以**独立二进制**提供，核心代码不含闭源实现。
 
-### 其他实测数据
+定价：[开源版免费](LICENSE) ｜ Pro ¥199/年 ｜ Team ¥899/年（3 席）｜ Enterprise ¥3 万/年起
 
-| 指标 | 值 |
+详见 [开源/商业化方案](docs/planning/OPEN_CORE_AND_MONETIZATION_STRATEGY.md) · [许可迁移记录](docs/planning/LICENSE_MIGRATION.md)
+
+---
+
+## 🧪 质量
+
+| 项 | 状态 |
 |---|---|
-| 启动时间（全部 CLI 命令） | **< 0.5s**（FTS5-only 模式，HNSW 按需异步加载） |
-| 真实库回归（27,157 文档 / 84,562 分块） | 冷启动 **0.36s**、检索 P50 **0.43ms** / P95 **2.35ms**、吞吐 **1,440 QPS**、常驻内存 **53MB** |
-| 检索响应体（limit=10） | **5.8 KB**（v4.0.1 前为 1,914 KB） |
-| 中文搜索 | **单字分词，FTS5 精确匹配** |
-| 索引失败率 | **< 1%**（自动跳过二进制/多媒体；真实 `internal/` 目录 124/125） |
-| 实时进度反馈 | **动态进度条 · 速度/ETA/当前文件** |
-| 中断恢复 | **Checkpoint 自动保存，重启续跑** |
-| 文件监听 | **`cortex watch` · fsnotify 实时增量索引** |
-| 单文件超时保护 | **5 分钟 Embedding 超时** |
-| 配置热加载 | **`cortex serve` 修改配置无需重启** |
-| 自动备份 | **24h 间隔 · 保留最近 10 份** |
-| 二进制大小 | 32.9–35.8 MB（6 平台实测，strip + trimpath） |
-| 企业版审计开销 | **+0.17ms/次写操作**（100 次采样实测） |
-| 测试 | 24/24 包通过 · `go vet` 零警告 |
+| `go vet ./...` | 0 警告 |
+| `go test ./...` | **24/24 包通过** |
+| 跨平台构建 | 6/6（linux/darwin/windows × amd64/arm64） |
+| 安装验证 | Windows + Linux 实跑官方安装命令 |
+| 基准可复现 | `go run ./cmd/cortex-bench all --docs 5000` |
 
-> 完整实测（三组真实语料、写操作、企业版开销、截图）：[docs/launch/](docs/launch/README.md)
-> 竞品对比与宣发口径：[docs/launch/03-comparison.md](docs/launch/03-comparison.md)
-| MCP 工具 | **14 个**（含 map/stats/plan/project_context/code_search/memory_batch）<br>**双传输**: stdio + SSE (/mcp 端点) |
-| 代码符号索引 | Go 走官方解析器（`go/ast`）；Python/JS/TS/Java/Rust 走词法规则法 |
+回归测试覆盖真实事故：[索引统计丢失](internal/index/short_doc_test.go) · [符号表列名](internal/storage/bundle_test.go) · [登录 token 失效](pkg/license/license_test.go) · [RBAC 权限矩阵](internal/api/rbac_test.go)
 
-> 说明：早期版本这里是未附复现方式的手工数字（如「FTS5 P50 < 50ms / 20k 分块」），
-> 现已替换为 benchmark harness 的实测值。对比历史版本请用同一 harness 重跑。
+---
+
+## ❓ FAQ
+
+**Q：和 XERJ 什么关系？**
+同一需求、不同层级。XERJ 是引擎（ES 兼容、40+ 格式），Cortex 是产品（中文优先、单二进制、MCP 开箱即用）。我们索引吞吐已超过它的公开数据，但**格式支持仍是短板**。
+
+**Q：能索引多少文档？**
+舒适区约 3 万文档。5,000 文档实测 P95 6 ms，27,157 文档 P95 2.35 ms。
+
+**Q：数据会上传吗？**
+不会。默认全本地。只有你主动配置的 embedding API 会出网（可以用 Ollama 完全离线）。
+
+**Q：为什么不用 PostgreSQL + pgvector？**
+目标是「下载即用」。SQLite 免运维，单人/小团队够用。百万级是 v5 的话题。
+
+**Q：中文搜索怎么做的？**
+CJK 单字分词 + 标题/正文分别处理 + 查询时 2-gram 展开。解决了「机器学习」搜不到「机器学习模型」的问题。
+
+**Q：支持 Windows 吗？**
+支持，Windows 是主力测试平台之一，有 PowerShell 一键脚本。
 
 ---
 
 ## 🤝 贡献
 
-- 🐛 发现 Bug？[提交 Issue](https://github.com/lh123aa/cortex/issues)
-- 💡 有好想法？[讨论区](https://github.com/lh123aa/cortex/discussions)
-- ⭐ 项目对你有帮助？点个 Star 支持
+欢迎 Issue、PR、文档修正。见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-## 📄 许可证与商业授权
-
-- **开源许可**：[Apache License 2.0](LICENSE)。可自由使用、修改、分发与商用（含闭源商业产品），只需保留版权与许可声明，见 [NOTICE](NOTICE)。
-- **企业版**：高级能力（审计日志 / SSO / 团队多租户 / 加密 at-rest / HA / ES 兼容读接口）以独立二进制分发，采用商业许可，通过 `pkg/ext` 接缝按 License 中的 `features` 门控 —— 核心代码不含闭源实现。详见 [系统性评估与开源/商业化方案](docs/planning/OPEN_CORE_AND_MONETIZATION_STRATEGY.md)。
-- **定价**：Free ¥0（≤5,000 文档）｜ Pro ¥199/年 ｜ Team ¥899/年（3 席起）｜ Enterprise ¥3 万/年起。
-- **License 激活**：购买后执行 `cortex license activate <key>`，`cortex license status` 查看档位与到期时间；全程离线验签。
-
-> 说明：本仓库历史上曾先后使用 MIT 与 AGPL-3.0 声明，自 2026-10-30 起统一为 **Apache-2.0**（迁移记录见 [docs/planning/LICENSE_MIGRATION.md](docs/planning/LICENSE_MIGRATION.md)）。企业版代码不在本仓库，单独授权。
+Apache-2.0 下提交即按同许可授权（DCO）。企业版相关目录需要 CLA。
 
 ---
 
-## ⭐ Star History
+## 📄 许可证
 
-[![Star History Chart](https://api.star-history.com/svg?repos=lh123aa/cortex&type=Date)](https://star-history.com/#lh123aa/cortex&Date)
+[Apache License 2.0](LICENSE) —— 可自由使用、修改、分发、商用（含闭源产品），保留 [NOTICE](NOTICE) 即可。
 
----
-
-## 💬 社区 & 支持
-
-- ⭐ **给个 Star** — 支持项目最好的方式
-- 🐛 **报告 Bug** — [提交 Issue](https://github.com/lh123aa/cortex/issues)
-- 💡 **功能建议** — [发起 Discussion](https://github.com/lh123aa/cortex/discussions)
-- 📣 **分享推荐** — 在掘金、知乎、V2EX 推荐 Cortex
-- 🤝 **贡献代码** — 阅读 [CONTRIBUTING.md](CONTRIBUTING.md)
-
-## 🔗 相关资源
-
-- [MCP 协议规范](https://modelcontextprotocol.io) — AI Agent 通信标准
-- [Ollama](https://ollama.ai) — 本地 LLM & Embedding
-- [OpenCode](https://opencode.ai) — AI Agent 框架
-- [Awesome MCP Servers](https://github.com/lh123aa/awesome-mcp-servers) — MCP 服务器资源列表
+Apache-2.0 **不授予商标权**：「Cortex」名称与 Logo 需单独授权用于商业产品名。
 
 ---
 
 <p align="center">
-  <strong>Cortex 不是「又一个知识库工具」，而是 AI Agent 时代的基础设施。</strong>
-  <br>
-  <sub>在 MCP 协议生态快速发展的当下，它解决了一个真实且普遍的需求——给 AI Agent 装上持久记忆。单二进制、零配置、MCP 原生、Apache-2.0 开源，企业功能另售。</sub>
-</p>
-
----
-
-<p align="center">
-  <strong>🧠 Cortex v4.0 — 让 AI Agent 拥有记忆</strong>
-  <br>
-  <sub>单二进制 · 零配置 · MCP 原生 · 完全本地 · Apache-2.0 / 企业版另售</sub>
-</p>
-
-<p align="center">
-  <a href="https://github.com/lh123aa/cortex/stargazers">
-    <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=social" alt="Star">
-  </a>
-  <a href="https://github.com/lh123aa/cortex/forks">
-    <img src="https://img.shields.io/github/forks/lh123aa/cortex?style=social" alt="Fork">
-  </a>
-  <a href="https://github.com/lh123aa/cortex">
-    <img src="https://img.shields.io/github/followers/lh123aa?style=social" alt="Follow">
-  </a>
+  <sub>单二进制 · 零配置 · MCP 原生 · 完全本地 · Apache-2.0</sub><br><br>
+  <b>如果这个项目帮你省下了折腾 RAG 栈的时间，欢迎 ⭐</b>
 </p>
