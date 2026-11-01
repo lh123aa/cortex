@@ -5,9 +5,9 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go">
   <img src="https://img.shields.io/badge/License-Apache--2.0-blue?style=for-the-badge" alt="Apache-2.0">
-  <img src="https://img.shields.io/badge/Version-4.0-blue?style=for-the-badge" alt="v4.0">
+  <img src="https://img.shields.io/badge/Version-4.0.1-blue?style=for-the-badge" alt="v4.0.1">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
-  <img src="https://img.shields.io/badge/Tests-11_11_packages-green?style=for-the-badge" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-24_24_packages-green?style=for-the-badge" alt="Tests">
   <img src="https://img.shields.io/badge/Iteration-Complete-7B61FF?style=for-the-badge" alt="Iteration Complete">
   <img src="https://img.shields.io/badge/Bug-0-success?style=for-the-badge" alt="Bug 0">
   <img src="https://img.shields.io/badge/MCP-14_Tools-7B61FF?style=for-the-badge" alt="MCP 14 Tools">
@@ -209,6 +209,17 @@
 
 ## ✨ 更新日志
 
+### 🚀 v4.0.1 安装与索引修复（2026-11-01）
+
+- ✅ **修复：过短文档从统计中消失** — 低于 `min_chars` 的文档分块器返回 0 块，索引器返回「什么都不是」（不计成功/跳过/失败），导致进度条显示 3/3 而汇总只有 2 个。现在计入 skipped 并输出明确警告
+- ✅ **修复：`.go` 文件索引 100% 失败** — bundle 写入的符号表列名写错（`file_path` 应为 `path` + `language`），补回归测试
+- ✅ **修复：CLI 搜索结果打印内部 ID** — 改为显示真实文件路径
+- ✅ **修复：源码构建版本显示 `dev`** — 安装脚本改用 `git describe` 注入真实版本
+- ✅ **修复：安装脚本误报失败** — `cortex install` 日志走 stderr 导致 exit 1，改为显式流重定向
+- ✅ **新增 `license status --json`** — 供监控与到期告警使用（`days_left: -1` = 永久/Free）
+- ✅ **安装验证** — Windows + Linux（WSL2）双平台实跑官方一行命令通过
+- ✅ **回归测试** — 24 包通过，`go vet` 零警告
+
 ### 🔐 v4.0.0 商业化地基（2026-10-22）
 
 - ✅ **Web 控制台修复** — `/admin` 不再空白；真实统计、混合检索、记忆、文档列表、健康状态一屏可用
@@ -219,7 +230,8 @@
 - ✅ **管理面板默认仅本机访问** — 防止未鉴权管理接口暴露公网
 - ✅ **RBAC 角色体系** — `admin/editor/viewer` 三级权限，写接口与密钥管理分级；`cortex user` 用户管理命令
 - ✅ **修复登录 token 立即失效** — `auth_tokens` 外键 CASCADE + `INSERT OR REPLACE` 会在登录时删掉刚签发的 token
-- ✅ **回归测试** — 22 包通过，`go vet` 零警告
+- ✅ **性能优化** — 索引吞吐 3.1×（118→365 files/s）、检索 P95 8.7×（20.5→2.35ms）、响应体 330×（1914KB→5.8KB）
+- ✅ **开源许可** — AGPL-3.0 → Apache-2.0，企业版经 `pkg/ext` 接缝独立分发
 
 ### 🚀 v3.5.3 开箱即用改造 (2026-05-26)
 
@@ -667,27 +679,42 @@ prometheus:
 
 ---
 
-## 🛠️ 开发
+## 🛠️ 安装与开发
+
+### 一行安装（无需 Go 环境）
+
+从 GitHub Releases 下载预编译二进制（6 平台，含 SHA256 校验）：
+
+```bash
+# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/lh123aa/cortex/master/scripts/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/lh123aa/cortex/master/scripts/install.ps1 | iex
+```
+
+安装后：
+
+```bash
+cortex install ~/notes    # 索引你的文档
+cortex start              # 启动 MCP + REST，自动接入 Claude Code / Cursor
+```
+
+### 从源码构建（需要 Go 1.25+）
 
 ```bash
 git clone https://github.com/lh123aa/cortex.git
 cd cortex
-go build -ldflags="-s -w" -o cortex ./cmd/cortex   # 纯 Go，无需 CGO
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o cortex ./cmd/cortex
 
-# 一步安装（自动配置 + 索引）
-./cortex install ./docs
-
-# 或手动启动服务
-./cortex serve
-
-# 运行测试
-go test ./...                     # 16 个包全部通过
-
-# 一键去重
-./cortex dedup
+./cortex install ./docs   # 一步安装（自动配置 + 索引）
+./cortex serve            # 或手动启动服务
+./cortex dedup            # 一键去重
+go test ./...             # 24 个包
 ```
 
-Windows 小白一键脚本（无需 Go 环境）：
+Windows 一键脚本（源码构建模式）：
+
 ```powershell
 .\scripts\install.ps1 -DocDir "D:\我的文档"
 ```
@@ -733,7 +760,7 @@ go run ./cmd/cortex-bench all --docs 1000 --workers 8
 | 单文件超时保护 | **5 分钟 Embedding 超时** |
 | 配置热加载 | **`cortex serve` 修改配置无需重启** |
 | 自动备份 | **24h 间隔 · 保留最近 10 份** |
-| 二进制大小 | 37.4 MB（strip + trimpath） |
+| 二进制大小 | 32.9–35.8 MB（6 平台实测，strip + trimpath） |
 | 企业版审计开销 | **+0.17ms/次写操作**（100 次采样实测） |
 | 测试 | 24/24 包通过 · `go vet` 零警告 |
 
