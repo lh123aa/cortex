@@ -29,7 +29,7 @@ I wanted something I can `curl` and start using in 10 seconds.
 - MCP protocol native — 5 built-in tools that any MCP-compatible Agent can call
 - Hybrid search (HNSW vector + BM25 + RRF fusion)
 - Built-in agent memory system (cross-session persistence)
-- 100% local, MIT license
+- 100% local, Apache-2.0 license
 - Prometheus monitoring (39 metrics)
 
 **Quick start:**

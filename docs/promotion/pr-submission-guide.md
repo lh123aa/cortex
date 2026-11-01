@@ -125,7 +125,7 @@ gh pr create \
 # - Hybrid search (HNSW vector + BM25 + RRF fusion)
 # - Built-in agent memory system with full CRUD
 # - 114 unit tests, Prometheus monitoring
-# - MIT license
+# - Apache-2.0 license
 #
 # GitHub: https://github.com/lh123aa/cortex
 #

@@ -108,7 +108,7 @@ chmod +x cortex
 
 ### 开源和社区
 
-Cortex 使用 MIT 协议，完全开源。
+Cortex 使用 Apache-2.0 协议，完全开源。
 
 GitHub: https://github.com/lh123aa/cortex
 

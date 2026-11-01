@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
+  <img src="https://img.shields.io/badge/License-Apache--2.0-blue?style=for-the-badge" alt="Apache-2.0">
   <img src="https://img.shields.io/badge/Version-3.5-blue?style=for-the-badge" alt="v3.5">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
   <img src="https://img.shields.io/badge/Tests-10_10_packages-green?style=for-the-badge" alt="Tests">
@@ -170,7 +170,7 @@
 </tr>
 <tr>
   <td>License</td>
-  <td align="center">✅ <strong>MIT</strong><br><sub>Free use/ modify/commercial</sub></td>
+  <td align="center">✅ <strong>Apache-2.0</strong><br><sub>Free use / modify / commercial</sub></td>
   <td align="center">✅ Apache 2.0</td>
   <td align="center">✅ MIT</td>
   <td align="center">✅ Apache 2.0</td>
@@ -476,7 +476,7 @@ Windows one-click script (no Go required):
 
 ## 📄 License
 
-**MIT License** — Free to use, modify, and commercialize.
+**Apache License 2.0** — Free to use, modify, distribute, and commercialize (including closed-source products). Keep the copyright and license notices; see [NOTICE](NOTICE). Enterprise features are distributed separately under a commercial license.
 
 ---
 
@@ -506,7 +506,7 @@ Windows one-click script (no Go required):
 <p align="center">
   <strong>🧠 Cortex v3.5 — Give AI Agents a Memory</strong>
   <br>
-  <sub>Single Binary · Zero Config · MCP Native · 100% Local · MIT License</sub>
+  <sub>Single Binary · Zero Config · MCP Native · 100% Local · Apache-2.0</sub>
 </p>
 
 <p align="center">

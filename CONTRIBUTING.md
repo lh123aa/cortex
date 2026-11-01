@@ -1,4 +1,4 @@
-# 贡献指南
+﻿# 贡献指南
 
 感谢你考虑为 Cortex 贡献代码！🎉
 
@@ -69,6 +69,15 @@ git push origin feat/你的功能名
 - 如果 PR 关联某个 Issue，在描述里写 `Closes #123`
 - 确保所有 CI 检查通过
 - 保持 PR 范围集中，一个 PR 只做一件事
+
+### 贡献许可（重要）
+
+本项目采用 **Apache-2.0**（见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)）。
+
+- **默认（DCO）**：提交时使用 `git commit -s` 签署 Developer Certificate of Origin，表示你有权提交该代码，并同意按 Apache-2.0 授权。
+- **企业版相关目录（CLA）**：如果贡献涉及企业版集成（例如 `pkg/ext` 的扩展实现、或未来标注为 enterprise 的目录），需要签署贡献者许可协议（CLA），以便项目方能在 Apache-2.0 之外以商业许可再许可同一份贡献。
+- 不接受来源不明、无法确认授权的代码（例如从其他项目复制且许可不兼容的代码）。
+- 历史许可迁移记录见 [docs/planning/LICENSE_MIGRATION.md](docs/planning/LICENSE_MIGRATION.md)。
 
 ## 开发环境搭建
 

@@ -43,7 +43,7 @@ v2.2 切换到 `modernc.org/sqlite`，`go build` 一行命令编译，无需 gcc
 - Prometheus 39 个指标
 
 **隐私优先**
-100% 本地，MIT 协议，商用自由。
+100% 本地，Apache-2.0 协议，商用自由。
 
 ### 技术栈
 

@@ -1,0 +1,27 @@
+Cortex
+Copyright 2026 Cortex contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Cortex is an open-core project:
+  - The core (this repository) is licensed under Apache-2.0.
+  - Enterprise features are distributed separately under a commercial license
+    and are not part of this repository.
+
+Third-party components
+----------------------
+This product includes dependencies managed by Go modules. Their licenses are
+listed in go.mod / go.sum and remain in effect for their respective code.
+Notable dependencies include:
+  - github.com/gin-gonic/gin (MIT)
+  - github.com/spf13/cobra (Apache-2.0)
+  - github.com/spf13/viper (MIT)
+  - github.com/prometheus/client_golang (Apache-2.0)
+  - modernc.org/sqlite (BSD-3-Clause)
+  - github.com/modelcontextprotocol/go-sdk (MIT)
+  - go.uber.org/zap (MIT)
+
+Trademarks
+----------
+"Cortex" and the Cortex logo are trademarks of the project owner. The
+Apache-2.0 license does not grant trademark rights (see Section 6).

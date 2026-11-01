@@ -48,7 +48,7 @@ Tech stack:
 • HNSW vector search
 • MCP SDK
 
-114 unit tests, MIT license, 100% local.
+114 unit tests, Apache-2.0 license, 100% local.
 
 **Tweet 6:**
 Star it if you find it useful ⭐
@@ -105,7 +105,7 @@ curl -fsSL [链接] | unzip -
 • HNSW 向量搜索
 • MCP SDK
 
-114 个测试、MIT 协议、100% 本地、完全开源。
+114 个测试、Apache-2.0 协议、100% 本地、完全开源。
 
 **Tweet 6:**
 觉得有用的话点个 Star ⭐
