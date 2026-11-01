@@ -640,8 +640,18 @@ func (idx *Indexer) indexFileInternalWithUser(ctx context.Context, path string, 
 
 	// 开始文本切块解析
 	chunks, err := ck.Chunk(string(content), path)
-	if err != nil || len(chunks) == 0 {
-		return false, false, err
+	if err != nil {
+		return false, false, fmt.Errorf("chunking failed for %s: %w", path, err)
+	}
+	if len(chunks) == 0 {
+		// 分块器没有产出任何块（文档过短，低于 chunker 的 min_chars 阈值）。
+		//
+		// 必须返回 skipped=true：早期这里返回 (false, false, nil)，
+		// 既不计成功也不计跳过，于是文件在统计里彻底消失 ——
+		// 进度条显示 3/3 全部处理完，汇总却是 "2 indexed, 0 skipped, 0 failed"，
+		// 用户既不知道有文件被跳过，也搜不到它的内容。
+		idx.logWarn("Warning: skipped %s: no chunks produced (content shorter than chunker min_chars threshold)", path)
+		return false, true, nil
 	}
 
 	// 设置 userID 和 documentID
@@ -666,8 +676,14 @@ func (idx *Indexer) indexFileInternalWithUser(ctx context.Context, path string, 
 	chunks = deduped
 
 	if len(chunks) == 0 {
-		// 所有 chunk 都是重复的，但文档本身可能已存在，标记为已索引
-		return true, false, nil
+		// 分块器没有产出任何块（文档过短，低于 chunker min_chars 阈值）。
+		//
+		// 这里必须返回 skipped=true 而不是 indexed=true：
+		// 早期返回「成功但未写入」，导致统计虚报 —— 进度条显示 3/3 完成，
+		// 结果却是 "2 indexed, 0 skipped, 0 failed"，第三个文件凭空消失，
+		// 用户既看不到跳过原因，也搜不到那篇文档。
+		idx.logWarn("Warning: skipped %s: no chunks produced (content shorter than chunker min_chars threshold)", path)
+		return false, true, nil
 	}
 
 	// 转换为向量

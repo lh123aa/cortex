@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -50,15 +51,21 @@ func newLicenseActivateCmd() *cobra.Command {
 }
 
 func newLicenseStatusCmd() *cobra.Command {
-	return &cobra.Command{
+	var jsonOut bool
+	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show the currently installed license",
+		Long:  "Show the currently installed license.\n\nUse --json for machine-readable output (monitoring, expiry alerts).",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := license.Path()
 			info, err := license.Current()
 			if err != nil {
 				return fmt.Errorf("invalid license at %s: %w\nRun 'cortex license deactivate' to remove it, then activate a valid key", path, err)
+			}
+
+			if jsonOut {
+				return printLicenseJSON(path, info)
 			}
 
 			fmt.Println("\n🔑 Cortex License")
@@ -79,6 +86,68 @@ func newLicenseStatusCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "output as JSON (for monitoring and expiry alerts)")
+	return cmd
+}
+
+// licenseStatusJSON 是 license status --json 的输出结构。
+//
+// 字段名刻意用 snake_case，与 License payload 保持一致；
+// days_left 为 -1 表示永久有效，0 表示已过期。
+type licenseStatusJSON struct {
+	Plan        string   `json:"plan"`
+	Email       string   `json:"email,omitempty"`
+	Order       string   `json:"order,omitempty"`
+	Seats       int      `json:"seats,omitempty"`
+	Features    []string `json:"features"`
+	IssuedAt    string   `json:"issued_at,omitempty"`
+	ExpiresAt   string   `json:"expires_at,omitempty"`
+	DaysLeft    int      `json:"days_left"`
+	Expired     bool     `json:"expired"`
+	Perpetual   bool     `json:"perpetual"`
+	Trial       bool     `json:"trial"`
+	Path        string   `json:"path"`
+	DocLimit    int64    `json:"document_limit"`
+	StorageByte int64    `json:"storage_limit_bytes"`
+}
+
+func printLicenseJSON(path string, info *license.Info) error {
+	out := licenseStatusJSON{
+		Plan:      string(license.PlanFree),
+		Features:  []string{},
+		Path:      path,
+		Perpetual: true,
+		// 无许可 = Free 档，不是「已过期」。用 -1 表示「无到期概念」，
+		// 否则监控脚本会把 days_left=0 误判成过期告警。
+		DaysLeft: -1,
+	}
+	if info != nil {
+		out.Plan = string(info.Plan)
+		out.Email = info.Email
+		out.Order = info.Order
+		out.Seats = info.Seats
+		out.Features = info.Features
+		if out.Features == nil {
+			out.Features = []string{}
+		}
+		if !info.IssuedAt.IsZero() {
+			out.IssuedAt = info.IssuedAt.UTC().Format(time.RFC3339)
+		}
+		if !info.ExpiresAt.IsZero() {
+			out.ExpiresAt = info.ExpiresAt.UTC().Format(time.RFC3339)
+		}
+		out.DaysLeft = info.DaysLeft()
+		out.Perpetual = info.Perpetual()
+		out.Trial = info.IsTrial()
+		out.Expired = out.DaysLeft == 0 && !out.Perpetual
+	}
+	lim := license.Limits(license.Plan(out.Plan))
+	out.DocLimit = lim.Documents
+	out.StorageByte = lim.StorageBytes
+
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(out)
 }
 
 func newLicenseDeactivateCmd() *cobra.Command {
