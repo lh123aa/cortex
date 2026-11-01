@@ -1,7 +1,7 @@
 package main
 
-import "github.com/lh123aa/cortex/internal/cli"
+import "github.com/lh123aa/cortex/pkg/app"
 
 func main() {
-	cli.Execute()
+	app.Run()
 }

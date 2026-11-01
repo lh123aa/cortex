@@ -13,7 +13,10 @@ import (
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/rag"
 	"github.com/lh123aa/cortex/internal/search"
+	"github.com/lh123aa/cortex/internal/snippet"
 	"github.com/lh123aa/cortex/internal/storage"
+	"github.com/lh123aa/cortex/internal/version"
+	"github.com/lh123aa/cortex/pkg/ext"
 	mcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.uber.org/zap"
 )
@@ -255,6 +258,14 @@ func ipRateLimiter(rate int, burst int) gin.HandlerFunc {
 }
 
 func (s *RESTServer) registerRoutes() {
+	// 企业版扩展必须最先注册：
+	// 扩展常用 gin 的 Use() 安装全局中间件（例如审计日志），
+	// 而 gin 的中间件只对「注册之后」的路由生效 —— 放在末尾会静默失效。
+	if names := ext.RegisterHTTP(s.router); len(names) > 0 {
+		s.logger.Info("enterprise extensions enabled (HTTP)",
+			zap.Strings("extensions", names))
+	}
+
 	// Health - 始终公开（增强版）
 	s.router.GET("/health", s.handleHealth)
 	s.router.GET("/health/ready", s.handleReady)
@@ -269,11 +280,27 @@ func (s *RESTServer) registerRoutes() {
 		authRoutes.POST("/logout", s.handleLogout)
 	}
 
-	// API Key auth middleware wrapper
-	authHandler := s.auth.Middleware()
-	if !s.authEnabled {
-		// 如果认证被禁用，使用一个空的 handler
-		authHandler = func(c *gin.Context) { c.Next() }
+	// 认证中间件选择：
+	//   - 认证开启：用 AuthMiddleware.RequireAuth()，它同时支持
+	//     Authorization: Bearer <login-token> 与 X-API-Key。
+	//     早期实现这里挂的是旧版 API Key 中间件，导致「登录拿到的 token 不能用」——
+	//     客户端只有 X-API-Key 一条路，登录接口形同虚设。
+	//   - 认证关闭：空 handler（单机本地场景）。
+	authHandler := func(c *gin.Context) { c.Next() }
+	if s.authEnabled && s.authMiddleware != nil {
+		authHandler = s.authMiddleware.RequireAuth()
+	} else if s.authEnabled {
+		// 兜底：只传了 authService 没传 middleware 时，退回旧 API Key 校验
+		authHandler = s.auth.Middleware()
+	}
+
+	// 写权限中间件：仅 admin/editor 可写；viewer 只读。
+	// 认证关闭时不限制（单机本地场景）。
+	writeHandler := func(c *gin.Context) { c.Next() }
+	adminOnlyHandler := func(c *gin.Context) { c.Next() }
+	if s.authEnabled && s.authMiddleware != nil {
+		writeHandler = s.authMiddleware.RequireWrite()
+		adminOnlyHandler = s.authMiddleware.RequireAdmin()
 	}
 
 	// Protected routes
@@ -294,17 +321,22 @@ func (s *RESTServer) registerRoutes() {
 		// Stats
 		protected.GET("/stats", s.handleStats)
 
-		// Memory (记忆系统)
-		protected.POST("/memory", s.memory.WriteMemory)
-		protected.POST("/memory/batch", s.memory.WriteMemoryBatch)
+		// Memory (记忆系统) — 读接口对所有角色开放，写接口要求 editor 及以上
 		protected.GET("/memory/search", s.memory.SearchMemory)
 		protected.GET("/memory/context", s.memory.GetMemoryContext)
-		protected.DELETE("/memory/:id", s.memory.DeleteMemory)
+		protected.DELETE("/memory/:id", writeHandler, s.memory.DeleteMemory)
+
+		writes := protected.Group("", writeHandler)
+		{
+			writes.POST("/memory", s.memory.WriteMemory)
+			writes.POST("/memory/batch", s.memory.WriteMemoryBatch)
+		}
 	}
 
-	// Admin routes (也受保护，用于密钥管理 + Web管理界面)
+	// Admin routes：密钥管理仅管理员可访问。
+	// 早期实现只挂了 authHandler，等于任何登录用户都能列出全局密钥 —— 已修正。
 	admin := s.router.Group("/admin")
-	admin.Use(authHandler)
+	admin.Use(authHandler, adminOnlyHandler)
 	{
 		admin.GET("/keys", s.handleListKeys)
 	}
@@ -484,25 +516,47 @@ func (s *RESTServer) handleSearch(c *gin.Context) {
 		return
 	}
 
-	// Enrich with document path
+	// 组装响应。
+	//
+	// 性能要点（实测 limit=10 曾返回 1.9 MB）：
+	//   - 默认只返回截断后的单个 content 字段，不再同时返回 content_raw 全文；
+	//   - 需要全文时显式传 ?full=1；
+	//   - 文档路径直接复用检索层带出的 FilePath，不再逐条查 documents（N+1）。
+	full := c.Query("full") == "1" || c.Query("full") == "true"
 	enriched := make([]gin.H, len(results))
 	for i, r := range results {
-		path := r.Chunk.DocumentID
-		if doc, _ := s.storage.GetDocumentByID(r.Chunk.DocumentID, userID); doc != nil {
-			path = doc.Path
+		if r == nil || r.Chunk == nil {
+			continue
 		}
-		enriched[i] = gin.H{
-			"rank":        i + 1,
-			"score":       r.Score,
-			"path":        path,
-			"section":     r.Chunk.HeadingPath,
-			"content_raw": r.Chunk.ContentRaw,
-			"token_count": r.Chunk.TokenCount,
+		path := r.FilePath
+		if path == "" {
+			path = r.Chunk.DocumentID
+			if doc, _ := s.storage.GetDocumentByID(r.Chunk.DocumentID, userID); doc != nil {
+				path = doc.Path
+			}
 		}
+		display := r.Chunk.DisplayText()
+		item := gin.H{
+			"rank":    i + 1,
+			"score":   r.Score,
+			"path":    path,
+			"section": r.Chunk.HeadingPath,
+			"content": truncateRunes(display, searchSnippetRunes),
+		}
+		if full {
+			item["content"] = display
+			item["content_raw"] = r.Chunk.ContentRaw
+			item["token_count"] = r.Chunk.TokenCount
+		}
+		enriched[i] = item
 	}
 
 	c.JSON(200, gin.H{"query": q, "total": len(results), "results": enriched})
 }
+
+// searchSnippetRunes 是默认返回的内容长度上限（按字符，不是字节）。
+// 800 字符足以让调用方判断相关性；需要全文请传 ?full=1。
+const searchSnippetRunes = 800
 
 func (s *RESTServer) handleSuggest(c *gin.Context) {
 	q := c.Query("q")
@@ -529,15 +583,13 @@ func (s *RESTServer) handleSuggest(c *gin.Context) {
 		if len(results) > 0 {
 			enriched := make([]gin.H, len(results))
 			for i, r := range results {
-				content := r.Chunk.ContentRaw
-				if len(content) > 300 {
-					content = content[:300] + "..."
-				}
+				content := snippet.Build(r.Chunk.DisplayText(), q, snippet.Options{Width: 300})
 				enriched[i] = gin.H{
 					"rank":        i + 1,
 					"score":       r.Score,
 					"section":     r.Chunk.HeadingPath,
-					"content_raw": content,
+					"content":     content,
+					"content_raw": r.Chunk.ContentRaw,
 				}
 			}
 			c.JSON(200, gin.H{"query": q, "source": "cache", "total": len(results), "results": enriched, "hint": s.ftsHint()})
@@ -558,15 +610,13 @@ func (s *RESTServer) handleSuggest(c *gin.Context) {
 
 	enriched := make([]gin.H, len(results))
 	for i, r := range results {
-		content := r.Chunk.ContentRaw
-		if len(content) > 300 {
-			content = content[:300] + "..."
-		}
+		content := snippet.Build(r.Chunk.DisplayText(), q, snippet.Options{Width: 300})
 		enriched[i] = gin.H{
 			"rank":        i + 1,
 			"score":       r.Score,
 			"section":     r.Chunk.HeadingPath,
-			"content_raw": content,
+			"content":     content,
+			"content_raw": r.Chunk.ContentRaw,
 		}
 	}
 	c.JSON(200, gin.H{"query": q, "source": "search", "total": len(results), "results": enriched, "hint": s.ftsHint()})
@@ -659,7 +709,7 @@ func (s *RESTServer) handleStats(c *gin.Context) {
 		"documents_count": docsCount,
 		"chunks_count":    chunksCount,
 		"vectors_count":   vectorsCount,
-		"version":         "dev",
+		"version":         version.Version,
 	})
 }
 

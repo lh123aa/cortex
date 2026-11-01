@@ -19,11 +19,11 @@ import (
 )
 
 var (
-	startDisableMCP    bool
-	startDisableREST   bool
-	startPort          int
-	startNoRegister    bool
-	startRegisterOnly  bool
+	startDisableMCP   bool
+	startDisableREST  bool
+	startPort         int
+	startNoRegister   bool
+	startRegisterOnly bool
 )
 
 func NewStartCmd() *cobra.Command {
@@ -50,6 +50,7 @@ Examples:
 }
 
 func runStart(cmd *cobra.Command, args []string) {
+	initLicenseExt()
 	cfg, logger, err := loadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -136,6 +137,13 @@ func runStart(cmd *cobra.Command, args []string) {
 
 			var restServer *api.RESTServer
 			if cfg.Cortex.AuthEnabled {
+				// 首次启用认证时把已有用户提升为 admin，否则无人可管理用户/密钥
+				if promoted, err := authService.EnsureBootstrapAdmin(); err != nil {
+					logger.Warn("failed to bootstrap admin user", zap.Error(err))
+				} else if promoted != nil {
+					logger.Info("promoted first user to admin (bootstrap)",
+						zap.String("username", promoted.Username))
+				}
 				restServer = api.NewRESTServerWithAuth(se, st, emb, logger, authService)
 				logger.Info("auth enabled", zap.Bool("auth", cfg.Cortex.AuthEnabled))
 			} else {

@@ -14,6 +14,8 @@ import (
 	"github.com/lh123aa/cortex/internal/rag"
 	"github.com/lh123aa/cortex/internal/search"
 	"github.com/lh123aa/cortex/internal/storage"
+	"github.com/lh123aa/cortex/internal/version"
+	"github.com/lh123aa/cortex/pkg/ext"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.uber.org/zap"
 )
@@ -23,11 +25,13 @@ const (
 	ServerName         = "cortex"
 )
 
-// 可通过 -ldflags 在构建时注入版本号
+// 向后兼容别名：版本号的唯一来源是 internal/version。
+// 构建时通过 -ldflags 注入 internal/version.Version/.Commit/.Date 即可，
+// 保留这里的别名是为了不破坏包内既有引用（mcp.Implementation.Version 等）。
 var (
-	Version = "v2.3"
-	Commit  = "none"
-	Date    = "unknown"
+	Version = version.Version
+	Commit  = version.Commit
+	Date    = version.Date
 )
 
 // toolError 创建标准 MCP 错误响应
@@ -88,7 +92,11 @@ type MCPServer struct {
 	userID    string // 用户隔离：当前 MCP 会话的 userID
 
 	startupTime time.Time // MCP 服务器启动时间，用于健康检测
+	toolCount   int       // 已注册工具数（供测试与健康输出使用）
 }
+
+// ToolCount 返回当前注册的 MCP 工具总数。
+func (s *MCPServer) ToolCount() int { return s.toolCount }
 
 // SetUserID 设置 MCP 服务器的用户上下文
 // 注意：生产环境应通过 MCP 认证机制获取用户身份
@@ -117,6 +125,12 @@ func NewMCPServer(se *search.HybridSearchEngine, st storage.Storage, em embeddin
 	})
 
 	s.registerTools()
+	s.registerExtraTools()
+	// 闭源企业版扩展（私有仓库 init() 里 ext.Register 注册）：按许可 feature 决定是否启用。
+	if names := ext.RegisterMCP(s.server); len(names) > 0 {
+		s.logger.Info("enterprise extensions enabled (MCP)",
+			zap.Strings("extensions", names))
+	}
 	return s
 }
 
@@ -176,6 +190,8 @@ func (s *MCPServer) registerTools() {
 		Name:        "cortex_suggest",
 		Description: "Get smart search suggestions based on partial query and current context. Returns instant results from prefetched cache or fast search.",
 	}, s.handleSuggestTool)
+
+	s.toolCount = 8
 }
 
 func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
@@ -209,7 +225,7 @@ func (s *MCPServer) handleSearchTool(ctx context.Context, req *mcp.CallToolReque
 		if doc, err := s.storage.GetDocumentByID(r.Chunk.DocumentID, s.userID); err == nil && doc != nil {
 			docPath = doc.Path
 		}
-		sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nPath: %s\nSection: %s\n\n%s\n---\n", i+1, r.Score, docPath, r.Chunk.HeadingPath, truncateText(r.Chunk.ContentRaw, 300)))
+		sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nPath: %s\nSection: %s\n\n%s\n---\n", i+1, r.Score, docPath, r.Chunk.HeadingPath, truncateText(r.Chunk.DisplayText(), 300)))
 	}
 
 	return &mcp.CallToolResult{
@@ -251,16 +267,32 @@ func (s *MCPServer) handleMemoryWriteTool(ctx context.Context, req *mcp.CallTool
 		return toolError("content is required"), nil, nil
 	}
 
-	userID := s.userID
+	memoryID, summary, err := s.writeMemoryEntry(args.Content, args.Summary, s.userID)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	contentHash := sha256.Sum256([]byte(args.Content))
-	memoryID := hex.EncodeToString(contentHash[:16])
+	result := fmt.Sprintf("Memory written successfully:\nID: %s\nSummary: %s\nTags: %v\nSource: %s",
+		memoryID, summary, args.Tags, args.Source)
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: result}},
+	}, nil, nil
+}
 
-	summary := args.Summary
-	if summary == "" && len(args.Content) > 100 {
-		summary = args.Content[:100] + "..."
-	} else if summary == "" {
-		summary = args.Content
+// writeMemoryEntry 是单条记忆写入的唯一实现，供 cortex_memory_write 与
+// cortex_memory_batch 共用，避免两处逻辑漂移。返回 memoryID 与最终使用的 summary。
+func (s *MCPServer) writeMemoryEntry(content, summaryIn, userID string) (memoryID string, summary string, err error) {
+	contentHash := sha256.Sum256([]byte(content))
+	memoryID = hex.EncodeToString(contentHash[:16])
+
+	summary = summaryIn
+	if summary == "" {
+		r := []rune(content)
+		if len(r) > 100 {
+			summary = string(r[:100]) + "..."
+		} else {
+			summary = content
+		}
 	}
 
 	tk, err := chunker.NewTextChunker(chunker.ChunkConfig{
@@ -268,12 +300,12 @@ func (s *MCPServer) handleMemoryWriteTool(ctx context.Context, req *mcp.CallTool
 		MaxTokens: 512,
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create chunker: %w", err)
+		return "", "", fmt.Errorf("failed to create chunker: %w", err)
 	}
 
-	chunks, err := tk.Chunk(args.Content, fmt.Sprintf("memory://%s", memoryID))
+	chunks, err := tk.Chunk(content, fmt.Sprintf("memory://%s", memoryID))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to chunk memory: %w", err)
+		return "", "", fmt.Errorf("failed to chunk memory: %w", err)
 	}
 
 	if len(chunks) > 0 {
@@ -285,9 +317,7 @@ func (s *MCPServer) handleMemoryWriteTool(ctx context.Context, req *mcp.CallTool
 			if embeddings, err := s.memory.em.EmbedBatch(texts); err == nil {
 				for i, chunk := range chunks {
 					chunk.Embedding = embeddings[i]
-					if s.memory.em != nil {
-						chunk.EmbeddingModel = s.memory.em.Name()
-					}
+					chunk.EmbeddingModel = s.memory.em.Name()
 				}
 			}
 		}
@@ -303,7 +333,7 @@ func (s *MCPServer) handleMemoryWriteTool(ctx context.Context, req *mcp.CallTool
 		Status:      "indexed",
 	}
 	if err := s.storage.SaveDocument(doc); err != nil {
-		return nil, nil, fmt.Errorf("failed to save memory: %w", err)
+		return "", "", fmt.Errorf("failed to save memory: %w", err)
 	}
 
 	for _, chunk := range chunks {
@@ -311,14 +341,10 @@ func (s *MCPServer) handleMemoryWriteTool(ctx context.Context, req *mcp.CallTool
 		chunk.DocumentID = memoryID
 	}
 	if err := s.storage.SaveChunks(chunks); err != nil {
-		return nil, nil, fmt.Errorf("failed to save memory chunks: %w", err)
+		return "", "", fmt.Errorf("failed to save memory chunks: %w", err)
 	}
 
-	result := fmt.Sprintf("Memory written successfully:\nID: %s\nSummary: %s\nTags: %v\nSource: %s",
-		memoryID, summary, args.Tags, args.Source)
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{&mcp.TextContent{Text: result}},
-	}, nil, nil
+	return memoryID, summary, nil
 }
 
 func (s *MCPServer) handleMemorySearchTool(ctx context.Context, req *mcp.CallToolRequest, args MemorySearchArgs) (*mcp.CallToolResult, any, error) {
@@ -351,7 +377,7 @@ func (s *MCPServer) handleMemorySearchTool(ctx context.Context, req *mcp.CallToo
 		}
 		count++
 		sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nID: %s\nContent: %s\n---\n",
-			count, r.Score, doc.ID, truncateText(r.Chunk.ContentRaw, 300)))
+			count, r.Score, doc.ID, truncateText(r.Chunk.DisplayText(), 300)))
 	}
 
 	if count == 0 {
@@ -420,13 +446,13 @@ func (s *MCPServer) handleHealthTool(ctx context.Context, req *mcp.CallToolReque
 
 	result := fmt.Sprintf(`✅ Cortex MCP Server is healthy
 
-Server:     %s v%s
+Server:     %s %s
 Uptime:     %s
 Status:     Running
 Documents:  %d
 Embedding:  %s
 `,
-		ServerName, Version, uptime,
+		ServerName, versionLabel(), uptime,
 		docCount,
 		embeddingStatus,
 	)
@@ -456,7 +482,7 @@ func (s *MCPServer) handleSuggestTool(ctx context.Context, req *mcp.CallToolRequ
 			var sb strings.Builder
 			for i, r := range results {
 				sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nSection: %s\n%s\n---\n",
-					i+1, r.Score, r.Chunk.HeadingPath, truncateText(r.Chunk.ContentRaw, 200)))
+					i+1, r.Score, r.Chunk.HeadingPath, truncateText(r.Chunk.DisplayText(), 200)))
 			}
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{&mcp.TextContent{Text: sb.String()}},
@@ -473,7 +499,7 @@ func (s *MCPServer) handleSuggestTool(ctx context.Context, req *mcp.CallToolRequ
 	var sb strings.Builder
 	for i, r := range results {
 		sb.WriteString(fmt.Sprintf("[%d] Score: %.3f\nSection: %s\n%s\n---\n",
-			i+1, r.Score, r.Chunk.HeadingPath, truncateText(r.Chunk.ContentRaw, 200)))
+			i+1, r.Score, r.Chunk.HeadingPath, truncateText(r.Chunk.DisplayText(), 200)))
 	}
 
 	return &mcp.CallToolResult{

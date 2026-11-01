@@ -22,7 +22,9 @@ import (
 	"github.com/lh123aa/cortex/internal/metrics"
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/search"
+	"github.com/lh123aa/cortex/internal/snippet"
 	"github.com/lh123aa/cortex/internal/storage"
+	"github.com/lh123aa/cortex/pkg/license"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -179,6 +181,12 @@ func runIndex(cmd *cobra.Command, args []string) {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}
 	defer st.Close()
+
+	// License quota enforcement: Free/Pro/Team are capped, Enterprise is not.
+	if err := checkQuotaFromStorage(st); err != nil {
+		fmt.Fprintf(os.Stderr, "\n  ❌ %v\n", err)
+		os.Exit(1)
+	}
 
 	emb, err := initEmbedding(cfg, logger)
 	if err != nil {
@@ -340,10 +348,7 @@ func runSearch(cmd *cobra.Command, args []string) {
 		}
 		var jr []jsonResult
 		for i, r := range results {
-			content := r.Chunk.ContentRaw
-			if len(content) > 300 {
-				content = content[:300] + "..."
-			}
+			content := snippet.Build(r.Chunk.DisplayText(), query, snippet.Options{Width: 300})
 			jr = append(jr, jsonResult{
 				Rank:    i + 1,
 				Score:   r.Score,
@@ -366,10 +371,7 @@ func runSearch(cmd *cobra.Command, args []string) {
 	for i, r := range results {
 		fmt.Printf("%d. [Score: %.4f] %s\n", i+1, r.Score, r.Chunk.HeadingPath)
 		fmt.Printf("   %s\n", r.Chunk.DocumentID)
-		content := r.Chunk.ContentRaw
-		if len(content) > 300 {
-			content = content[:300] + "..."
-		}
+		content := snippet.Build(r.Chunk.DisplayText(), query, snippet.Options{Width: 300})
 		content = highlightText(content, query)
 		fmt.Printf("   %s\n\n", content)
 	}
@@ -419,12 +421,13 @@ func runContext(cmd *cobra.Command, args []string) {
 	for i, r := range results {
 		fmt.Printf("[%d] %s\n", i+1, r.Chunk.HeadingPath)
 		fmt.Printf("Source: %s\n", r.Chunk.DocumentID)
-		fmt.Printf("%s\n\n", r.Chunk.ContentRaw)
+		fmt.Printf("%s\n\n", r.Chunk.DisplayText())
 	}
 	fmt.Println("---")
 }
 
 func runMCP(cmd *cobra.Command, args []string) {
+	initLicenseExt()
 	cfg, logger, err := loadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -469,6 +472,7 @@ func runMCP(cmd *cobra.Command, args []string) {
 }
 
 func runServe(cmd *cobra.Command, args []string) {
+	initLicenseExt()
 	cfg, logger, err := loadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -503,6 +507,13 @@ func runServe(cmd *cobra.Command, args []string) {
 
 	var restServer *api.RESTServer
 	if cfg.Cortex.AuthEnabled {
+		// 首次启用认证时，把已有用户提升为 admin，否则没人能管理用户/密钥。
+		if promoted, err := authService.EnsureBootstrapAdmin(); err != nil {
+			logger.Warn("failed to bootstrap admin user", zap.Error(err))
+		} else if promoted != nil {
+			logger.Info("promoted first user to admin (bootstrap)",
+				zap.String("username", promoted.Username))
+		}
 		restServer = api.NewRESTServerWithAuth(se, st, emb, logger, authService)
 		logger.Info("auth enabled", zap.Bool("auth", cfg.Cortex.AuthEnabled))
 	} else {
@@ -673,19 +684,50 @@ func runUsage(cmd *cobra.Command, args []string) {
 
 	used, err := st.CalculateStorageUsed("")
 	if err != nil {
-		logger.Fatal("failed to calculate storage", zap.Error(err))
+		// Usage is informational only: a transient DB lock must not turn a
+		// read-only report into a non-zero exit.
+		fmt.Fprintf(os.Stderr, "  ⚠️  could not calculate storage usage: %v\n", err)
+	}
+	documents, err := st.GetDocumentsCount("")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "  ⚠️  could not count documents: %v\n", err)
 	}
 
-	limit := models.TierFree.StorageLimit()
-	tier := string(models.TierFree)
-	pct := float64(used) / float64(limit) * 100
+	info := currentLicenseOrFree()
+	plan := license.PlanFree
+	if info != nil && info.Plan != "" {
+		plan = info.Plan
+	}
+	lim := license.Limits(plan)
 
 	fmt.Println("\n📊 Cortex Usage")
 	fmt.Println("================")
-	fmt.Printf("Storage:   %s / %s (%.1f%%)\n", formatBytes(used), formatBytes(limit), pct)
-	fmt.Printf("Tier:      %s\n", tier)
-	if used > limit {
-		fmt.Println("\n⚠️  Storage limit exceeded. Upgrade at https://cortex.ai/pricing")
+	if lim.StorageBytes < 0 {
+		fmt.Printf("Storage:   %s / unlimited\n", formatBytes(used))
+	} else {
+		pct := float64(used) / float64(lim.StorageBytes) * 100
+		fmt.Printf("Storage:   %s / %s (%.1f%%)\n", formatBytes(used), formatBytes(lim.StorageBytes), pct)
+	}
+	if lim.Documents < 0 {
+		fmt.Printf("Documents: %d / unlimited\n", documents)
+	} else {
+		pct := float64(documents) / float64(lim.Documents) * 100
+		fmt.Printf("Documents: %d / %d (%.1f%%)\n", documents, lim.Documents, pct)
+	}
+	fmt.Printf("Plan:      %s\n", displayPlan(plan))
+	switch {
+	case info != nil && !info.ExpiresAt.IsZero():
+		fmt.Printf("Expires:   %s\n", info.ExpiresAt.Format("2006-01-02"))
+	case info != nil:
+		fmt.Println("Expires:   Never (perpetual)")
+	default:
+		fmt.Println("Expires:   —")
+	}
+
+	if quotaErr := license.CheckQuota(info, documents, used); quotaErr != nil {
+		fmt.Printf("\n⚠️  %v\n", quotaErr)
+	} else if plan == license.PlanFree {
+		fmt.Printf("\n💡 Free plan. Upgrade to Pro: %s\n", pricingURL)
 	}
 }
 
@@ -823,6 +865,12 @@ func runInstall(cmd *cobra.Command, args []string) {
 		logger.Fatal("failed to init storage", zap.Error(err))
 	}
 	defer st.Close()
+
+	// License quota enforcement (same unified check as `cortex index`).
+	if err := checkQuotaFromStorage(st); err != nil {
+		fmt.Fprintf(os.Stderr, "\n  ❌ %v\n", err)
+		os.Exit(1)
+	}
 
 	emb, err := initEmbedding(cfg, logger)
 	if err != nil {
