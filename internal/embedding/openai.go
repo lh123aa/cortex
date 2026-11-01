@@ -35,7 +35,7 @@ func NewOpenAIEmbedding(apiKey, model, baseURL string, dim int) *OpenAIEmbedding
 		Dim:     dim,
 		client: &http.Client{
 			Transport: getSharedTransport(),
-			Timeout: 60 * time.Second,
+			Timeout:   60 * time.Second,
 		},
 	}
 }
@@ -47,7 +47,7 @@ type openAIRequest struct {
 }
 
 type openAIResponse struct {
-	Data []openAIEmbeddingData `json:"data"`
+	Data  []openAIEmbeddingData `json:"data"`
 	Error *struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`

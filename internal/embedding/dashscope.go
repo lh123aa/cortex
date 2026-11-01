@@ -43,7 +43,7 @@ func NewDashScopeEmbedding(apiKey, model, baseURL string, dim int) *DashScopeEmb
 }
 
 type dashScopeRequest struct {
-	Model string   `json:"model"`
+	Model string         `json:"model"`
 	Input dashScopeInput `json:"input"`
 }
 
@@ -52,9 +52,9 @@ type dashScopeInput struct {
 }
 
 type dashScopeResponse struct {
-	Output *dashScopeOutput `json:"output"`
-	Code   string           `json:"code,omitempty"`
-	Message string          `json:"message,omitempty"`
+	Output  *dashScopeOutput `json:"output"`
+	Code    string           `json:"code,omitempty"`
+	Message string           `json:"message,omitempty"`
 }
 
 type dashScopeOutput struct {

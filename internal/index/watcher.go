@@ -25,7 +25,7 @@ type IncrementalWatcher struct {
 	debounceDur time.Duration
 	extensions  map[string]bool // 支持的文件扩展名
 	shutdownCh  chan struct{}
-	closeOnce   sync.Once       // 防止 Stop 多次 close panic
+	closeOnce   sync.Once              // 防止 Stop 多次 close panic
 	prefetch    *search.PrefetchEngine // 预联想引擎，nil 时跳过
 }
 

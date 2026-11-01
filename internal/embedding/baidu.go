@@ -116,9 +116,9 @@ type baiduEmbedRequest struct {
 }
 
 type baiduEmbedResponse struct {
-	Data []baiduEmbeddingData `json:"data"`
-	ErrorCode int    `json:"error_code,omitempty"`
-	ErrorMsg  string `json:"error_msg,omitempty"`
+	Data      []baiduEmbeddingData `json:"data"`
+	ErrorCode int                  `json:"error_code,omitempty"`
+	ErrorMsg  string               `json:"error_msg,omitempty"`
 }
 
 type baiduEmbeddingData struct {

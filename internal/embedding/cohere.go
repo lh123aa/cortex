@@ -42,18 +42,18 @@ func NewCohereEmbedding(apiKey, model, baseURL string, dim int) *CohereEmbedding
 }
 
 type cohereRequest struct {
-	Model  string   `json:"model"`
-	Texts  []string `json:"texts"`
-	Type   string   `json:"input_type"`
+	Model string   `json:"model"`
+	Texts []string `json:"texts"`
+	Type  string   `json:"input_type"`
 }
 
 type cohereResponse struct {
 	Data []cohereEmbeddingData `json:"data"`
 	Meta *struct {
-		     BilledUnits *struct {
-			     InputTokens int `json:"input_tokens"`
-		     } `json:"billed_units"`
-	     } `json:"meta,omitempty"`
+		BilledUnits *struct {
+			InputTokens int `json:"input_tokens"`
+		} `json:"billed_units"`
+	} `json:"meta,omitempty"`
 }
 
 type cohereEmbeddingData struct {

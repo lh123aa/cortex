@@ -1,5 +1,9 @@
 name: Build and Release
 
+# 触发策略：
+#   - push tag v*  : quality → 6 平台构建 → 打包/SHA256SUMS → GitHub Release
+#   - push 分支    : quality → 6 平台构建校验（不发布）
+#   - pull_request : quality → 6 平台构建校验（不发布）
 on:
   push:
     branches: [main, master]
@@ -9,124 +13,165 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: '1.25'
+  # 版本注入路径：必须与 internal/version 的包路径完全一致。
+  VERSION_PKG: github.com/lh123aa/cortex/internal/version
+
 jobs:
+  # ── 质量门禁：vet + 全量测试 ──────────────────────────────────
   quality:
+    name: Quality (vet + test)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: Set up Go ${{ env.GO_VERSION }}
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
 
       - name: Run go vet
         run: go vet ./...
 
       - name: Run tests
-        run: |
-          echo ">>> Running tests..."
-          FAILED=""
-          for pkg in $(go list ./...); do
-            echo "--- Testing $pkg ---"
-            set +e
-            go test "$pkg" 2>&1
-            EXIT_CODE=$?
-            set -e
-            if [ $EXIT_CODE -ne 0 ]; then
-              echo "::error::TEST FAILED: $pkg (exit code: $EXIT_CODE)"
-              FAILED="$FAILED $pkg"
-            fi
-          done
-          if [ -n "$FAILED" ]; then
-            echo "============================================"
-            echo ">>> FAILED PACKAGES:$FAILED"
-            echo "============================================"
-            exit 1
-          fi
-          echo "All basic tests passed"
+        run: go test -count=1 -timeout=600s ./...
 
-      - name: Run tests with coverage
-        run: |
-          echo ">>> Running tests with coverage..."
-          FAILED=""
-          TMPDIR=$(mktemp -d)
-          echo "mode: set" > "$TMPDIR/coverage.out"
-          for pkg in $(go list ./...); do
-            echo "--- Testing $pkg ---"
-            set +e
-            go test -coverprofile="$TMPDIR/coverage.tmp" "$pkg" 2>&1
-            EXIT_CODE=$?
-            set -e
-            if [ $EXIT_CODE -ne 0 ]; then
-              echo "::error::COVERAGE TEST FAILED: $pkg (exit code: $EXIT_CODE)"
-              FAILED="$FAILED $pkg"
-            fi
-            if [ -f "$TMPDIR/coverage.tmp" ]; then
-              tail -n +2 "$TMPDIR/coverage.tmp" >> "$TMPDIR/coverage.out"
-              rm "$TMPDIR/coverage.tmp"
-            fi
-          done
-          cp "$TMPDIR/coverage.out" coverage.out
-          rm -rf "$TMPDIR"
-          if [ -n "$FAILED" ]; then
-            echo "============================================"
-            echo ">>> FAILED PACKAGES:$FAILED"
-            echo "============================================"
-            exit 1
-          fi
-          echo "--- coverage summary ---"
-          go tool cover -func=coverage.out | tail -5
-
-      - name: Check for vulnerable dependencies
-        continue-on-error: true
-        uses: golang/govulncheck-action@v1
-        with:
-          go-version-input: '1.25'
-
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage.out
-
+  # ── 6 平台交叉编译 + 打包（tag 与非 tag 都跑，仅 tag 会发布） ──
   build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
     needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
-        go-version: ['1.25']
-        platform: [ubuntu-latest, windows-latest, macos-latest]
-
-    runs-on: ${{ matrix.platform }}
-
+        include:
+          - { goos: linux,   goarch: amd64, archive: tar.gz }
+          - { goos: linux,   goarch: arm64, archive: tar.gz }
+          - { goos: darwin,  goarch: amd64, archive: tar.gz }
+          - { goos: darwin,  goarch: arm64, archive: tar.gz }
+          - { goos: windows, goarch: amd64, archive: zip }
+          - { goos: windows, goarch: arm64, archive: zip }
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go ${{ matrix.go-version }}
+      - name: Set up Go ${{ env.GO_VERSION }}
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
 
-      - name: Build
+      - name: Build and package
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
         run: |
-          go build -o cortex-${{ matrix.platform }}-amd64 ./cmd/cortex
+          set -euo pipefail
 
-      - name: Upload artifact
+          # tag 构建注入 tag 名；分支/PR 构建只做编译校验，版本记为 dev。
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME}"
+          else
+            VERSION="dev"
+          fi
+          COMMIT="${GITHUB_SHA:0:7}"
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          EXT=""
+          if [ "${GOOS}" = "windows" ]; then EXT=".exe"; fi
+
+          LDFLAGS="-s -w"
+          LDFLAGS="${LDFLAGS} -X ${VERSION_PKG}.Version=${VERSION}"
+          LDFLAGS="${LDFLAGS} -X ${VERSION_PKG}.Commit=${COMMIT}"
+          LDFLAGS="${LDFLAGS} -X ${VERSION_PKG}.Date=${BUILD_DATE}"
+
+          echo ">>> ${GOOS}/${GOARCH} version=${VERSION} commit=${COMMIT} date=${BUILD_DATE}"
+          mkdir -p build release
+          go build -trimpath -ldflags="${LDFLAGS}" -o "build/cortex${EXT}" ./cmd/cortex
+
+          NAME="cortex-${GOOS}-${GOARCH}"
+          if [ "${GOOS}" = "windows" ]; then
+            (cd build && zip -q -X "../release/${NAME}.zip" "cortex${EXT}")
+          else
+            (cd build && tar -czf "../release/${NAME}.tar.gz" "cortex${EXT}")
+          fi
+          ls -l release
+
+      - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: cortex-${{ matrix.platform }}-amd64
-          path: cortex-${{ matrix.platform }}-amd64*
+          name: cortex-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: release/*
+          retention-days: 7
+          if-no-files-found: error
 
-  release:
+  # ── 汇总所有产物并生成 SHA256SUMS ────────────────────────────
+  checksums:
+    name: SHA256SUMS
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
+    timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
+      - name: Download all packages
         uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS
+        run: |
+          set -euo pipefail
+          cd dist
+          rm -f SHA256SUMS
+          ls -l
+          sha256sum cortex-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload SHA256SUMS
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS
+          path: dist/SHA256SUMS
+          retention-days: 7
+          if-no-files-found: error
+
+  # ── 发布：仅 tag 触发 ─────────────────────────────────────────
+  release:
+    name: Publish GitHub Release
+    needs: [build, checksums]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download all release assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Show assets
+        run: ls -l release
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') }}

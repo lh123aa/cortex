@@ -70,6 +70,14 @@ var (
 		Help:      "Total number of search cache misses",
 	})
 
+	// SearchCacheDropped 异步 L2 缓存写入被丢弃的次数（队列满）。
+	// 丢弃是设计行为：缓存是可选的加速层，绝不能阻塞读路径。
+	SearchCacheDropped = registerFunc.NewCounter(prometheus.CounterOpts{
+		Namespace: "cortex",
+		Name:      "search_cache_writes_dropped_total",
+		Help:      "Total number of async L2 cache writes dropped because the queue was full",
+	})
+
 	// SearchResultsReturned number of search results returned
 	SearchResultsReturned = registerFunc.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "cortex",

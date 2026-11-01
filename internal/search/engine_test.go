@@ -346,3 +346,91 @@ func TestSearchCache_EvictOldest(t *testing.T) {
 		t.Errorf("cache size %d exceeds max %d", cache.itemCount, MaxCacheItems)
 	}
 }
+
+// TestRRFTieBreakDeterministic 验证 rrfMerge 在 RRF 融合分相同时按 chunk ID 升序决胜,
+// 且同一输入重复调用 N 次永远得到相同顺序(对照旧实现:map 随机迭代 + sort.Slice 不稳定)。
+// 用“两条腿各占一个 rank 相同”的 chunk 构造精确平分:仅 vr rank0 的 'x-1' 与仅 fr rank0 的 'x-0'
+// 都得 1/(60+0+1)=1/61,严格平分,触发 ID 决胜键(x-0 < x-1)。
+func TestRRFTieBreakDeterministic(t *testing.T) {
+	makeRes := func(id string, vec, fts float64) *models.SearchResult {
+		return &models.SearchResult{Chunk: &models.Chunk{ID: id}, VectorScore: vec, FTSScore: fts}
+	}
+	eng := NewHybridSearchEngine(nil, nil)
+	// 'x-1' 只在 vector 腿 rank0;'x-0' 只在 FTS 腿 rank0 → 各自 RRF = 1/61,严格平分。
+	// 再加一个高分 chunk 'top'(两腿 rank0)保证它必须排第一(分最高),验证“先按分、平分才按 ID”。
+
+	var firstRun []string
+	for iter := 0; iter < 200; iter++ {
+		// 每次重新构造同语义输入(模拟重复查询),r.rrfK=0 → 默认 k=60
+		vrIter := []*models.SearchResult{
+			makeRes("top", 1.0, 0), makeRes("x-1", 0.8, 0),
+		}
+		frIter := []*models.SearchResult{
+			makeRes("top", 0, 1.0), makeRes("x-0", 0, 0.8),
+		}
+		out := eng.rrfMerge(vrIter, frIter)
+		if len(out) != 3 {
+			t.Fatalf("iter %d: expected 3 results, got %d", iter, len(out))
+		}
+		// 断言顺序:top(分最高) 必须第一;x-0 与 x-1 平分,按 ID 升序 → x-0 在 x-1 前。
+		want := []string{"top", "x-0", "x-1"}
+		for i, id := range want {
+			if out[i].Chunk.ID != id {
+				got := make([]string, len(out))
+				for j, r := range out {
+					got[j] = r.Chunk.ID
+				}
+				t.Fatalf("iter %d: expected %v, got %v", iter, want, got)
+			}
+		}
+		if iter == 0 {
+			firstRun = append(firstRun, out[0].Chunk.ID, out[1].Chunk.ID, out[2].Chunk.ID)
+		} else {
+			if out[0].Chunk.ID != firstRun[0] || out[1].Chunk.ID != firstRun[1] || out[2].Chunk.ID != firstRun[2] {
+				t.Fatalf("non-deterministic: iter %d order %v != iter0 %v",
+					iter, []string{out[0].Chunk.ID, out[1].Chunk.ID, out[2].Chunk.ID}, firstRun)
+			}
+		}
+	}
+}
+
+// TestRRFMetadataPreserved 验证同 chunk 被两条腿命中时保留向量腿主记录的 VectorScore、
+// 只回填 FTS 腿的 FTSScore(对照旧实现:FTS 腿整条覆盖 → VectorScore 丢失)。
+func TestRRFMetadataPreserved(t *testing.T) {
+	makeRes := func(id string, vec, fts float64) *models.SearchResult {
+		return &models.SearchResult{Chunk: &models.Chunk{ID: id}, VectorScore: vec, FTSScore: fts}
+	}
+	eng := NewHybridSearchEngine(nil, nil)
+	results := eng.rrfMerge(
+		[]*models.SearchResult{makeRes("dup", 0.9, 0), makeRes("only-vec", 0.8, 0)},
+		[]*models.SearchResult{makeRes("dup", 0, 0.8), makeRes("only-fts", 0, 0.7)},
+	)
+	byID := map[string]*models.SearchResult{}
+	for _, r := range results {
+		byID[r.Chunk.ID] = r
+	}
+	if len(byID) != 3 {
+		t.Fatalf("expected 3 merged results, got %d", len(byID))
+	}
+	dup := byID["dup"]
+	if dup.VectorScore != 0.9 {
+		t.Errorf("dup: expected VectorScore 0.9 (vector-leg main record preserved), got %f", dup.VectorScore)
+	}
+	if dup.FTSScore != 0.8 {
+		t.Errorf("dup: expected FTSScore 0.8 (backfilled from FTS leg), got %f", dup.FTSScore)
+	}
+	vecOnly := byID["only-vec"]
+	if vecOnly.VectorScore != 0.8 {
+		t.Errorf("only-vec: expected VectorScore 0.8, got %f", vecOnly.VectorScore)
+	}
+	if vecOnly.FTSScore != 0 {
+		t.Errorf("only-vec: expected FTSScore 0, got %f", vecOnly.FTSScore)
+	}
+	ftsOnly := byID["only-fts"]
+	if ftsOnly.VectorScore != 0 {
+		t.Errorf("only-fts: expected VectorScore 0, got %f", ftsOnly.VectorScore)
+	}
+	if ftsOnly.FTSScore != 0.7 {
+		t.Errorf("only-fts: expected FTSScore 0.7, got %f", ftsOnly.FTSScore)
+	}
+}

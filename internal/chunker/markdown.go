@@ -66,15 +66,18 @@ func (c *MarkdownChunker) Chunk(content string, path string) ([]*models.Chunk, e
 		switch n.Kind() {
 		case ast.KindHeading:
 			heading := n.(*ast.Heading)
-			currentHeading = string(heading.Text([]byte(content)))
-			currentLevel = heading.Level
-			// 当遇到标题时强制打断前面收集的内容作为一个新块返回
+			// 先用「上一个标题」为已收集的内容建块，再切换标题。
+			// 早期实现顺序反了：先更新 currentHeading 再 buildChunk，
+			// 结果「数据合规」小节的内容被标成了下一个标题「配额与套餐」，
+			// 按标题检索、breadcrumb 上下文、引用来源全部错位。
 			if currentPara.Len() > c.config.MinChars {
 				chunk := c.buildChunk(currentPara.String(), currentTokens, path, docIDHash, currentHeading, currentLevel)
 				chunks = append(chunks, chunk)
 				currentPara.Reset()
 				currentTokens = 0
 			}
+			currentHeading = string(heading.Text([]byte(content)))
+			currentLevel = heading.Level
 		case ast.KindParagraph, ast.KindCodeBlock, ast.KindFencedCodeBlock, ast.KindList, ast.KindBlockquote:
 			// 获取改节点下的文本
 			var blockText string
@@ -123,12 +126,19 @@ func (c *MarkdownChunker) Chunk(content string, path string) ([]*models.Chunk, e
 
 func (c *MarkdownChunker) buildChunk(rawText string, tokenCount int, path string, docIDHash string, heading string, level int) *models.Chunk {
 	trimmed := strings.TrimSpace(rawText)
-	// 中文分词优化
+	// 中文分词优化：正文与标题都要分词。
+	// 标题（例如「配额与套餐」）如果原样入库，FTS5 会把它当成一个整词，
+	// 用户搜「配额」时无法命中 —— 只有正文分词是不够的。
 	contentForSearch := OptimizeForChineseSearch(trimmed)
+	headingForSearch := OptimizeForChineseSearch(heading)
 	contentWrapped := trimmed
 	if c.config.IncludeBreadcrumb {
 		breadcrumb := fmt.Sprintf("Section: [%s] > %s\n\n", path, heading)
 		contentWrapped = breadcrumb + trimmed
+	}
+	// 标题分词结果并入 content_raw，使标题关键词可被全文检索命中。
+	if headingForSearch != "" && headingForSearch != heading {
+		contentForSearch = headingForSearch + "\n" + contentForSearch
 	}
 
 	chID := generateID(path, trimmed)

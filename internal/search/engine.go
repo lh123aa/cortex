@@ -16,20 +16,60 @@ type HybridSearchEngine struct {
 	embedding embedding.EmbeddingProvider
 	useCache  bool
 	cacheTTL  time.Duration
-	rrfK      int          // RRF 常数（默认 60）
-	reranker  Reranker     // 可选的重排序器
-	l1Cache   *SearchCache // L1 内存缓存
+	rrfK      int             // RRF 常数（默认 60）
+	reranker  Reranker        // 可选的重排序器
+	l1Cache   *SearchCache    // L1 内存缓存
 	prefetch  *PrefetchEngine // 预联想引擎，nil 时跳过
+
+	// L2（SQLite）缓存写入队列。
+	//
+	// 读路径上不应该有同步磁盘写：早期实现每次搜索都 INSERT 一次缓存，
+	// 把 p95 拖到 10–60ms（还要和索引写抢锁）。现在改为有界异步写入：
+	// 队列满时直接丢弃（缓存本来就是可选的加速层）。
+	l2Queue chan l2Write
 }
+
+type l2Write struct {
+	query   string
+	userID  string
+	mode    string
+	topK    int
+	results []*models.SearchResult
+}
+
+// l2QueueSize 是异步缓存写入的缓冲上限。
+const l2QueueSize = 256
 
 // NewHybridSearchEngine 初始化搜索引擎
 func NewHybridSearchEngine(s storage.Storage, emb embedding.EmbeddingProvider) *HybridSearchEngine {
-	return &HybridSearchEngine{
+	e := &HybridSearchEngine{
 		storage:   s,
 		embedding: emb,
 		useCache:  true, // 默认启用缓存
 		cacheTTL:  5 * time.Minute,
 		l1Cache:   NewSearchCache(), // 初始化 L1 缓存
+		l2Queue:   make(chan l2Write, l2QueueSize),
+	}
+	go e.l2WriterLoop()
+	return e
+}
+
+// l2WriterLoop 串行消费缓存写入任务（单 goroutine，避免并发写 SQLite）。
+func (s *HybridSearchEngine) l2WriterLoop() {
+	for w := range s.l2Queue {
+		_ = s.storage.SetCachedSearch(w.query, w.userID, w.mode, w.topK, w.results, s.cacheTTL)
+	}
+}
+
+// enqueueL2 非阻塞投递缓存写入；队列满时丢弃并计数。
+func (s *HybridSearchEngine) enqueueL2(w l2Write) {
+	if s.l2Queue == nil {
+		return
+	}
+	select {
+	case s.l2Queue <- w:
+	default:
+		metrics.SearchCacheDropped.Inc()
 	}
 }
 
@@ -151,11 +191,14 @@ func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts mode
 	}
 
 	// 6.5 补充文件路径信息（用于文件类型权重）
+	// 检索层已经把 d.path 带出来了，这里只兜底补空缺，
+	// 避免早期实现「每条结果查一次 documents」的 N+1。
 	for _, r := range finalResults {
-		if r.Chunk != nil && r.Chunk.DocumentID != "" {
-			if doc, err := s.storage.GetDocumentByID(r.Chunk.DocumentID, userID); err == nil && doc != nil {
-				r.FilePath = doc.Path
-			}
+		if r == nil || r.Chunk == nil || r.FilePath != "" || r.Chunk.DocumentID == "" {
+			continue
+		}
+		if doc, err := s.storage.GetDocumentByID(r.Chunk.DocumentID, userID); err == nil && doc != nil {
+			r.FilePath = doc.Path
 		}
 	}
 
@@ -174,12 +217,18 @@ func (s *HybridSearchEngine) Search(ctx context.Context, query string, opts mode
 
 	// 9. 写入两级缓存
 	if s.useCache && len(finalResults) > 0 {
-		// 写入 L2 SQLite 缓存
-		s.storage.SetCachedSearch(query, userID, opts.Mode, opts.TopK, finalResults, s.cacheTTL)
-		// 写入 L1 内存缓存
+		// L1 内存缓存：同步写（纯内存，微秒级）
 		if s.l1Cache != nil {
 			s.l1Cache.Set(query, opts, finalResults)
 		}
+		// L2 SQLite 缓存：异步写，避免读路径上做磁盘写（p95 的主要来源）
+		s.enqueueL2(l2Write{
+			query:   query,
+			userID:  userID,
+			mode:    opts.Mode,
+			topK:    opts.TopK,
+			results: finalResults,
+		})
 	}
 
 	// 10. 记录指标
@@ -205,6 +254,12 @@ func (s *HybridSearchEngine) InvalidateUserCache(userID string) {
 }
 
 // rrfMerge 倒数排名融合算法实现 (Reciprocal Rank Fusion)
+//
+// 确定性保证(参考 XERJ fuse_finish 的 (score, seq_no, id) 决胜键):
+//   - 同一 chunk 在两条腿都命中时,先写入(向量腿)的元数据(VectorScore)被保留,
+//     FTS 腿的 FTSScore 只回填到缺失的字段,绝不整体覆盖记录。
+//   - 排序使用 (融合分降序, chunk ID 升序) 的确定性决胜键,不依赖 Go map
+//     迭代顺序或 sort.Slice 的不稳定性 —— 同一输入永远得到同一 top-N 集合。
 func (s *HybridSearchEngine) rrfMerge(vr []*models.SearchResult, fr []*models.SearchResult) []*models.SearchResult {
 	k := s.rrfK
 	if k <= 0 {
@@ -213,16 +268,25 @@ func (s *HybridSearchEngine) rrfMerge(vr []*models.SearchResult, fr []*models.Se
 	scoresMap := make(map[string]float64)
 	resultsMap := make(map[string]*models.SearchResult)
 
+	// 向量腿先写入(带 VectorScore),作为“主记录”。
 	for rank, r := range vr {
 		id := r.Chunk.ID
 		scoresMap[id] += 1.0 / float64(k+rank+1)
-		resultsMap[id] = r
+		if _, ok := resultsMap[id]; !ok {
+			resultsMap[id] = r
+		}
 	}
-
+	// FTS 腿:若 id 已存在则只累加分数并回填缺失的 FTSScore,不替换主记录。
 	for rank, r := range fr {
 		id := r.Chunk.ID
 		scoresMap[id] += 1.0 / float64(k+rank+1)
-		resultsMap[id] = r
+		if existing, ok := resultsMap[id]; ok {
+			if existing.FTSScore == 0 {
+				existing.FTSScore = r.FTSScore
+			}
+		} else {
+			resultsMap[id] = r
+		}
 	}
 
 	merged := make([]*models.SearchResult, 0, len(resultsMap))
@@ -232,8 +296,36 @@ func (s *HybridSearchEngine) rrfMerge(vr []*models.SearchResult, fr []*models.Se
 		merged = append(merged, r)
 	}
 
-	// 按照 RRF 累加得分倒序
-	return s.normalizeScores(merged)
+	// 确定性排序:融合分降序;平分 chunk ID 升序兜底(参考 XERJ fuse_finish)。
+	sort.Slice(merged, func(i, j int) bool {
+		if merged[i].Score != merged[j].Score {
+			return merged[i].Score > merged[j].Score
+		}
+		return merged[i].Chunk.ID < merged[j].Chunk.ID
+	})
+
+	// 归一化到 [0,1](保留上面的确定性顺序,不再重排)
+	return s.normalizeInPlace(merged)
+}
+
+// normalizeInPlace 把 Score 归一化到 [0,1],不改变元素相对顺序。
+// 与 normalizeScores 的区别:后者仍用不稳定排序,仅用于单腿模式(vector/fts)。
+func (s *HybridSearchEngine) normalizeInPlace(res []*models.SearchResult) []*models.SearchResult {
+	if len(res) == 0 {
+		return res
+	}
+	maxScore := 0.0
+	for _, r := range res {
+		if r.Score > maxScore {
+			maxScore = r.Score
+		}
+	}
+	if maxScore > 0 {
+		for _, r := range res {
+			r.Score = r.Score / maxScore
+		}
+	}
+	return res
 }
 
 func (s *HybridSearchEngine) normalizeScores(res []*models.SearchResult) []*models.SearchResult {

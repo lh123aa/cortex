@@ -18,6 +18,7 @@ import (
 	"github.com/lh123aa/cortex/internal/metrics"
 	"github.com/lh123aa/cortex/internal/models"
 	"github.com/lh123aa/cortex/internal/storage"
+	"github.com/lh123aa/cortex/internal/symbols"
 	"github.com/panjf2000/ants/v2"
 )
 
@@ -349,6 +350,7 @@ collectResultsWithCheckpoint:
 		}
 		if res.err != nil {
 			atomicFailed.Add(1)
+			idx.logWarn("Warning: failed to index %s: %v", res.path, res.err)
 		}
 		metrics.IndexTotal.Inc()
 		completedCount++
@@ -715,6 +717,27 @@ func (idx *Indexer) indexFileInternalWithUser(ctx context.Context, path string, 
 		Status:      "indexed",
 	}
 
+	// 代码文件：先提取符号定义，随后与文档/分块一起原子写入。
+	// 用途：cortex_code_search 能按函数/类名直接返回 file:line，而不只是文本命中。
+	var syms []symbols.Symbol
+	if symbols.IsCodeFile(path) {
+		syms = symbols.Extract(path, string(content))
+	}
+
+	// 优先走单事务整包写入：Document + Chunks + Vectors + Symbols 一次提交。
+	// 旧实现是 3–4 次独立提交（每次一个 fsync），批量索引时是主要瓶颈。
+	if bs, ok := idx.storage.(storage.BundleStore); ok {
+		if err := bs.SaveDocumentBundle(&storage.DocumentBundle{
+			Doc:     newDoc,
+			Chunks:  chunks,
+			Symbols: syms,
+		}); err != nil {
+			return false, false, fmt.Errorf("saving bundle failed: %w", err)
+		}
+		return true, false, nil
+	}
+
+	// 回退路径：不支持 BundleStore 的存储实现，保持原有逐项写入行为。
 	if err := idx.storage.SaveDocument(newDoc); err != nil {
 		return false, false, err
 	}
@@ -722,6 +745,14 @@ func (idx *Indexer) indexFileInternalWithUser(ctx context.Context, path string, 
 	// 保存 Chunks
 	if err := idx.storage.SaveChunks(chunks); err != nil {
 		return false, false, fmt.Errorf("saving chunks failed: %w", err)
+	}
+
+	if len(syms) > 0 {
+		if store, ok := idx.storage.(storage.SymbolStore); ok {
+			if err := store.SaveSymbols(docID, syms); err != nil {
+				idx.logWarn("Warning: failed to save symbols for %s: %v", path, err)
+			}
+		}
 	}
 
 	return true, false, nil

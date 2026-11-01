@@ -74,14 +74,32 @@ func NewProviderFromConfig(cfg ProviderConfig) (EmbeddingProvider, error) {
 
 // ProviderConfig 平铺的配置参数（从 config.Config 映射而来）
 type ProviderConfig struct {
-	Provider  string
-	Ollama    struct{ BaseURL, Model string }
-	OpenAI    struct{ APIKey, Model, BaseURL string; Dimension int }
-	Cohere    struct{ APIKey, Model, BaseURL string; Dimension int }
-	Voyage    struct{ APIKey, Model, BaseURL string; Dimension int }
-	DashScope struct{ APIKey, Model, BaseURL string; Dimension int }
-	Zhipu     struct{ APIKey, Model, BaseURL string; Dimension int }
-	Baidu     struct{ APIKey, SecretKey, Model, BaseURL string; Dimension int }
+	Provider string
+	Ollama   struct{ BaseURL, Model string }
+	OpenAI   struct {
+		APIKey, Model, BaseURL string
+		Dimension              int
+	}
+	Cohere struct {
+		APIKey, Model, BaseURL string
+		Dimension              int
+	}
+	Voyage struct {
+		APIKey, Model, BaseURL string
+		Dimension              int
+	}
+	DashScope struct {
+		APIKey, Model, BaseURL string
+		Dimension              int
+	}
+	Zhipu struct {
+		APIKey, Model, BaseURL string
+		Dimension              int
+	}
+	Baidu struct {
+		APIKey, SecretKey, Model, BaseURL string
+		Dimension                         int
+	}
 }
 
 // RegisteredProviders 所有注册的 Provider
@@ -114,7 +132,7 @@ var RegisteredProviders = []ProviderInfo{
 			{ID: "text-embedding-3-large", Name: "text-embedding-3-large", Dimension: 256, Description: "256维 · $0.13/1M tokens · 高精度"},
 			{ID: "text-embedding-ada-002", Name: "text-embedding-ada-002", Dimension: 1536, Description: "1536维 · $0.10/1M tokens · 经典"},
 		},
-		NeedsAPIKey: true,
+		NeedsAPIKey:  true,
 		DefaultModel: "text-embedding-3-small",
 	},
 	{
@@ -125,7 +143,7 @@ var RegisteredProviders = []ProviderInfo{
 			{ID: "embed-english-v3.0", Name: "embed-english-v3.0", Dimension: 1024, Description: "1024维 · 英文专用 · 精度更高"},
 			{ID: "embed-english-light-v3.0", Name: "embed-english-light-v3.0", Dimension: 384, Description: "384维 · 轻量 · 速度快"},
 		},
-		NeedsAPIKey: true,
+		NeedsAPIKey:  true,
 		DefaultModel: "embed-multilingual-v3.0",
 	},
 	{
@@ -148,7 +166,7 @@ var RegisteredProviders = []ProviderInfo{
 			{ID: "text-embedding-v2", Name: "text-embedding-v2", Dimension: 1536, Description: "1536维 · 推荐", IsDefault: true},
 			{ID: "text-embedding-v1", Name: "text-embedding-v1", Dimension: 1536, Description: "1536维 · 经典"},
 		},
-		NeedsAPIKey: true,
+		NeedsAPIKey:  true,
 		DefaultModel: "text-embedding-v2",
 	},
 	{
@@ -158,7 +176,7 @@ var RegisteredProviders = []ProviderInfo{
 			{ID: "embedding-3", Name: "embedding-3", Dimension: 2048, Description: "2048维 · 最新 · 推荐", IsDefault: true},
 			{ID: "embedding-2", Name: "embedding-2", Dimension: 1024, Description: "1024维 · 经典"},
 		},
-		NeedsAPIKey: true,
+		NeedsAPIKey:  true,
 		DefaultModel: "embedding-3",
 	},
 	{

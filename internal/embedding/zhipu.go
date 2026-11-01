@@ -48,7 +48,7 @@ type zhipuRequest struct {
 }
 
 type zhipuResponse struct {
-	Data []zhipuEmbeddingData `json:"data"`
+	Data  []zhipuEmbeddingData `json:"data"`
 	Error *struct {
 		Message string `json:"message"`
 		Code    string `json:"code"`
