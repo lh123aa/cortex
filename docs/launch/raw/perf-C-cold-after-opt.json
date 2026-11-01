@@ -1,0 +1,26 @@
+{
+  "label": "Corpus C cold after opt",
+  "samples": 10,
+  "errors": 0,
+  "empty_results": 0,
+  "avg_results": 7.5,
+  "search_p50_ms": 1.2,
+  "search_p95_ms": 20.65,
+  "search_p99_ms": 20.65,
+  "search_mean_ms": 3.01,
+  "search_qps": 331.7,
+  "stats_p50_ms": 12.7,
+  "stats_p95_ms": 17.58,
+  "per_query_p50": {
+    "Go 并发": 20.65,
+    "MCP 协议": 0.98,
+    "Windows 路径": 0.8,
+    "docker 部署": 0.88,
+    "单元测试": 0.91,
+    "性能优化": 1.24,
+    "数据库索引": 1.2,
+    "混合检索": 1.26,
+    "知识库": 1.24,
+    "配置管理": 1.0
+  }
+}

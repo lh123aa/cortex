@@ -1,0 +1,9 @@
+{
+  "label": "Enterprise edition writes (audit middleware)",
+  "samples": 100,
+  "errors": 0,
+  "p50_ms": 0.99,
+  "p95_ms": 2.23,
+  "mean_ms": 1.35,
+  "qps": 738.2
+}

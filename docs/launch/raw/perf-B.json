@@ -1,0 +1,28 @@
+{
+  "label": "Corpus B: XERJ docs (277 docs / 3060 chunks)",
+  "base": "http://127.0.0.1:2093",
+  "queries": 10,
+  "rounds": 5,
+  "samples": 50,
+  "errors": 0,
+  "empty_results": 0,
+  "p50_ms": 22.13,
+  "p95_ms": 56.6,
+  "p99_ms": 76.38,
+  "mean_ms": 23.1,
+  "max_ms": 76.38,
+  "qps": 43.3,
+  "per_query_p50": {
+    "Elasticsearch compatibility": 31.73,
+    "HNSW recall": 15.34,
+    "MCP tools": 14.43,
+    "agent memory": 22.13,
+    "autoindex": 20.01,
+    "benchmark methodology": 37.07,
+    "corpus hub": 20.85,
+    "hybrid search": 14.78,
+    "reference coding": 1.61,
+    "token reduction": 45.14
+  },
+  "avg_results": 9.0
+}

@@ -1,0 +1,26 @@
+{
+  "label": "Corpus C after optimizations (27,157 docs / 84,562 chunks)",
+  "samples": 100,
+  "errors": 0,
+  "empty_results": 0,
+  "avg_results": 7.5,
+  "search_p50_ms": 1.05,
+  "search_p95_ms": 9.99,
+  "search_p99_ms": 32.07,
+  "search_mean_ms": 2.42,
+  "search_qps": 412.9,
+  "stats_p50_ms": 2.86,
+  "stats_p95_ms": 205.49,
+  "per_query_p50": {
+    "Go 并发": 9.21,
+    "MCP 协议": 0.93,
+    "Windows 路径": 0.66,
+    "docker 部署": 0.75,
+    "单元测试": 0.9,
+    "性能优化": 1.01,
+    "数据库索引": 1.15,
+    "混合检索": 1.13,
+    "知识库": 1.13,
+    "配置管理": 0.89
+  }
+}

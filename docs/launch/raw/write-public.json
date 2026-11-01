@@ -1,0 +1,9 @@
+{
+  "label": "Public edition writes",
+  "samples": 100,
+  "errors": 0,
+  "p50_ms": 0.74,
+  "p95_ms": 1.84,
+  "mean_ms": 1.18,
+  "qps": 849.7
+}

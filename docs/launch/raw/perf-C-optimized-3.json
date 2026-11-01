@@ -1,0 +1,26 @@
+{
+  "label": "slim response",
+  "samples": 100,
+  "errors": 0,
+  "empty_results": 0,
+  "avg_results": 7.5,
+  "search_p50_ms": 0.43,
+  "search_p95_ms": 2.35,
+  "search_p99_ms": 2.8,
+  "search_mean_ms": 0.69,
+  "search_qps": 1440.4,
+  "stats_p50_ms": 2.52,
+  "stats_p95_ms": 22.17,
+  "per_query_p50": {
+    "Go 并发": 2.22,
+    "MCP 协议": 0.39,
+    "Windows 路径": 0.34,
+    "docker 部署": 0.35,
+    "单元测试": 0.38,
+    "性能优化": 0.42,
+    "数据库索引": 0.51,
+    "混合检索": 0.54,
+    "知识库": 0.39,
+    "配置管理": 0.36
+  }
+}

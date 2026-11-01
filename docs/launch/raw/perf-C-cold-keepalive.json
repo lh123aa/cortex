@@ -1,0 +1,26 @@
+{
+  "label": "Corpus C cold (1 round)",
+  "samples": 10,
+  "errors": 0,
+  "empty_results": 0,
+  "avg_results": 7.5,
+  "search_p50_ms": 1.26,
+  "search_p95_ms": 9.76,
+  "search_p99_ms": 9.76,
+  "search_mean_ms": 1.97,
+  "search_qps": 507.6,
+  "stats_p50_ms": 3.15,
+  "stats_p95_ms": 8.43,
+  "per_query_p50": {
+    "Go 并发": 9.76,
+    "MCP 协议": 1.04,
+    "Windows 路径": 0.76,
+    "docker 部署": 0.84,
+    "单元测试": 1.07,
+    "性能优化": 1.26,
+    "数据库索引": 1.37,
+    "混合检索": 1.33,
+    "知识库": 1.31,
+    "配置管理": 0.96
+  }
+}

@@ -4,13 +4,13 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT">
-  <img src="https://img.shields.io/badge/Version-3.5-blue?style=for-the-badge" alt="v3.5">
+  <img src="https://img.shields.io/badge/License-Apache--2.0-blue?style=for-the-badge" alt="Apache-2.0">
+  <img src="https://img.shields.io/badge/Version-4.0-blue?style=for-the-badge" alt="v4.0">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
   <img src="https://img.shields.io/badge/Tests-11_11_packages-green?style=for-the-badge" alt="Tests">
   <img src="https://img.shields.io/badge/Iteration-Complete-7B61FF?style=for-the-badge" alt="Iteration Complete">
   <img src="https://img.shields.io/badge/Bug-0-success?style=for-the-badge" alt="Bug 0">
-  <img src="https://img.shields.io/badge/MCP-8_Tools-7B61FF?style=for-the-badge" alt="MCP 8 Tools">
+  <img src="https://img.shields.io/badge/MCP-14_Tools-7B61FF?style=for-the-badge" alt="MCP 14 Tools">
   <img src="https://img.shields.io/badge/Streamable_HTTP-SSE-7B61FF?style=for-the-badge" alt="SSE">
   <img src="https://img.shields.io/badge/Auto_Register-Trae/Claude/Cursor-7B61FF?style=for-the-badge" alt="Auto Register">
   <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
@@ -180,7 +180,7 @@
 </tr>
 <tr>
   <td>开源协议</td>
-  <td align="center">✅ <strong>MIT</strong><br><sub>商用自由</sub></td>
+  <td align="center">✅ <strong>Apache-2.0</strong><br><sub>企业功能另售</sub></td>
   <td align="center">✅ Apache 2.0</td>
   <td align="center">✅ MIT</td>
   <td align="center">✅ Apache 2.0</td>
@@ -208,6 +208,18 @@
 ---
 
 ## ✨ 更新日志
+
+### 🔐 v4.0.0 商业化地基（2026-10-22）
+
+- ✅ **Web 控制台修复** — `/admin` 不再空白；真实统计、混合检索、记忆、文档列表、健康状态一屏可用
+- ✅ **版本号单一来源** — 新增 `internal/version`，tag / 二进制 / `/admin` / `--version` 同源，CI 注入
+- ✅ **Ed25519 License v1** — `cortex license activate/status/deactivate` 离线验签，Pro/Team/Enterprise 功能位与配额
+- ✅ **配额强制** — Free 档位索引前检查文档/存储上限，`cortex usage` 显示真实档位
+- ✅ **发布流水线** — tag 触发 6 平台构建（linux/darwin/windows × amd64/arm64）+ SHA256SUMS + GitHub Release
+- ✅ **管理面板默认仅本机访问** — 防止未鉴权管理接口暴露公网
+- ✅ **RBAC 角色体系** — `admin/editor/viewer` 三级权限，写接口与密钥管理分级；`cortex user` 用户管理命令
+- ✅ **修复登录 token 立即失效** — `auth_tokens` 外键 CASCADE + `INSERT OR REPLACE` 会在登录时删掉刚签发的 token
+- ✅ **回归测试** — 22 包通过，`go vet` 零警告
 
 ### 🚀 v3.5.3 开箱即用改造 (2026-05-26)
 
@@ -431,7 +443,7 @@ cortex usage                    # 存储用量和套餐信息
 </td>
 <td align="center" width="33%">
 <h3>🔌 MCP 原生</h3>
-<p><sub>8 个 MCP 工具，AI Agent 开箱即用<br><code>cortex_search</code> · <code>cortex_memory_write</code></sub></p>
+<p><sub>14 个 MCP 工具，AI Agent 开箱即用<br><code>cortex_search</code> · <code>cortex_memory_write</code></sub></p>
 </td>
 <td align="center" width="33%">
 <h3>🌐 三模接入</h3>
@@ -485,6 +497,12 @@ cortex usage                    # 存储用量和套餐信息
 | `cortex_memory_delete_batch` | 批量删除记忆 | — | stdio / SSE |
 | `cortex_health` | 健康检测 + 状态统计 | `GET /health` | stdio / SSE |
 | `cortex_suggest` | 预联想搜索建议 | `GET /v1/suggest` | stdio / SSE |
+| `cortex_map` | 知识库数据地图（类型/目录分布） | — | stdio / SSE |
+| `cortex_stats` | 统计与套餐用量 | `GET /v1/stats` | stdio / SSE |
+| `cortex_plan` | 给定问题生成检索计划 | — | stdio / SSE |
+| `cortex_project_context` | 按项目路径收窄上下文 | — | stdio / SSE |
+| `cortex_code_search` | 代码符号检索（返回 file:line + 签名） | — | stdio / SSE |
+| `cortex_memory_batch` | 批量写入记忆（≤50 条/次） | `POST /v1/memory/batch` | stdio / SSE |
 
 > **传输方式**：  
 > - `stdio` — `cortex mcp` / `cortex start`（标准 MCP 客户端如 Claude Code）  
@@ -511,7 +529,7 @@ cortex usage                    # 存储用量和套餐信息
 ├──────────────────────────────────────────────────────────┤
 │               MCP 协议 · REST API · SSE                  │
 │   MCP stdio  │  MCP over SSE (/mcp)  │  15+ REST 端点    │
-│   8 个 MCP 工具  │  Prometheus  │  AI 工具自动注册        │
+│   14 个 MCP 工具 │  Prometheus  │  AI 工具自动注册        │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -537,11 +555,35 @@ cortex usage                    # 存储用量和套餐信息
 | | `/v1/memory/search` | GET | 搜索记忆 |
 | | `/v1/memory/context` | GET | 记忆 RAG 上下文 |
 | | `/v1/memory/:id` | DELETE | 删除记忆 |
-| **认证** | `/auth/register` | POST | 注册用户 |
-| | `/auth/login` | POST | 登录 |
+| **认证** | `/auth/register` | POST | 注册用户（默认 editor） |
+| | `/auth/login` | POST | 登录，返回 Bearer token |
 | | `/auth/logout` | POST | 登出 |
 | **监控** | `/health` | GET | 健康检查 |
 | | `/metrics` | GET | Prometheus 指标（:9090） |
+
+### 🔐 角色与权限（RBAC）
+
+开启认证（`cortex.auth_enabled: true`）后，接口按角色分级：
+
+| 角色 | 读（搜索/文档/统计） | 写（记忆/删除） | 管理（用户/密钥） |
+|---|:---:|:---:|:---:|
+| `viewer` | ✅ | ❌ | ❌ |
+| `editor` | ✅ | ✅ | ❌ |
+| `admin`  | ✅ | ✅ | ✅ |
+
+```bash
+cortex user list                                    # 查看用户与角色
+cortex user add alice --role admin --password '...' # 新建用户
+cortex user set-role bob viewer                     # 调整角色
+cortex user disable carol                           # 禁用（保留数据）
+```
+
+两条安全规则：
+- **不允许降级最后一个管理员**（否则没人能再管理用户/密钥）。
+- 首次启用认证时，若库中已有用户且无管理员，会自动把最早的用户提升为 `admin`。
+
+> 旧版本创建的用户角色是 `"user"`，等价于 `editor`，无需迁移。
+> 认证关闭时（默认，单机本地场景）不做任何角色限制。
 
 ---
 
@@ -639,7 +681,7 @@ go build -ldflags="-s -w" -o cortex ./cmd/cortex   # 纯 Go，无需 CGO
 ./cortex serve
 
 # 运行测试
-go test ./...                     # 15 个包全部通过
+go test ./...                     # 16 个包全部通过
 
 # 一键去重
 ./cortex dedup
@@ -654,34 +696,54 @@ Windows 小白一键脚本（无需 Go 环境）：
 
 ## 📊 性能
 
+### 可复现基准（推荐引用这一组）
+
+以下数字由 [`cmd/cortex-bench`](benchmarks/README.md) 生成，任何人可复现：
+
+```bash
+go run ./cmd/cortex-bench all --docs 1000 --workers 8
+```
+
+| 指标 | 实测值 | 说明 |
+|---|---|---|
+| 索引吞吐 | **328 files/s** | 1,000 文档 / 8 workers（v4.0.1 优化后，此前 116） |
+| 产出分块 | 2,510 | 平均 2.5 块/文档 |
+| 检索 P50 | **< 0.51 ms** | hybrid，缓存关闭；低于 Windows 计时器分辨率（507µs），无法精确测得 |
+| 检索 P95 | **6.23 ms** | 同上 |
+| 检索 P99 | **10.18 ms** | 同上 |
+| 检索吞吐 | **~500 QPS** | 单线程串行查询 |
+| Recall@1 / @5 / @10 | **1.000 / 1.000 / 1.000** | 2000 条唯一答案查询，0 未命中 |
+
+> 完整报告：[benchmarks/results/v4.0.0.md](benchmarks/results/v4.0.0.md) ·
+> 口径与边界（为什么不能与其他产品横比）：[benchmarks/README.md](benchmarks/README.md) ·
+> 优化过程与前后对比：[docs/launch/05-performance-optimization.md](docs/launch/05-performance-optimization.md)
+
+### 其他实测数据
+
 | 指标 | 值 |
-|------|-----|
-| 记忆写入 | < 200ms / 条 |
-| 记忆搜索 P50 | < 50ms（缓存命中 < 1ms） |
-| 记忆搜索 P95 | < 100ms |
-| RAG 上下文 | 精确 Token 裁剪 |
-| 删除操作 | < 50ms / 条 |
-| 缓存命中率 | > 60%（L1+L2 两级） |
-| MinHash 去重 | ~12μs / chunk (102k ops/sec) |
-| 向量去重效果 | 46/689 chunks 移除 (6.7%) |
+|---|---|
 | 启动时间（全部 CLI 命令） | **< 0.5s**（FTS5-only 模式，HNSW 按需异步加载） |
-| FTS5 搜索 P50 | **< 50ms**（20k 分块） |
-| FTS5 搜索 P95 | **< 200ms**（20k 分块） |
+| 真实库回归（27,157 文档 / 84,562 分块） | 冷启动 **0.36s**、检索 P50 **0.43ms** / P95 **2.35ms**、吞吐 **1,440 QPS**、常驻内存 **53MB** |
+| 检索响应体（limit=10） | **5.8 KB**（v4.0.1 前为 1,914 KB） |
 | 中文搜索 | **单字分词，FTS5 精确匹配** |
-| 索引吞吐量（FTS5-only） | **> 1000 files/min**（优化后 **~460 files/s**） |
-| 全量索引（18k 文件） | **~40 秒** |
-| 索引失败率 | **< 5%**（优化后，自动跳过二进制/多媒体） |
+| 索引失败率 | **< 1%**（自动跳过二进制/多媒体；真实 `internal/` 目录 124/125） |
 | 实时进度反馈 | **动态进度条 · 速度/ETA/当前文件** |
 | 中断恢复 | **Checkpoint 自动保存，重启续跑** |
 | 文件监听 | **`cortex watch` · fsnotify 实时增量索引** |
 | 单文件超时保护 | **5 分钟 Embedding 超时** |
 | 配置热加载 | **`cortex serve` 修改配置无需重启** |
 | 自动备份 | **24h 间隔 · 保留最近 10 份** |
-| 内存占用 | ~30 MB / 进程 |
-| 二进制大小 | 34.2 MB (strip 优化) |
-| 测试覆盖率 | 10/10 包通过 · 全部核心逻辑有测试 |
-| MCP 工具 | **8 个**（search/context/memory×4/health/suggest）<br>**双传输**: stdio + SSE (/mcp 端点) |
-| Bug 状态 | 0 · FG 循环验证通过 |
+| 二进制大小 | 37.4 MB（strip + trimpath） |
+| 企业版审计开销 | **+0.17ms/次写操作**（100 次采样实测） |
+| 测试 | 24/24 包通过 · `go vet` 零警告 |
+
+> 完整实测（三组真实语料、写操作、企业版开销、截图）：[docs/launch/](docs/launch/README.md)
+> 竞品对比与宣发口径：[docs/launch/03-comparison.md](docs/launch/03-comparison.md)
+| MCP 工具 | **14 个**（含 map/stats/plan/project_context/code_search/memory_batch）<br>**双传输**: stdio + SSE (/mcp 端点) |
+| 代码符号索引 | Go 走官方解析器（`go/ast`）；Python/JS/TS/Java/Rust 走词法规则法 |
+
+> 说明：早期版本这里是未附复现方式的手工数字（如「FTS5 P50 < 50ms / 20k 分块」），
+> 现已替换为 benchmark harness 的实测值。对比历史版本请用同一 harness 重跑。
 
 ---
 
@@ -691,9 +753,14 @@ Windows 小白一键脚本（无需 Go 环境）：
 - 💡 有好想法？[讨论区](https://github.com/lh123aa/cortex/discussions)
 - ⭐ 项目对你有帮助？点个 Star 支持
 
-## 📄 许可证
+## 📄 许可证与商业授权
 
-**MIT License** — 可自由使用、修改、商业化。
+- **开源许可**：[Apache License 2.0](LICENSE)。可自由使用、修改、分发与商用（含闭源商业产品），只需保留版权与许可声明，见 [NOTICE](NOTICE)。
+- **企业版**：高级能力（审计日志 / SSO / 团队多租户 / 加密 at-rest / HA / ES 兼容读接口）以独立二进制分发，采用商业许可，通过 `pkg/ext` 接缝按 License 中的 `features` 门控 —— 核心代码不含闭源实现。详见 [系统性评估与开源/商业化方案](docs/planning/OPEN_CORE_AND_MONETIZATION_STRATEGY.md)。
+- **定价**：Free ¥0（≤5,000 文档）｜ Pro ¥199/年 ｜ Team ¥899/年（3 席起）｜ Enterprise ¥3 万/年起。
+- **License 激活**：购买后执行 `cortex license activate <key>`，`cortex license status` 查看档位与到期时间；全程离线验签。
+
+> 说明：本仓库历史上曾先后使用 MIT 与 AGPL-3.0 声明，自 2026-10-30 起统一为 **Apache-2.0**（迁移记录见 [docs/planning/LICENSE_MIGRATION.md](docs/planning/LICENSE_MIGRATION.md)）。企业版代码不在本仓库，单独授权。
 
 ---
 
@@ -723,15 +790,15 @@ Windows 小白一键脚本（无需 Go 环境）：
 <p align="center">
   <strong>Cortex 不是「又一个知识库工具」，而是 AI Agent 时代的基础设施。</strong>
   <br>
-  <sub>在 MCP 协议生态快速发展的当下，它解决了一个真实且普遍的需求——给 AI Agent 装上持久记忆。单二进制、零配置、MCP 原生、MIT 开源，任何人都可以自由使用。</sub>
+  <sub>在 MCP 协议生态快速发展的当下，它解决了一个真实且普遍的需求——给 AI Agent 装上持久记忆。单二进制、零配置、MCP 原生、Apache-2.0 开源，企业功能另售。</sub>
 </p>
 
 ---
 
 <p align="center">
-  <strong>🧠 Cortex v3.5 — 让 AI Agent 拥有记忆</strong>
+  <strong>🧠 Cortex v4.0 — 让 AI Agent 拥有记忆</strong>
   <br>
-  <sub>单二进制 · 零配置 · MCP 原生 · 完全本地 · MIT 开源</sub>
+  <sub>单二进制 · 零配置 · MCP 原生 · 完全本地 · Apache-2.0 / 企业版另售</sub>
 </p>
 
 <p align="center">

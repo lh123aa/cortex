@@ -1,0 +1,26 @@
+{
+  "label": "Corpus A: Cortex repo (207 docs / 1.2MB)",
+  "samples": 100,
+  "errors": 0,
+  "empty_results": 10,
+  "avg_results": 8.6,
+  "search_p50_ms": 0.87,
+  "search_p95_ms": 1.43,
+  "search_p99_ms": 3.63,
+  "search_mean_ms": 0.97,
+  "search_qps": 1027.5,
+  "stats_p50_ms": 0.32,
+  "stats_p95_ms": 5.14,
+  "per_query_p50": {
+    "MCP 工具": 0.87,
+    "RBAC 角色": 0.81,
+    "SQLite FTS5": 0.83,
+    "benchmark 召回率": 0.73,
+    "chunk 分块": 1.07,
+    "license 激活": 0.85,
+    "single binary": 0.92,
+    "vector index": 0.98,
+    "审计日志": 0.82,
+    "混合检索 RRF": 1.03
+  }
+}

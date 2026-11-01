@@ -1,0 +1,28 @@
+{
+  "label": "Corpus C cold (unique queries)",
+  "base": "http://127.0.0.1:2094",
+  "queries": 10,
+  "rounds": 1,
+  "samples": 10,
+  "errors": 0,
+  "empty_results": 0,
+  "p50_ms": 11.69,
+  "p95_ms": 22.97,
+  "p99_ms": 22.97,
+  "mean_ms": 9.12,
+  "max_ms": 22.97,
+  "qps": 109.7,
+  "per_query_p50": {
+    "Go 并发": 7.94,
+    "MCP 协议": 22.97,
+    "Windows 路径": 11.69,
+    "docker 部署": 1.59,
+    "单元测试": 12.28,
+    "性能优化": 1.98,
+    "数据库索引": 2.04,
+    "混合检索": 13.58,
+    "知识库": 2.13,
+    "配置管理": 14.97
+  },
+  "avg_results": 7.5
+}

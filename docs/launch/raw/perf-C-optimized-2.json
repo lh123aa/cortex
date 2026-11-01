@@ -1,0 +1,26 @@
+{
+  "label": "final round 2",
+  "samples": 100,
+  "errors": 0,
+  "empty_results": 0,
+  "avg_results": 7.5,
+  "search_p50_ms": 0.73,
+  "search_p95_ms": 5.8,
+  "search_p99_ms": 21.23,
+  "search_mean_ms": 1.99,
+  "search_qps": 503.8,
+  "stats_p50_ms": 7.66,
+  "stats_p95_ms": 19.01,
+  "per_query_p50": {
+    "Go 并发": 5.11,
+    "MCP 协议": 0.7,
+    "Windows 路径": 0.39,
+    "docker 部署": 1.98,
+    "单元测试": 0.59,
+    "性能优化": 0.73,
+    "数据库索引": 0.61,
+    "混合检索": 0.89,
+    "知识库": 0.59,
+    "配置管理": 0.62
+  }
+}
