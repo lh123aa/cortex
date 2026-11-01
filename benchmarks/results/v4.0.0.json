@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-10-23T12:16:59Z",
+  "stage": "all",
+  "config": {
+    "corpus_dir": "_temp\\bench\\corpus",
+    "db_path": "_temp\\bench\\bench.db",
+    "documents": 1000,
+    "seed": 20261023,
+    "workers": 8,
+    "queries_per_doc": 3,
+    "top_k": 10,
+    "repeat": 3
+  },
+  "corpus": {
+    "documents": 1000,
+    "total_chars": 2632885,
+    "generated": true
+  },
+  "index": {
+    "files": 1000,
+    "indexed": 1000,
+    "failed": 0,
+    "skipped": 0,
+    "duration_ns": 8620636800,
+    "files_per_s": 116.00071122356066,
+    "chunks": 2512
+  },
+  "search": {
+    "queries": 3000,
+    "samples": 9000,
+    "p50_ms": 2,
+    "p95_ms": 3.219,
+    "p99_ms": 4.001,
+    "mean_ms": 2.065,
+    "qps": 484.1906897877405
+  },
+  "quality": {
+    "queries": 2000,
+    "recall_at_1": 1,
+    "recall_at_5": 1,
+    "recall_at_10": 1,
+    "mrr": 1,
+    "misses": 0
+  },
+  "ambiguous": {
+    "queries": 1000,
+    "containment_at_10": 0.765,
+    "mrr": 0.3368361111111101,
+    "random_baseline_mrr": 0.45666666666666667
+  }
+}
