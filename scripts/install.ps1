@@ -96,7 +96,24 @@ function Build-FromSource {
 
   Push-Location $RepoRoot
   try {
-    $build = go build -trimpath -ldflags="-s -w" -o $out .\cmd\cortex 2>&1
+    # 注入版本号，否则源码构建装出来是 "cortex version dev"，
+    # 用户会以为装坏了（CI 构建一直有注入，这里曾经漏掉）。
+    $verPkg = "github.com/lh123aa/cortex/internal/version"
+    $ldflags = "-s -w"
+    $hasGit = $false
+    if (Get-Command git -ErrorAction SilentlyContinue) { $hasGit = $true }
+    if ($hasGit -and (Test-Path (Join-Path $RepoRoot ".git"))) {
+      # 优先用 git describe 得到真实版本（version.go 里的值是未注入时的 "dev" 默认值）
+      $srcVersion = (git -C $RepoRoot describe --tags --abbrev=0 2>$null)
+      if (-not $srcVersion) { $srcVersion = "" }
+      $commit = (git -C $RepoRoot rev-parse --short HEAD 2>$null)
+      $buildDate = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+      $ldflags = "-s -w"
+      if ($srcVersion) { $ldflags += " -X $verPkg.Version=$srcVersion" }
+      if ($commit) { $ldflags += " -X $verPkg.Commit=$commit" }
+      $ldflags += " -X $verPkg.Date=$buildDate"
+    }
+    $build = go build -trimpath -ldflags="$ldflags" -o $out .\cmd\cortex 2>&1
     if ($LASTEXITCODE -ne 0) {
       Write-Host "  ❌ Build failed: $build" -ForegroundColor Red
       return $null
@@ -216,7 +233,25 @@ Write-Host "  [2/2] Running cortex install..." -ForegroundColor Yellow
 Write-Host ""
 
 $resolvedDir = if ($DocDir -eq ".") { (Get-Location).Path } else { $DocDir }
-& $exe install $resolvedDir
+# cortex install 会把 zap 日志写到 stderr。PowerShell 把原生命令的 stderr
+# 当成错误流，即使命令成功也会让脚本以 exit 1 结束（用户看到「安装失败」）。
+# 用 Start-Process 显式重定向两个流，才能真正拿到退出码。
+$logOut = Join-Path ([System.IO.Path]::GetTempPath()) ("cortex-install-" + [Guid]::NewGuid().ToString("N") + ".log")
+$proc = Start-Process -FilePath $exe -ArgumentList @("install", "`"$resolvedDir`"") `
+  -NoNewWindow -Wait -PassThru -RedirectStandardOutput $logOut `
+  -RedirectStandardError "$logOut.err"
+if (Test-Path $logOut) {
+  Get-Content $logOut | Where-Object { $_ -notmatch '"level":"(debug|info)"' } | ForEach-Object { Write-Host "  $_" }
+}
+if ($proc.ExitCode -ne 0) {
+  Write-Host "  ⚠️  cortex install exited with code $($proc.ExitCode)" -ForegroundColor Yellow
+  if (Test-Path "$logOut.err") {
+    Get-Content "$logOut.err" | Where-Object { $_ -notmatch '"level":"(debug|info)"' } |
+      Select-Object -First 5 | ForEach-Object { Write-Host "     $_" -ForegroundColor DarkYellow }
+  }
+  Write-Host "     (binary is installed; run 'cortex install' manually to inspect)" -ForegroundColor DarkYellow
+}
+Remove-Item $logOut, "$logOut.err" -Force -ErrorAction SilentlyContinue
 
 Write-Host ""
 Write-Host "  🎉  Cortex is ready!" -ForegroundColor Cyan

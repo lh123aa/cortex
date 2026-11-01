@@ -105,15 +105,27 @@ func (s *SQLiteStorage) SaveDocumentBundle(b *DocumentBundle) error {
 		if _, err := tx.Exec(`DELETE FROM symbols WHERE document_id = ?`, doc.ID); err != nil {
 			return err
 		}
+		// 列名必须与 symbolsSchema 一致：path / language（不是 file_path）。
+		// 早期这里写成 file_path，导致「所有 .go 文件索引失败」：
+		// SQL logic error: table symbols has no column named file_path
 		stmtSym, err := tx.Prepare(`
-			INSERT INTO symbols (document_id, name, kind, line, file_path, signature)
-			VALUES (?, ?, ?, ?, ?, ?)`)
+			INSERT INTO symbols (document_id, path, name, kind, line, signature, language)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`)
 		if err != nil {
 			return err
 		}
 		defer stmtSym.Close()
 		for _, sym := range b.Symbols {
-			if _, err := stmtSym.Exec(doc.ID, sym.Name, sym.Kind, sym.Line, doc.Path, sym.Signature); err != nil {
+			lang := sym.Language
+			if lang == "" {
+				lang = symbols.LanguageOf(doc.Path)
+			}
+			symPath := sym.Path
+			if symPath == "" {
+				symPath = doc.Path
+			}
+			if _, err := stmtSym.Exec(doc.ID, symPath, sym.Name, string(sym.Kind),
+				sym.Line, sym.Signature, lang); err != nil {
 				return err
 			}
 		}

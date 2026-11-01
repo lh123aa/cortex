@@ -338,6 +338,21 @@ func runSearch(cmd *cobra.Command, args []string) {
 		fmt.Println()
 	}
 
+	// 结果里优先用文件路径：DocumentID 是内部哈希，用户看不懂也点不开。
+	// 检索层已带出 FilePath；缺失时才回查一次文档。
+	pathOf := func(r *models.SearchResult, userID string) string {
+		if r == nil || r.Chunk == nil {
+			return ""
+		}
+		if r.FilePath != "" {
+			return r.FilePath
+		}
+		if doc, _ := st.GetDocumentByID(r.Chunk.DocumentID, userID); doc != nil && doc.Path != "" {
+			return doc.Path
+		}
+		return r.Chunk.DocumentID
+	}
+
 	if jsonOutput {
 		type jsonResult struct {
 			Rank    int     `json:"rank"`
@@ -352,7 +367,7 @@ func runSearch(cmd *cobra.Command, args []string) {
 			jr = append(jr, jsonResult{
 				Rank:    i + 1,
 				Score:   r.Score,
-				Path:    r.Chunk.DocumentID,
+				Path:    pathOf(r, ""),
 				Section: r.Chunk.HeadingPath,
 				Content: content,
 			})
@@ -370,7 +385,7 @@ func runSearch(cmd *cobra.Command, args []string) {
 
 	for i, r := range results {
 		fmt.Printf("%d. [Score: %.4f] %s\n", i+1, r.Score, r.Chunk.HeadingPath)
-		fmt.Printf("   %s\n", r.Chunk.DocumentID)
+		fmt.Printf("   %s\n", pathOf(r, ""))
 		content := snippet.Build(r.Chunk.DisplayText(), query, snippet.Options{Width: 300})
 		content = highlightText(content, query)
 		fmt.Printf("   %s\n\n", content)

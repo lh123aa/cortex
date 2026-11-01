@@ -199,7 +199,24 @@ compile_from_source() {
         exit 1
     fi
 
-    go build -trimpath -ldflags="-s -w" -o "${TMP_DIR}/${BINARY_NAME}" ./cmd/cortex
+    # 注入版本号：不注入的话源码编译装出来是 "cortex version dev"，
+    # 用户会以为装坏了（CI 构建一直有注入，这里曾经漏掉）。
+    local ver_pkg="github.com/lh123aa/cortex/internal/version"
+    local ldflags="-s -w"
+    if command -v git > /dev/null 2>&1 && [ -d ".git" ]; then
+        # 优先用 git describe 得到真实版本（version.go 里是未注入时的 "dev" 默认值）
+        local src_version
+        src_version=$(git describe --tags --abbrev=0 2>/dev/null || true)
+        local commit
+        commit=$(git rev-parse --short HEAD 2>/dev/null || true)
+        local build_date
+        build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        [ -n "$src_version" ] && ldflags="${ldflags} -X ${ver_pkg}.Version=${src_version}"
+        [ -n "$commit" ] && ldflags="${ldflags} -X ${ver_pkg}.Commit=${commit}"
+        ldflags="${ldflags} -X ${ver_pkg}.Date=${build_date}"
+    fi
+
+    go build -trimpath -ldflags="${ldflags}" -o "${TMP_DIR}/${BINARY_NAME}" ./cmd/cortex
     INSTALLED_PATH="${TMP_DIR}/${BINARY_NAME}"
     install_binary "${TMP_DIR}/${BINARY_NAME}"
 }
