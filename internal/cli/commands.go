@@ -20,10 +20,12 @@ func init() {
 	RootCmd.AddCommand(NewDedupCmd())
 	RootCmd.AddCommand(NewWatchCmd())
 	RootCmd.AddCommand(NewUsageCmd())
+	RootCmd.AddCommand(NewLicenseCmd())
 	RootCmd.AddCommand(NewVersionCmd())
 	RootCmd.AddCommand(NewSetupCmd())
 	RootCmd.AddCommand(NewInstallCmd())
 	RootCmd.AddCommand(NewStartCmd())
+	RootCmd.AddCommand(NewUserCmd())
 }
 
 func SetupRootHelp() {

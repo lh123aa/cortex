@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // UserTier 用户套餐等级
 type UserTier string
@@ -37,25 +40,76 @@ func (t UserTier) IsValid() bool {
 
 // User 用户模型
 type User struct {
-	ID               string    `json:"id"`
-	Username         string    `json:"username"`
-	PasswordHash     string    `json:"-"`    // 不返回给客户端
-	Role             string    `json:"role"` // admin/user
-	Tier             string    `json:"tier"`             // free | pro | enterprise
-	StorageUsedBytes int64     `json:"storage_used_bytes"` // 当前存储用量
-	StorageLimitBytes int64    `json:"storage_limit_bytes"` // 存储上限
-	LicenseKey       string    `json:"license_key,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	LastLoginAt      time.Time `json:"last_login_at,omitempty"`
-	IsActive         bool      `json:"is_active"`
+	ID                string    `json:"id"`
+	Username          string    `json:"username"`
+	PasswordHash      string    `json:"-"`                   // 不返回给客户端
+	Role              string    `json:"role"`                // admin/user
+	Tier              string    `json:"tier"`                // free | pro | enterprise
+	StorageUsedBytes  int64     `json:"storage_used_bytes"`  // 当前存储用量
+	StorageLimitBytes int64     `json:"storage_limit_bytes"` // 存储上限
+	LicenseKey        string    `json:"license_key,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+	LastLoginAt       time.Time `json:"last_login_at,omitempty"`
+	IsActive          bool      `json:"is_active"`
 }
 
 // UserRole 用户角色常量
 const (
-	RoleAdmin = "admin"
-	RoleUser  = "user"
+	RoleAdmin  = "admin"
+	RoleEditor = "editor"
+	RoleViewer = "viewer"
+	// RoleUser 是 v3.x 的历史取值，等价于 editor；
+	// 旧库里的 "user" 会被 NormalizeRole 归一化为 editor，不破坏既有部署。
+	RoleUser = "user"
 )
+
+// NormalizeRole 把任意角色字符串归一化为标准角色。
+// 空值、"user" 统一按 editor 处理（保持旧版本可写的行为）；
+// 未知值按最小权限（viewer）处理，避免拼写错误导致越权。
+func NormalizeRole(role string) string {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case RoleAdmin:
+		return RoleAdmin
+	case RoleViewer:
+		return RoleViewer
+	case RoleEditor, RoleUser, "":
+		return RoleEditor
+	default:
+		return RoleViewer
+	}
+}
+
+// IsValidRole 判断角色字符串是否受支持（含历史值 "user"）。
+func IsValidRole(role string) bool {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case RoleAdmin, RoleEditor, RoleViewer, RoleUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// RoleRank 返回角色等级：viewer=1, editor=2, admin=3。
+func RoleRank(role string) int {
+	switch NormalizeRole(role) {
+	case RoleAdmin:
+		return 3
+	case RoleEditor:
+		return 2
+	default:
+		return 1
+	}
+}
+
+// CanRead 是否可读。所有已登录角色都可读。
+func CanRead(role string) bool { return RoleRank(role) >= 1 }
+
+// CanWrite 是否可写（索引、写记忆、删除条目）。
+func CanWrite(role string) bool { return RoleRank(role) >= 2 }
+
+// CanAdmin 是否可做管理操作（用户/密钥管理）。
+func CanAdmin(role string) bool { return RoleRank(role) >= 3 }
 
 // APIKey API Key 模型
 type APIKey struct {

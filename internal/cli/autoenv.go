@@ -75,14 +75,29 @@ func registerAITools(skipTools []string) []string {
 func registerTool(configPath, toolName string) error {
 	existing := make(map[string]interface{})
 
-	if data, err := os.ReadFile(configPath); err == nil && len(data) > 0 {
-		json.Unmarshal(data, &existing)
+	var originalData []byte
+	if data, err := os.ReadFile(configPath); err == nil {
+		originalData = data
+		if len(data) > 0 {
+			cleaned := stripBOM(data)
+			if err := json.Unmarshal(cleaned, &existing); err != nil {
+				// 关键安全行为：解析失败时绝不覆盖用户原文件。
+				// 早期实现忽略了这个错误，导致「带 BOM 的配置」或格式不规范的配置
+				// 被当成空对象，随后写回时把用户已有的其它 MCP server 全部抹掉。
+				return fmt.Errorf("refusing to overwrite %s: existing config is not valid JSON (%w)", configPath, err)
+			}
+		}
 	}
 
+	// 备份：每次写入前保存上一版（保留 .bak.1 这种滚动备份，避免第二次注册覆盖掉原始备份）。
 	backupPath := configPath + ".bak"
-	if data, err := os.ReadFile(configPath); err == nil {
-		if _, err := os.Stat(backupPath); os.IsNotExist(err) {
-			os.WriteFile(backupPath, data, 0644)
+	if len(originalData) > 0 {
+		if _, err := os.Stat(backupPath); err == nil {
+			// 已有备份则滚动，防止用户真正的原始配置被覆盖
+			_ = os.Rename(backupPath, backupPath+".1")
+		}
+		if err := os.WriteFile(backupPath, originalData, 0644); err != nil {
+			return fmt.Errorf("failed to back up config for %s: %w", toolName, err)
 		}
 	}
 
@@ -103,12 +118,23 @@ func registerTool(configPath, toolName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal config for %s: %w", toolName, err)
 	}
+	data = append(data, '\n')
 
 	if err := os.WriteFile(configPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config for %s: %w", toolName, err)
 	}
 
 	return nil
+}
+
+// stripBOM 去掉 UTF-8 BOM。
+// Windows 上 PowerShell 5 的 `Set-Content -Encoding UTF8`、记事本等工具默认会写 BOM，
+// 而 encoding/json 不接受 BOM 开头的输入 —— 这是「用户配置被清空」的真实触发路径。
+func stripBOM(data []byte) []byte {
+	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
+		return data[3:]
+	}
+	return data
 }
 
 func registerTrae() []string {

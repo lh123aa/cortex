@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // Document 代表一个被索引的文档 (支持原始 Markdown, PDF 等)
 type Document struct {
@@ -23,10 +26,10 @@ type Chunk struct {
 	UserID         string    `json:"user_id"` // 所有者用户 ID
 	DocumentID     string    `json:"document_id"`
 	ContentHash    string    `json:"content_hash,omitempty"` // sha256 内容哈希，用于去重
-	HeadingPath    string    `json:"heading_path"`  // 例如: "基础知识 > Go语言 > 并发"
-	HeadingLevel   int       `json:"heading_level"` // 0-6
-	Content        string    `json:"content"`       // 带"Section: H1 > H2\n\n"前缀用于注入的上下文
-	ContentRaw     string    `json:"content_raw"`   // 原始内容
+	HeadingPath    string    `json:"heading_path"`           // 例如: "基础知识 > Go语言 > 并发"
+	HeadingLevel   int       `json:"heading_level"`          // 0-6
+	Content        string    `json:"content"`                // 带"Section: H1 > H2\n\n"前缀用于注入的上下文
+	ContentRaw     string    `json:"content_raw"`            // 原始内容
 	LineStart      int       `json:"line_start"`
 	LineEnd        int       `json:"line_end"`
 	CharStart      int       `json:"char_start"`
@@ -53,10 +56,10 @@ type SearchOptions struct {
 // SearchResult 表示一条召回的结构
 type SearchResult struct {
 	Chunk       *Chunk      `json:"chunk"`
-	Score       float64     `json:"score"`        // 0-1标准化分数
-	VectorScore float64     `json:"vector_score"` // 向量相似度
-	FTSScore    float64     `json:"fts_score"`    // BM25分数
-	Rank        int         `json:"rank"`         // 排名
+	Score       float64     `json:"score"`               // 0-1标准化分数
+	VectorScore float64     `json:"vector_score"`        // 向量相似度
+	FTSScore    float64     `json:"fts_score"`           // BM25分数
+	Rank        int         `json:"rank"`                // 排名
 	FilePath    string      `json:"file_path,omitempty"` // 源文件路径（用于文件类型权重）
 	Highlights  []Highlight `json:"highlights,omitempty"`
 }
@@ -65,6 +68,47 @@ type Highlight struct {
 	Text  string `json:"text"`
 	Start int    `json:"start"`
 	End   int    `json:"end"`
+}
+
+// DisplayText 返回适合展示给用户/模型的正文。
+//
+// 字段语义：
+//   - Content    原文（可能带 "File: ... | section" 或 "Section: ..." 前缀，用于 RAG 上下文）
+//   - ContentRaw 供 FTS5 检索的分词版本（中文会被拆成 "激 活" 这种单字词项）
+//
+// 展示时必须用原文。早期 CLI/REST/MCP 多处误用 ContentRaw，导致用户看到的是
+// 「Go 标 准 库」这种被分词过的文本，既难读也污染了模型上下文。
+func (c *Chunk) DisplayText() string {
+	if c == nil {
+		return ""
+	}
+	if v := strings.TrimSpace(c.Content); v != "" {
+		return stripChunkBreadcrumb(v)
+	}
+	return strings.TrimSpace(c.ContentRaw)
+}
+
+// stripChunkBreadcrumb 去掉纯展示用的定位前缀行（"File: ... | section" / "Section: ..."）。
+// 正文本身保留，避免把路径噪声塞进搜索结果里。
+func stripChunkBreadcrumb(s string) string {
+	for {
+		idx := strings.Index(s, "\n\n")
+		if idx < 0 || idx > 300 {
+			return s
+		}
+		head := strings.TrimSpace(s[:idx])
+		if head == "" {
+			return s
+		}
+		lower := strings.ToLower(head)
+		if strings.HasPrefix(lower, "file:") ||
+			strings.HasPrefix(lower, "section:") ||
+			strings.HasPrefix(lower, "path:") {
+			s = s[idx+2:]
+			continue
+		}
+		return s
+	}
 }
 
 // FilterOptions 搜索过滤选项
@@ -144,8 +188,8 @@ type IndexProgressEvent struct {
 	Skipped     int           `json:"skipped"`
 	Failed      int           `json:"failed"`
 	CurrentFile string        `json:"current_file"`
-	Speed       float64       `json:"speed"`        // files/sec
+	Speed       float64       `json:"speed"` // files/sec
 	Elapsed     time.Duration `json:"elapsed_ms"`
-	ETA         time.Duration `json:"eta_ms"`       // 预计剩余时间
-	Done        bool          `json:"done"`         // 是否已完成
+	ETA         time.Duration `json:"eta_ms"` // 预计剩余时间
+	Done        bool          `json:"done"`   // 是否已完成
 }

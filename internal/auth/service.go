@@ -28,6 +28,10 @@ var (
 	ErrAPIKeyInvalid     = errors.New("invalid api key")
 	ErrAPIKeyExpired     = errors.New("api key expired")
 	ErrInsufficientPerms = errors.New("insufficient permissions")
+	// ErrInvalidRole 角色取值非法
+	ErrInvalidRole = errors.New("invalid role")
+	// ErrLastAdmin 不允许降级最后一个管理员（会把自己锁在门外）
+	ErrLastAdmin = errors.New("cannot demote the last admin")
 )
 
 // AuthService 认证服务
@@ -129,7 +133,7 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.User, error
 		ID:                generateID(),
 		Username:          req.Username,
 		PasswordHash:      string(hash),
-		Role:              models.RoleUser,
+		Role:              models.RoleEditor,
 		Tier:              string(models.TierFree),
 		StorageLimitBytes: models.TierFree.StorageLimit(),
 		CreatedAt:         time.Now(),
@@ -353,6 +357,107 @@ func (s *AuthService) DeactivateUser(userID string) error {
 func (s *AuthService) CleanupExpiredTokens() error {
 	_, err := s.storage.DeleteExpiredTokens()
 	return err
+}
+
+// ActivateUser 重新启用用户
+func (s *AuthService) ActivateUser(userID string) error {
+	user, err := s.storage.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return ErrUserNotFound
+	}
+	user.IsActive = true
+	user.UpdatedAt = time.Now()
+	return s.storage.SaveUser(user)
+}
+
+// SetUserRole 修改用户角色（admin / editor / viewer）。
+// role 会先经过 NormalizeRole，因此传历史值 "user" 等价于 editor。
+func (s *AuthService) SetUserRole(username, role string) (*models.User, error) {
+	if !models.IsValidRole(role) {
+		return nil, fmt.Errorf("%w: %q", ErrInvalidRole, role)
+	}
+	user, err := s.storage.GetUserByUsername(username)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+
+	normalized := models.NormalizeRole(role)
+	// 安全护栏：不允许把最后一个管理员降级，否则会把自己锁在门外。
+	if models.NormalizeRole(user.Role) == models.RoleAdmin && normalized != models.RoleAdmin {
+		if count, err := s.adminCount(); err == nil && count <= 1 {
+			return nil, ErrLastAdmin
+		}
+	}
+
+	user.Role = normalized
+	user.UpdatedAt = time.Now()
+	if err := s.storage.SaveUser(user); err != nil {
+		return nil, fmt.Errorf("failed to save user: %w", err)
+	}
+	return user, nil
+}
+
+// CreateUserWithRole 创建指定角色的用户（管理员用）。
+func (s *AuthService) CreateUserWithRole(username, password, role string) (*models.User, error) {
+	if !models.IsValidRole(role) {
+		return nil, fmt.Errorf("%w: %q", ErrInvalidRole, role)
+	}
+	user, err := s.Register(&models.RegisterRequest{Username: username, Password: password})
+	if err != nil {
+		return nil, err
+	}
+	if models.NormalizeRole(role) != models.RoleEditor {
+		return s.SetUserRole(username, role)
+	}
+	return user, nil
+}
+
+// EnsureBootstrapAdmin 首次启用认证时，把第一个用户提升为 admin。
+//
+// 背景：v3.x 的注册接口只会创建普通用户，启用 auth 后没有任何人能管理用户/密钥。
+// 这里在服务启动时做一次幂等修复：如果系统里没有任何 admin 且已有用户，
+// 就把最早的用户提升为 admin。
+func (s *AuthService) EnsureBootstrapAdmin() (*models.User, error) {
+	users, err := s.storage.ListUsers(10, 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, u := range users {
+		if models.NormalizeRole(u.Role) == models.RoleAdmin {
+			return nil, nil // 已有管理员
+		}
+	}
+	if len(users) == 0 {
+		return nil, nil // 还没有用户，等第一个注册的人（其角色为 editor，可再手动提升）
+	}
+	u := users[0]
+	u.Role = models.RoleAdmin
+	u.UpdatedAt = time.Now()
+	if err := s.storage.SaveUser(u); err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
+// adminCount 统计当前活跃的 admin 数量。
+func (s *AuthService) adminCount() (int, error) {
+	users, err := s.storage.ListUsers(1000, 0)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, u := range users {
+		if models.NormalizeRole(u.Role) == models.RoleAdmin && u.IsActive {
+			n++
+		}
+	}
+	return n, nil
 }
 
 // ==================== 辅助函数 ====================

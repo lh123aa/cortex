@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/lh123aa/cortex/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -28,6 +29,8 @@ var RootCmd = &cobra.Command{
 	Long: `Cortex is a local knowledge base system for AI Agents.
 It supports hybrid search (vector + BM25), multiple file formats,
 and MCP protocol for AI Agent integration.`,
+	// 设置 Version 后 cobra 自动提供 --version 标志，输出 "cortex version <Full()>"。
+	Version: version.Full(),
 }
 
 func Execute() {

@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/lh123aa/cortex/internal/api"
+	"github.com/lh123aa/cortex/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ func NewVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print version information",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("Cortex v%s (commit: %s, built: %s)\n", api.Version, api.Commit, api.Date)
+			fmt.Printf("Cortex %s\n", version.Full())
 		},
 	}
 }
