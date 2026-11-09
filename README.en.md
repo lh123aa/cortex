@@ -5,10 +5,10 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go" alt="Go">
   <img src="https://img.shields.io/badge/License-Apache--2.0-blue?style=for-the-badge" alt="Apache-2.0">
-  <img src="https://img.shields.io/badge/Version-3.5-blue?style=for-the-badge" alt="v3.5">
+  <img src="https://img.shields.io/badge/Version-4.0.1-blue?style=for-the-badge" alt="v4.0.1">
   <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex?style=for-the-badge" alt="Go Report Card">
-  <img src="https://img.shields.io/badge/Tests-10_10_packages-green?style=for-the-badge" alt="Tests">
-  <img src="https://img.shields.io/badge/MCP-8_Tools-7B61FF?style=for-the-badge" alt="MCP 8 Tools">
+  <img src="https://img.shields.io/badge/Tests-24_24_packages-green?style=for-the-badge" alt="Tests">
+  <img src="https://img.shields.io/badge/MCP-14_Tools-7B61FF?style=for-the-badge" alt="MCP 14 Tools">
   <img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=for-the-badge&logo=github" alt="Build">
   <img src="https://img.shields.io/github/stars/lh123aa/cortex?style=for-the-badge&logo=github" alt="Stars">
 </p>
@@ -33,6 +33,12 @@
   </a>
   <br>
   <sub>⬆️ Click to view the full landing page (Xiaomi/Mimo style)</sub>
+</p>
+
+<p align="center">
+  <img src="docs/assets/img/screenshot-search.png" width="860" alt="cortex search — real terminal output, 75ms">
+  <br>
+  <sub>Real output: 29 documents / 421 chunks, <b>75ms</b> retrieval with pure FTS5 BM25 — no vector DB required</sub>
 </p>
 
 <p align="center">
@@ -101,7 +107,7 @@
 </tr>
 <tr>
   <td>MCP Tools</td>
-  <td align="center">🔧 <strong>8 tools</strong><br><sub>search/context/memory/suggest</sub></td>
+  <td align="center">🔧 <strong>14 tools</strong><br><sub>search/context/memory/map/plan/code</sub></td>
   <td align="center">🔧 1-2</td>
   <td align="center">🔧 1</td>
   <td align="center">—</td>
@@ -299,7 +305,7 @@ cortex search "How to implement Go concurrency"
 </td>
 <td align="center" width="33%">
 <h3>🔌 MCP Native</h3>
-<p><sub>8 MCP tools for AI Agents<br><code>cortex_search</code> · <code>cortex_memory_write</code></sub></p>
+<p><sub>14 MCP tools for AI Agents<br><code>cortex_search</code> · <code>cortex_memory_write</code></sub></p>
 </td>
 <td align="center" width="33%">
 <h3>🧠 Memory System</h3>
@@ -356,7 +362,7 @@ cortex search "How to implement Go concurrency"
 │   Documents │  Chunks  │  Vectors  │  Cache  │  Users    │
 ├──────────────────────────────────────────────────────────┤
 │              MCP Protocol · REST API                      │
-│     8 MCP Tools  │  15+ REST Endpoints  │  Prometheus     │
+│    14 MCP Tools  │  15+ REST Endpoints  │  Prometheus     │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -504,7 +510,7 @@ Windows one-click script (no Go required):
 ---
 
 <p align="center">
-  <strong>🧠 Cortex v3.5 — Give AI Agents a Memory</strong>
+  <strong>🧠 Cortex v4.0.1 — Give AI Agents a Memory</strong>
   <br>
   <sub>Single Binary · Zero Config · MCP Native · 100% Local · Apache-2.0</sub>
 </p>

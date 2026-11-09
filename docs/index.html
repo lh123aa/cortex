@@ -359,6 +359,7 @@ footer .links a:hover{color:var(--fg)}
       <a href="#demo">演示</a>
       <a href="#tools">MCP 工具</a>
       <a href="#comparison">对比</a>
+      <a href="#services">服务</a>
       <a href="https://github.com/lh123aa/cortex" class="nav-cta" target="_blank">GitHub ⭐</a>
     </div>
   </div>
@@ -397,7 +398,7 @@ footer .links a:hover{color:var(--fg)}
         <div class="line"><span class="prompt">$</span><span class="cmd">chmod +x cortex && ./cortex index ~/my-docs</span></div>
         <div class="out success">✅ 索引完成: 42 文件 · 1,247 分块 · 12.3s</div>
         <div class="line"><span class="prompt">$</span><span class="cmd">./cortex mcp</span></div>
-        <div class="out">🧠 MCP 服务器已启动 · 5 个工具就绪<span class="term-cursor"></span></div>
+        <div class="out">🧠 MCP 服务器已启动 · 14 个工具就绪<span class="term-cursor"></span></div>
       </div>
     </div>
   </div>
@@ -667,6 +668,40 @@ footer .links a:hover{color:var(--fg)}
   </div>
 </section>
 
+<!-- ====== SERVICES ====== -->
+<section id="services" class="reveal">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="eyebrow">服务与支持</div>
+      <h2>开源版永久免费，服务按项目收费</h2>
+      <p>Cortex 现有全部功能以 Apache-2.0 免费商用。如果你希望有人帮你把它在内网真正跑起来，我们提供实施服务。</p>
+    </div>
+    <div class="uc-grid stagger">
+      <div class="uc-card">
+        <div class="uc-emoji">🆓</div>
+        <h4>开源版 · 免费</h4>
+        <p>单二进制下载即用：本地知识库 + 混合检索 + 14 个 MCP 工具，上限 5,000 篇 / 1 GB。</p>
+      </div>
+      <div class="uc-card">
+        <div class="uc-emoji">🚀</div>
+        <h4>远程部署支持 · ¥500 起</h4>
+        <p>2 小时远程协助：装好环境、建首批索引、接进 Claude Code / Cursor，当天可用。</p>
+      </div>
+      <div class="uc-card">
+        <div class="uc-emoji">🏢</div>
+        <h4>私有化交付 · ¥3,000 起</h4>
+        <p>内网部署 + 语料接入 + 中文检索调优 + 验收 + 30 天答疑。适合数据不能出内网的团队。</p>
+      </div>
+    </div>
+    <p style="text-align:center;margin-top:30px">
+      <a class="btn btn-primary" href="https://github.com/lh123aa/cortex/issues/new?template=deployment_inquiry.md" target="_blank">提部署需求 / 询价 →</a>
+    </p>
+    <p style="text-align:center;margin-top:14px;font-size:13px;opacity:.65">
+      Pro 版尚未发布，也尚未定价 —— 我们不会为还没做出来的功能收钱。
+    </p>
+  </div>
+</section>
+
 <!-- ====== CTA ====== -->
 <section class="cta-section reveal">
   <div class="cta-inner">
@@ -680,9 +715,9 @@ footer .links a:hover{color:var(--fg)}
       <a class="btn btn-outline" onclick="document.querySelector('.hero-terminal').scrollIntoView({behavior:'smooth'})">查看快速上手</a>
     </div>
     <div class="cta-badges">
-      <img src="https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go" alt="Go">
+      <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go" alt="Go">
       <img src="https://img.shields.io/badge/License-Apache--2.0-blue" alt="Apache-2.0">
-      <img src="https://img.shields.io/badge/Tests-114_passing-brightgreen" alt="Tests">
+      <img src="https://img.shields.io/badge/Tests-24_24_packages-brightgreen" alt="Tests">
       <img src="https://goreportcard.com/badge/github.com/lh123aa/cortex" alt="Go Report Card">
       <img src="https://img.shields.io/github/stars/lh123aa/cortex" alt="Stars">
     </div>
@@ -697,9 +732,10 @@ footer .links a:hover{color:var(--fg)}
     <a href="https://github.com/lh123aa/cortex/issues" target="_blank">Issues</a>
     <a href="https://github.com/lh123aa/cortex/discussions" target="_blank">Discussions</a>
     <a href="README.md">文档</a>
+    <a href="#services">服务</a>
   </div>
   <p>Apache-2.0 · 开源免费 · 商用自由</p>
-  <p style="margin-top:4px">🧠 Cortex v2.2 — 让 AI Agent 拥有记忆</p>
+  <p style="margin-top:4px">🧠 Cortex v4.0.1 — 让 AI Agent 拥有记忆</p>
 </footer>
 
 <!-- ====== SCROLL REVEAL ====== -->

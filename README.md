@@ -27,6 +27,12 @@
   <a href="README.en.md">English</a>
 </p>
 
+<p align="center">
+  <img src="docs/assets/img/screenshot-search.png" width="860" alt="cortex search 实测输出：MCP 配置检索 75ms">
+  <br>
+  <sub>真实终端输出：29 篇文档 / 421 分块，检索 <b>75ms</b>（纯 FTS5 BM25，不装向量库也能用）</sub>
+</p>
+
 ---
 
 ## 🎬 30 秒看到效果
