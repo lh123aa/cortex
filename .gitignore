@@ -76,3 +76,25 @@ tmp/
 
 # 内部规划文档（本地）
 PRD_*.md
+
+# ---- 内部商业资料：绝对不要 push ----
+# 变现策略 / 诊断 / 竞品分析 / 销售基建 / GTM 草稿。
+# 其中 SALES_RUNBOOK.md 记录了签名私钥的位置与备份 SOP，
+# DIAGNOSIS.md 记录了付费墙现状（等于给攻击者路线图）。
+# 这些只能留在本机，仓库里不放。
+docs/monetization/
+COMMERCIAL_PLAN.md
+docs/private/
+
+# 过程跟踪与 AI 记忆（含真实数字、失败记录、内部判断）
+project-journal/
+.memsearch/
+AGENTS.md
+.memsearch.tmp/
+
+# 探针/临时垃圾
+.dsh-probe.tmp
+/undefined/
+
+# 私钥运维脚本：写明了签名私钥的实际路径与"当前无备份"，只留本机
+scripts/backup-signing-key.sh

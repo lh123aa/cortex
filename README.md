@@ -412,20 +412,41 @@ cortex setup    # 交互式配置向导
 
 ## 🔐 开源与商业
 
-| | 开源版 | 企业版 |
-|---|---|---|
-| 许可 | **Apache-2.0** | 商业许可 |
-| 核心功能 | 全部 | 全部（同一份代码） |
-| 审计日志 | ❌ | ✅ |
-| SSO / 团队多租户 | ❌ | ✅ |
-| 加密 at-rest / HA | ❌ | ✅ |
-| 支持 | 社区 | SLA 4h / 24h |
+**开源版（Apache-2.0）功能完整可用，无功能阉割。**
 
-企业版通过 `pkg/ext` 接口以**独立二进制**提供，核心代码不含闭源实现。
+| 能力 | 开源版现状 |
+|---|---|
+| 索引 / 混合检索 / MCP 14 工具 / REST API / CLI | ✅ 可用 |
+| 中文化检索（CJK 分词） | ✅ 可用 |
+| Agent 记忆 API | ✅ 可用 |
+| RBAC（admin / editor / viewer） | ✅ 可用 |
+| 离线许可机制（Ed25519 签发与激活） | ✅ 可用 |
+| 文档配额强制 | ✅ 可用（Free：5,000 篇 / 1 GB） |
+| Web 控制台（`/admin`，默认仅本机） | ✅ 可用 |
 
-定价：[开源版免费](LICENSE) ｜ Pro ¥199/年 ｜ Team ¥899/年（3 席）｜ Enterprise ¥3 万/年起
+> **关于付费版：目前没有可购买的付费版。**
+>
+> 说清楚以免误导：Ed25519 离线许可与配额门控的**机制已经完整可用**，但
+> *审计日志*、*SSO / OIDC*、*S3 备份*、*多租户* 等企业能力**尚未实现**，
+> `pkg/ext` 扩展接口目前是空的。这些能力列在路线图上，不是现有功能。
 
-详见 [开源/商业化方案](docs/planning/OPEN_CORE_AND_MONETIZATION_STRATEGY.md) · [许可迁移记录](docs/planning/LICENSE_MIGRATION.md)
+### 需要私有化部署支持？
+
+如果你的场景要求**数据不出内网**、需要中文检索、又不想维护 Docker / 向量库编排，
+Cortex 的单二进制形态正好合适。可以提供远程部署与定制支持（按次/按单计费的**服务**，
+不是软件订阅——软件本身永远开源免费）。
+
+**怎么发起：** 开一个 [部署咨询 Issue](https://github.com/lh123aa/cortex/issues/new?template=deployment_inquiry.md)，
+表单会问你 5 个问题（文档量、格式、环境、使用者、期望查询）。一般 24 小时内回第一句。
+
+**能做什么：** 远程部署跑通、全量索引、检索效果调优、MCP / HTTP API 接入联调、一次使用培训。
+**不能做什么（如实说明）：** 审计日志、SSO / OIDC、S3 备份、多租户这些能力代码里**还没有**，
+不会在报价单上出现；也不做客户数据托管或 7×24 SLA 承诺。
+
+服务按次/按单计价（部署 ¥500 起，私有化部署 + 调优 ¥3,000 起），具体以 Issue 沟通后的报价单为准。
+
+许可迁移记录见 [LICENSE_MIGRATION.md](docs/planning/LICENSE_MIGRATION.md)。
+路线图见 [docs/planning/PRODUCT_ITERATION_AND_MONETIZATION_PLAN.md](docs/planning/PRODUCT_ITERATION_AND_MONETIZATION_PLAN.md)。
 
 ---
 
