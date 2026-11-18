@@ -1,0 +1,48 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.lh123aa/cortex",
+  "title": "Cortex — local memory for coding agents",
+  "description": "Local memory MCP server: 33 MB Go binary, hybrid retrieval over your notes and code, offline.",
+  "version": "4.0.1",
+  "websiteUrl": "https://cortex.qataroasis.cc",
+  "repository": {
+    "url": "https://github.com/lh123aa/cortex",
+    "source": "github",
+    "id": "1030036271"
+  },
+  "packages": [
+    {
+      "registryType": "github",
+      "registryBaseUrl": "https://github.com",
+      "identifier": "https://github.com/lh123aa/cortex/releases/download/v4.0.1/cortex-linux-amd64.tar.gz",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [],
+      "runtimeArguments": [],
+      "runtimeHint": "binary"
+    },
+    {
+      "registryType": "github",
+      "registryBaseUrl": "https://github.com",
+      "identifier": "https://github.com/lh123aa/cortex/releases/download/v4.0.1/cortex-darwin-arm64.tar.gz",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [],
+      "runtimeArguments": [],
+      "runtimeHint": "binary"
+    },
+    {
+      "registryType": "github",
+      "registryBaseUrl": "https://github.com",
+      "identifier": "https://github.com/lh123aa/cortex/releases/download/v4.0.1/cortex-windows-amd64.zip",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [],
+      "runtimeArguments": [],
+      "runtimeHint": "binary"
+    }
+  ]
+}
