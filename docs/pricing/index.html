@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cortex — 你的 AI 记得代码，记不住你上周说的话</title>
+<meta name="description" content="把本机笔记、文档、代码变成 Claude Code / Cursor 可检索的记忆。33MB 单文件，三分钟装完，数据不出机器。">
+<style>
+  :root{
+    --ink:#0a0b0d;
+    --ink-2:#101216;
+    --ink-3:#171a20;
+    --line:rgba(255,255,255,.09);
+    --line-2:rgba(255,255,255,.16);
+    --text:#f3f1ec;
+    --muted:#9aa3ad;
+    --gold:#f2b45c;
+    --gold-dim:rgba(242,180,92,.14);
+    --green:#7ee0a8;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    --r:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--ink);color:var(--text);font-family:var(--sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(900px 520px at 12% -8%, rgba(242,180,92,.10), transparent 60%),
+      radial-gradient(700px 480px at 92% 4%, rgba(126,224,168,.05), transparent 62%);
+    background-repeat:no-repeat;
+  }
+  ::selection{background:var(--gold);color:#1a1206}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  .mono{font-family:var(--mono)}
+  .kicker{
+    font:600 12px/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--gold);
+  }
+  /* ---------- nav ---------- */
+  nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
+    background:rgba(10,11,13,.72);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:62px;gap:16px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em}
+  .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(160deg,var(--gold),#b57a25);
+    display:grid;place-items:center;font:700 13px/1 var(--mono);color:#1a1206}
+  .navlinks{display:none;gap:26px;font-size:14px;color:var(--muted)}
+  .navlinks a{color:inherit;text-decoration:none}
+  .navlinks a:hover{color:var(--text)}
+  @media(min-width:820px){.navlinks{display:flex}}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:11px 20px;border-radius:10px;font-size:14.5px;font-weight:600;
+    text-decoration:none;border:1px solid transparent;cursor:pointer;
+    transition:transform .18s ease, background .18s ease, border-color .18s ease;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn-gold{background:var(--gold);color:#190f02}
+  .btn-gold:hover{background:#ffc56e}
+  .btn-ghost{background:transparent;color:var(--text);border-color:var(--line-2)}
+  .btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
+  .btn-sm{padding:9px 15px;font-size:13.5px}
+  /* ---------- hero ---------- */
+  header{padding:clamp(48px,9vw,96px) 0 clamp(36px,6vw,64px)}
+  .hero{display:grid;gap:clamp(32px,5vw,56px);align-items:center}
+  @media(min-width:940px){.hero{grid-template-columns:1.05fr .95fr}}
+  h1{
+    margin:18px 0 0;font-size:clamp(34px,5.6vw,62px);line-height:1.08;
+    letter-spacing:-.035em;font-weight:750;
+  }
+  h1 .dim{color:#7d858f;font-weight:600}
+  .lede{margin:22px 0 0;max-width:560px;font-size:clamp(15px,1.9vw,17.5px);color:#c3c9d1}
+  .lede b{color:var(--text);font-weight:600}
+  .cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+  .cta-row .btn{padding:14px 26px;font-size:15.5px}
+  .trust{margin-top:22px;display:flex;flex-wrap:wrap;gap:18px;font:500 12.5px/1 var(--mono);color:#78818c}
+  .trust i{color:var(--green);font-style:normal}
+  /* ---------- terminal ---------- */
+  .term{
+    background:linear-gradient(180deg,#0e1116,#0b0d11);
+    border:1px solid var(--line-2);border-radius:var(--r);overflow:hidden;
+    box-shadow:0 30px 70px -30px rgba(0,0,0,.9), 0 0 0 1px rgba(242,180,92,.06) inset;
+  }
+  .term-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--line);
+    background:#0d1015}
+  .dot{width:9px;height:9px;border-radius:50%;background:#2a3038}
+  .dot.g{background:#3f5c46}.dot.y{background:#5c5330}.dot.r{background:#5c3434}
+  .term-title{margin-left:8px;font:500 11.5px/1 var(--mono);color:#6b7480}
+  .term-body{padding:18px 18px 20px;font:500 13px/1.85 var(--mono);color:#ccd3db}
+  .term-body .p{color:var(--green)}
+  .term-body .cmd{color:#f3f1ec}
+  .term-body .ok{color:var(--gold)}
+  .term-body .dim{color:#6b7480}
+  .term-body .hit{color:#9fd8ff}
+  .badge-live{display:inline-flex;align-items:center;gap:6px;font:500 11px/1 var(--mono);
+    color:#8ee0b0;margin-top:14px}
+  .badge-live::before{content:"";width:6px;height:6px;border-radius:50%;background:#7ee0a8;
+    box-shadow:0 0 10px #7ee0a8}
+  /* ---------- sections ---------- */
+  section{padding:clamp(44px,7vw,84px) 0;border-top:1px solid var(--line)}
+  h2{font-size:clamp(24px,3.4vw,36px);line-height:1.2;letter-spacing:-.025em;font-weight:700}
+  h2 .dim{display:block;color:#7d858f;font-weight:500;font-size:.62em;letter-spacing:-.01em;margin-top:10px}
+  .grid-3{display:grid;gap:18px;margin-top:clamp(28px,4vw,44px);grid-template-columns:1fr}
+  @media(min-width:760px){.grid-3{grid-template-columns:repeat(3,1fr)}}
+  .pain{
+    border:1px solid var(--line);border-radius:var(--r);padding:22px 22px 26px;
+    background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0));
+  }
+  .pain .n{font:600 11px/1 var(--mono);color:#6b7480;letter-spacing:.14em}
+  .pain h3{margin:14px 0 10px;font-size:17px;font-weight:650;line-height:1.45}
+  .pain p{font-size:14px;color:#a4acb6}
+  .pain .cost{
+    display:block;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);
+    font:600 12.5px/1.4 var(--mono);color:var(--gold);
+  }
+  /* ---------- steps ---------- */
+  .step{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;
+    padding:20px 0;border-bottom:1px solid var(--line)}
+  .step:last-child{border-bottom:0}
+  .step .idx{font:700 12px/26px var(--mono);width:26px;height:26px;text-align:center;
+    border-radius:50%;background:var(--gold-dim);color:var(--gold)}
+  .step h4{font-size:16px;font-weight:650;margin-bottom:4px}
+  .step p{font-size:14px;color:#a4acb6}
+  .step code{font-family:var(--mono);font-size:12.5px;color:var(--gold);
+    background:#0c0f13;border:1px solid var(--line);border-radius:6px;padding:2px 7px}
+  /* ---------- stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:34px}
+  @media(min-width:720px){.stats{grid-template-columns:repeat(4,1fr)}}
+  .stat{background:var(--ink-2);padding:24px 20px}
+  .stat .v{font:700 clamp(22px,3vw,30px)/1.1 var(--mono);letter-spacing:-.03em}
+  .stat .v small{font-size:.5em;color:#6b7480;margin-left:3px}
+  .stat .l{margin-top:8px;font-size:12.5px;color:#78818c}
+  /* ---------- pricing ---------- */
+  .plans{display:grid;gap:18px;margin-top:clamp(28px,4vw,44px);align-items:stretch;grid-template-columns:1fr}
+  @media(min-width:860px){.plans{grid-template-columns:1fr 1.12fr 1fr;align-items:center}}
+  .plan{
+    position:relative;border:1px solid var(--line);border-radius:var(--r);padding:28px 24px 30px;
+    background:var(--ink-2);display:flex;flex-direction:column;height:100%;
+  }
+  .plan.hot{
+    border-color:rgba(242,180,92,.45);
+    background:
+      radial-gradient(420px 260px at 50% -10%, rgba(242,180,92,.16), transparent 70%),
+      linear-gradient(180deg,#15130f,#0f1114);
+    box-shadow:0 26px 70px -34px rgba(242,180,92,.28);
+  }
+  .badge-top{position:absolute;top:-12px;left:24px;background:var(--gold);color:#190f02;
+    font:700 10.5px/1 var(--mono);letter-spacing:.1em;padding:6px 10px;border-radius:6px}
+  .plan .tier{font:600 11.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#8b939d}
+  .plan .amt{margin:14px 0 2px;font:750 clamp(30px,4vw,40px)/1 var(--mono);letter-spacing:-.04em}
+  .plan .amt span{font:500 13px/1 var(--sans);color:#7d858f;margin-left:8px;letter-spacing:0}
+  .plan .cap{font-size:12.5px;color:#78818c}
+  .plan ul{list-style:none;margin:22px 0 26px;display:grid;gap:11px;font-size:14px;color:#cfd5dd}
+  .plan li{display:grid;grid-template-columns:16px 1fr;gap:9px;align-items:start}
+  .plan li::before{content:"✓";font:700 12px/1.5 var(--mono);color:var(--gold)}
+  .plan li.mute{color:#8b939d}
+  .plan li.mute::before{content:"○";color:#5c6470}
+  .plan .btn{margin-top:auto;width:100%}
+  .anchor{margin-top:22px;font-size:13.5px;color:#8b939d}
+  .anchor b{color:var(--gold);font-weight:650}
+  /* ---------- faq ---------- */
+  .faq{margin-top:34px;border-top:1px solid var(--line)}
+  details{border-bottom:1px solid var(--line)}
+  summary{
+    list-style:none;cursor:pointer;padding:19px 2px;font-size:15.5px;font-weight:600;
+    display:flex;justify-content:space-between;align-items:center;gap:18px;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";font:400 20px/1 var(--mono);color:var(--gold);flex:0 0 auto}
+  details[open] summary::after{content:"−"}
+  details p{padding:0 2px 20px;font-size:14.5px;color:#a4acb6;max-width:820px}
+  /* ---------- final ---------- */
+  .final{text-align:center;padding:clamp(56px,9vw,110px) 0}
+  .final h2{font-size:clamp(28px,4.4vw,46px);letter-spacing:-.03em}
+  .final p{margin:16px auto 30px;max-width:520px;color:#a4acb6;font-size:15.5px}
+  footer{border-top:1px solid var(--line);padding:32px 0 64px;font-size:12.5px;color:#6b7480}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:space-between}
+  footer a{color:#8b939d;text-decoration:none}
+  footer a:hover{color:var(--gold)}
+  /* ---------- dialog ---------- */
+  dialog{
+    border:1px solid var(--line-2);border-radius:16px;background:#12141a;color:var(--text);
+    width:min(560px,calc(100% - 36px));padding:30px 28px 26px;
+  }
+  dialog::backdrop{background:rgba(4,5,7,.72);backdrop-filter:blur(3px)}
+  dialog h3{font-size:20px;font-weight:700;margin-bottom:6px}
+  dialog .sub{font-size:13.5px;color:#8b939d;margin-bottom:20px}
+  dialog ol{list-style:none;display:grid;gap:14px;margin-bottom:22px}
+  dialog ol li{display:grid;grid-template-columns:24px 1fr;gap:12px;font-size:14px;color:#cfd5dd}
+  dialog ol li b{color:var(--gold);font:700 12px/24px var(--mono);width:24px;height:24px;
+    border-radius:50%;background:var(--gold-dim);text-align:center}
+  dialog .box{background:#0b0d11;border:1px solid var(--line);border-radius:8px;
+    padding:12px 14px;font:500 12.5px/1.7 var(--mono);color:#9aa3ad;margin-top:4px}
+  dialog .close{background:transparent;border:1px solid var(--line-2);color:var(--muted);
+    border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer}
+  dialog .close:hover{border-color:var(--gold);color:var(--gold)}
+  @media (prefers-reduced-motion: no-preference){
+    header .hero > *{animation:rise .7s cubic-bezier(.2,.7,.2,1) both}
+    header .hero > *:nth-child(2){animation-delay:.09s}
+    @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand"><span class="mark">C</span> Cortex</div>
+    <div class="navlinks">
+      <a href="#pain">为什么需要</a>
+      <a href="#how">怎么用</a>
+      <a href="#price">价格</a>
+      <a href="#faq">常见问题</a>
+    </div>
+    <button class="btn btn-gold btn-sm" onclick="document.getElementById('buy').showModal()">¥199 买 Pro</button>
+  </div>
+</nav>
+
+<header>
+  <div class="wrap hero">
+    <div>
+      <div class="kicker">Local memory for Claude Code / Cursor</div>
+      <h1>你的 AI 记得代码，<br><span class="dim">记不住你上周说的话。</span></h1>
+      <p class="lede">每次开新会话，你都要重讲一遍背景：项目目标、上次的决定、那份还没写完的方案。<b>Cortex 把你本机的笔记、文档和代码变成 AI 能自己查<br>的记忆 —— 一个 33MB 文件，三分钟装完。</b></p>
+      <div class="cta-row">
+        <button class="btn btn-gold" onclick="document.getElementById('buy').showModal()">¥199 买 Pro 版</button>
+        <a class="btn btn-ghost" href="https://github.com/lh123aa/cortex/releases/latest" target="_blank" rel="noopener">先下免费版</a>
+      </div>
+      <div class="trust">
+        <span><i>●</i> Apache-2.0 开源核心</span>
+        <span><i>●</i> 24/24 测试包通过</span>
+        <span><i>●</i> 零遥测 · 断网可用</span>
+      </div>
+    </div>
+
+    <div class="term">
+      <div class="term-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="term-title">~/notes — cortex</span>
+      </div>
+      <div class="term-body">
+        <div><span class="p">$</span> <span class="cmd">cortex index ~/notes ~/Documents</span></div>
+        <div class="ok">✓ 4,821 documents · 61,340 chunks · 1.2s</div>
+        <div>&nbsp;</div>
+        <div><span class="p">$</span> <span class="cmd">cortex start</span></div>
+        <div class="ok">✓ MCP server ready on stdio</div>
+        <div class="ok">✓ 已写入 Claude Code / Cursor / Trae 配置</div>
+        <div class="dim">&nbsp; （带备份，不覆盖已有 MCP server）</div>
+        <div>&nbsp;</div>
+        <div class="dim">你: 上次那个缓存穿透的方案，我们最后怎么定的？</div>
+        <div class="dim">Claude: <span class="hit">查到了你 3 月 12 日的笔记 ——</span></div>
+        <div class="dim">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="hit">用布隆过滤器 + 空值缓存，压测 8k QPS。</span></div>
+      </div>
+    </div>
+    <div class="badge-live">检索 75ms · 全程不联网</div>
+  </div>
+</header>
+
+<section id="pain">
+  <div class="wrap">
+    <div class="kicker">The memory tax</div>
+    <h2>你每天都在交一笔「记忆税」<span class="dim">它不显示在账单上，只显示在你的工时里。</span></h2>
+
+    <div class="grid-3">
+      <div class="pain">
+        <div class="n">01</div>
+        <h3>每天重讲三遍背景</h3>
+        <p>新会话第一句永远是「我们上次说到哪了」。目标、约束、已经否掉的方案，全得再讲一次。</p>
+        <span class="cost">≈ 每月 10 小时</span>
+      </div>
+      <div class="pain">
+        <div class="n">02</div>
+        <h3>找一份三个月前的方案</h3>
+        <p>打开六个文件夹，翻聊天记录，最后靠 grep。找到了，也已经不想做了。</p>
+        <span class="cost">≈ 每次 20 分钟</span>
+      </div>
+      <div class="pain">
+        <div class="n">03</div>
+        <h3>想把资料丢给 AI，被合规拦下</h3>
+        <p>云端方案一律不行：数据不能出内网。于是你只能继续手动复制粘贴。</p>
+        <span class="cost">= 一整类需求做不了</span>
+      </div>
+    </div>
+
+    <p class="lede" style="margin-top:34px;max-width:760px">这三件事跟模型强不强没关系。<b>问题是你从来没把「你自己的资料」交给它。</b>Cortex 做的就是这一件事。</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="kicker">Three commands</div>
+    <h2>三步，它就开始记得了</h2>
+
+    <div style="margin-top:32px">
+      <div class="step">
+        <div class="idx">1</div>
+        <div>
+          <h4>指向你的目录，建一次索引</h4>
+          <p><code>cortex index ~/notes ~/Documents</code> —— 切块、去重、建索引。默认纯 BM25，<b>不需要显卡，不需要向量库，不需要 Docker</b>。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="idx">2</div>
+        <div>
+          <h4>启动，它自己接进你的编辑器</h4>
+          <p><code>cortex start</code> —— 起 MCP 服务，并把配置写进 Claude Code / Cursor / OpenCode / Trae。带备份，不覆盖你已有的 MCP server。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="idx">3</div>
+        <div>
+          <h4>提问，它自己去查，还告诉你出处</h4>
+          <p>问「上次那个方案怎么定的」，它调检索工具找到那段笔记原文，而不是编一段看起来合理的答案。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="v">33<small>MB</small></div><div class="l">单文件，无运行时依赖</div></div>
+      <div class="stat"><div class="v">75<small>ms</small></div><div class="l">纯 BM25 检索实测</div></div>
+      <div class="stat"><div class="v">0</div><div class="l">联网请求 · 零遥测</div></div>
+      <div class="stat"><div class="v">24<small>/24</small></div><div class="l">测试包全部通过</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="price">
+  <div class="wrap">
+    <div class="kicker">Pricing</div>
+    <h2>免费版够个人用，付费只为「不用管」<span class="dim">功能不阉割，只限制容量。买 Pro 的理由只有一个：你不想再被容量打断。</span></h2>
+
+    <div class="plans">
+      <div class="plan">
+        <div class="tier">Free</div>
+        <div class="amt">¥0</div>
+        <div class="cap">永久免费 · 功能不阉割</div>
+        <ul>
+          <li>MCP 工具、混合检索、三层去重</li>
+          <li>REST API、CLI、中文分词、Web 管理台</li>
+          <li>记忆系统完整可用</li>
+          <li>容量：5,000 篇 / 1 GB</li>
+        </ul>
+        <a class="btn btn-ghost" href="https://github.com/lh123aa/cortex/releases/latest" target="_blank" rel="noopener">免费下载</a>
+      </div>
+
+      <div class="plan hot">
+        <div class="badge-top">最省事</div>
+        <div class="tier">Pro · 一次性买断</div>
+        <div class="amt">¥199<span>/ $29</span></div>
+        <div class="cap">永久有效 · 含 1 年更新</div>
+        <ul>
+          <li><b>容量放大 100 倍：50 万篇 / 100 GB</b></li>
+          <li>rerank 重排，长文档召回更准</li>
+          <li>auto-index，文件一改自动重建索引</li>
+          <li>Web 控制台：用量、索引状态一屏看</li>
+          <li>Ed25519 离线 License，不联网校验</li>
+          <li class="mute">第 2 年起更新可选 ¥49/年，不买也能继续用当前版本</li>
+        </ul>
+        <button class="btn btn-gold" onclick="document.getElementById('buy').showModal()">购买 Pro</button>
+      </div>
+
+      <div class="plan">
+        <div class="tier">Team · 5 席起</div>
+        <div class="amt">¥999<span>起 / 年</span></div>
+        <div class="cap">只卖已经交付的部分</div>
+        <ul>
+          <li>审计日志（已交付，全部操作可追溯）</li>
+          <li>私有化部署，数据完全不出内网</li>
+          <li>5 席 License，按席位扩展</li>
+          <li class="mute">RBAC、SSO、S3 备份仍在开发，交付后免费升级，不承诺时间</li>
+        </ul>
+        <a class="btn btn-ghost" href="mailto:lh123aa@outlook.com?subject=Cortex%20Team%20%C2%B7%205%20seats">聊聊团队版</a>
+      </div>
+    </div>
+
+    <p class="anchor">锚点算给你看：同类托管记忆服务一年订阅通常在 <b>¥1,000 以上</b>，数据还在别人服务器。这里<b>一次 ¥199，永久可用，数据在你硬盘里。</b></p>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="kicker">Objections</div>
+    <h2>你在犹豫的四件事</h2>
+    <div class="faq">
+      <details open>
+        <summary>开源免费，为什么还要给你钱？</summary>
+        <p>核心是 Apache-2.0，确实免费，你自己装也能用。Pro 卖的不是代码，是「容量不用管」和「不用自己折腾重排、自动索引」这两段时间。你按小时算就明白：省下的工时远超过 ¥199。</p>
+      </details>
+      <details>
+        <summary>要不要显卡、要不要装数据库？</summary>
+        <p>都不要。默认纯 BM25 关键词检索，单文件跑；向量检索是可选项，不装也能用。</p>
+      </details>
+      <details>
+        <summary>License 会不会偷偷联网校验？</summary>
+        <p>不会。Ed25519 签名，公钥内置在二进制里，本地校验。不联网、不上报、不采集使用数据 —— 断网状态下照样可用。</p>
+      </details>
+      <details>
+        <summary>哪天你不做了，我手上的还能用吗？</summary>
+        <p>能。核心代码开源在 GitHub，License 是离线的、永久有效的，不依赖任何服务器。最坏情况下你手上的版本可以一直跑下去。</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>下一次开新会话，<br>让它记得你自己。</h2>
+    <p>三分钟装完，先免费用。觉得容量不够了，再花钱 —— 反正数据一直在你机器上。</p>
+    <div class="cta-row" style="justify-content:center">
+      <button class="btn btn-gold" onclick="document.getElementById('buy').showModal()">¥199 买 Pro 版</button>
+      <a class="btn btn-ghost" href="https://github.com/lh123aa/cortex/releases/latest" target="_blank" rel="noopener">免费下载</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Cortex · 本地 AI 记忆服务 · <a href="https://github.com/lh123aa/cortex" target="_blank" rel="noopener">GitHub</a></span>
+    <span>价格仅以本页为准；其他渠道如与页面不一致，以本页为准。</span>
+  </div>
+</footer>
+
+<dialog id="buy">
+  <h3>买 Pro：三步，两分钟</h3>
+  <p class="sub">不用注册账号，不填卡号。付款后 24 小时内收到 License。</p>
+  <ol>
+    <li><b>1</b><span>发邮件到 <b style="color:#f2b45c">lh123aa@outlook.com</b>，写明「买 Pro」和你的邮箱</span></li>
+    <li><b>2</b><span>收到 PayPal 账单，付 ¥199 或 $29</span></li>
+    <li><b>3</b><span>收到 License key 与激活说明，三行命令激活</span></li>
+  </ol>
+  <div class="box">cortex-ee license activate "&lt;your-key&gt;"<br>cortex-ee serve</div>
+  <button class="close" style="margin-top:18px" onclick="document.getElementById('buy').close()">知道了</button>
+</dialog>
+
+</body>
+</html>

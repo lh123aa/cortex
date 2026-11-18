@@ -62,6 +62,24 @@ Claude 会通过 Cortex 的 MCP 工具检索你的笔记，而不是猜。
 
 ---
 
+## Pricing
+
+Free 永久免费，功能不阉割，只限制文档数量。需要省时间的能力再买 Pro。
+
+| 方案 | 价格 | 包含 |
+|:-----|:-----|:-----|
+| **Free** | ¥0 / $0 | 核心全功能：MCP 工具、向量+BM25 混合检索、三层去重、REST API、CLI、中文分词、Web Admin、记忆系统。上限 **5,000 篇文档 / 1 GB** |
+| **Pro** | **¥199 一次性 / $29** | Free 全部 + `console`（Web 控制台）、`rerank`（重排提升召回精度）、`auto-index`（文件变更自动索引）。额度提升到 **50 万篇 / 100 GB**。离线签名 License，永久有效，含 1 年更新 |
+| **Team / Enterprise** | 预约洽谈 | 审计日志已交付；RBAC、SSO/OIDC、S3 备份、私有化 SLA 仍在开发中，**交付前不标价** |
+
+> 价格仅以上表为准。购买或咨询请在 issue 标题标注 `[pricing]`，我会直接回复。
+>
+> **直接购买 Pro**：https://cortex.qataroasis.cc —— PayPal 付款 $29，24 小时内收到 License。文档与下载见 [cortex.qataroasis.cc](https://cortex.qataroasis.cc)。
+>
+> Pro 版基于闭源企业版 `cortex-ee` 交付，License 通过 Ed25519 离线签名验证，不联网、不上报、不采集任何使用数据。
+
+---
+
 ## 💡 Why Cortex
 
 ### 你可能正在遇到的问题
