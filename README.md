@@ -39,7 +39,8 @@
 
 ```bash
 # 1. 安装（一条命令，不需要 Go / Node / Docker）
-curl -fsSL https://raw.githubusercontent.com/lh123aa/cortex/master/scripts/install.sh | sh
+curl -fsSL https://cortex.qataroasis.cc/install.sh | sh          # macOS / Linux
+# Windows PowerShell：irm https://cortex.qataroasis.cc/install.ps1 | iex
 
 # 2. 索引你的知识库
 cortex index ~/notes ~/Documents
@@ -47,6 +48,8 @@ cortex index ~/notes ~/Documents
 # 3. 启动并自动接入你的 AI 工具
 cortex start
 ```
+
+> 想先要 Pro 的额度（50 万篇 / 100 GB）？[领 14 天试用](https://cortex.qataroasis.cc/trial)，不用付款，到期自动降回 Free，索引不丢。
 
 `cortex start` 会做三件事：
 

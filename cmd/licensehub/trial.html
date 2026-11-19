@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>领取 14 天 Cortex Pro 试用</title>
+<style>
+:root{--bg:#0a0b0d;--panel:#121317;--line:#23252b;--ink:#e9e6df;--muted:#9096a2;--gold:#f2b45c;--ok:#69d18b;--bad:#ff7a6b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:56px 24px 80px}
+.eyebrow{color:var(--gold);letter-spacing:.18em;font-size:12px;text-transform:uppercase;margin-bottom:14px}
+h1{font-size:34px;line-height:1.25;margin:0 0 12px;font-weight:650;letter-spacing:-.02em}
+.sub{color:var(--muted);margin:0 0 32px;font-size:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
+input{width:100%;background:#0d0e11;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:13px 14px;font-size:15px;outline:none}
+input:focus{border-color:var(--gold)}
+button{width:100%;margin-top:16px;background:var(--gold);color:#12100a;border:0;border-radius:10px;padding:14px;font-size:15px;font-weight:650;cursor:pointer}
+button:disabled{opacity:.55;cursor:default}
+.note{color:var(--muted);font-size:13px;margin-top:14px}
+.msg{margin-top:16px;font-size:14px;padding:12px 14px;border-radius:10px;display:none}
+.msg.bad{display:block;background:#241416;color:var(--bad);border:1px solid #3a2023}
+.msg.good{display:block;background:#122016;color:var(--ok);border:1px solid #1e3526}
+#result{display:none;margin-top:26px}
+.field{margin-top:18px}
+.k{font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.token{background:#0d0e11;border:1px solid var(--line);border-radius:10px;padding:12px;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all;color:#cfd3da;max-height:160px;overflow:auto}
+.copy{width:auto;padding:9px 14px;font-size:13px;margin-top:10px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:8px}
+pre{background:#0d0e11;border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font:12.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfd3da;margin:8px 0 0}
+.hr{height:1px;background:var(--line);margin:28px 0}
+.small{color:var(--muted);font-size:13px}
+a{color:var(--gold);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow" id="eyebrow">14 天试用 · 不用付款</div>
+  <h1 id="h1">先用 14 天 Pro，再决定要不要买</h1>
+  <p class="sub" id="sub">Pro 档：50 万篇文档 / 100 GB 存储，混合检索（BM25 + 向量）。14 天后自动降回 Free，已建索引不丢。</p>
+
+  <div class="card">
+    <label for="email" id="lblEmail">你的邮箱（许可证会绑定它）</label>
+    <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+    <button id="btn">领取 14 天 Pro 许可证</button>
+    <div class="msg" id="msg"></div>
+    <p class="note" id="note">一个邮箱限领一次。全程离线签发，不消耗任何云端资源。</p>
+  </div>
+
+  <section id="result">
+    <div class="hr"></div>
+    <div class="field">
+      <div class="k" id="kLicense">许可证</div>
+      <div class="token" id="token"></div>
+      <button class="copy" id="copy">复制</button>
+    </div>
+    <div class="field">
+      <div class="k" id="kExpire">有效期至</div>
+      <div id="expire" class="small"></div>
+    </div>
+    <div class="field">
+      <div class="k" id="kSteps">两步激活</div>
+      <pre id="cmds"></pre>
+    </div>
+    <p class="note" id="after">装好之后，新开一个 Claude Code 会话，问它上周的决定——它应该记得。</p>
+  </section>
+</div>
+
+<script>
+var ZH = {
+  eyebrow:"14 天试用 · 不用付款",
+  h1:"先用 14 天 Pro，再决定要不要买",
+  sub:"Pro 档：50 万篇文档 / 100 GB 存储，混合检索（BM25 + 向量）。14 天后自动降回 Free，已建索引不丢。",
+  lblEmail:"你的邮箱（许可证会绑定它）",
+  btn:"领取 14 天 Pro 许可证",
+  note:"一个邮箱限领一次。全程离线签发，不消耗任何云端资源。",
+  kLicense:"许可证", kExpire:"有效期至", kSteps:"两步激活", copy:"复制",
+  after:"装好之后，新开一个 Claude Code 会话，问它上周的决定——它应该记得。",
+  loading:"签发中…", ok:"领到了，下面这串就是你的许可证。", fail:"领取失败："
+};
+var EN = {
+  eyebrow:"14-DAY TRIAL · NO PAYMENT",
+  h1:"Try Pro for 14 days before you decide",
+  sub:"Pro: 500,000 documents / 100 GB, hybrid retrieval (BM25 + vectors). After 14 days it falls back to Free — your index stays.",
+  lblEmail:"Your email (the license is bound to it)",
+  btn:"Get my 14-day Pro license",
+  note:"One trial per email. Signed offline on your machine's behalf — no cloud resources used.",
+  kLicense:"License", kExpire:"Valid until", kSteps:"Two-step activation", copy:"Copy",
+  after:"Then start a new Claude Code session and ask what you decided last week — it should remember.",
+  loading:"Signing…", ok:"Done. This is your license.", fail:"Failed: "
+};
+var L = (navigator.language || "zh").toLowerCase().indexOf("zh") === 0 ? ZH : EN;
+function set(id, v){ var e=document.getElementById(id); if(e) e.textContent=v; }
+["eyebrow","h1","sub","lblEmail","btn","note","kLicense","kExpire","kSteps","copy","after"].forEach(function(k){ set(k, L[k]); });
+
+var msg=document.getElementById("msg"), btn=document.getElementById("btn"), input=document.getElementById("email");
+function show(cls, text){ msg.className="msg "+cls; msg.textContent=text; }
+
+btn.addEventListener("click", function(){
+  var email=input.value.trim();
+  if(!email){ show("bad", L.fail + "email required"); return; }
+  btn.disabled=true; show("good", L.loading);
+  fetch("/trial/api",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:email})})
+  .then(function(r){ return r.json().then(function(j){ return {s:r.status, j:j}; }); })
+  .then(function(x){
+    btn.disabled=false;
+    var j=x.j||{};
+    if(!j.ok){ show("bad", j.error || (L.fail + x.s)); return; }
+    show("good", L.ok);
+    document.getElementById("result").style.display="block";
+    document.getElementById("token").textContent=j.license||"";
+    document.getElementById("expire").textContent=(j.expires||"")+" · "+(j.plan||"Pro")+" · "+(j.order||"");
+    document.getElementById("cmds").textContent='cortex license activate "'+(j.license||"<license>")+'"\ncortex start';
+  })
+  .catch(function(e){ btn.disabled=false; show("bad", L.fail + e); });
+});
+
+document.getElementById("copy").addEventListener("click", function(){
+  var t=document.getElementById("token").textContent;
+  if(navigator.clipboard){ navigator.clipboard.writeText(t); this.textContent="✓"; var b=this; setTimeout(function(){ b.textContent=L.copy; },1200); }
+});
+</script>
+</body>
+</html>
