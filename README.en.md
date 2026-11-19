@@ -279,18 +279,27 @@
 ## ⚡ Quick Start
 
 ```bash
-# 🚀 One-step setup (auto-config + index)
-./cortex install ~/my-docs
+# 1. Install (one command, no Go / Node / Docker required)
+curl -fsSL https://cortex.qataroasis.cc/install.sh | sh          # macOS / Linux
+# Windows PowerShell: irm https://cortex.qataroasis.cc/install.ps1 | iex
 
-# Index documents (with progress bar, checkpoint-resume)
-cortex index ~/my-docs
+# 2. Index your knowledge base
+cortex index ~/notes ~/Documents
 
-# Start MCP server (for AI Agent integration)
-cortex mcp
-
-# Search
-cortex search "How to implement Go concurrency"
+# 3. Start and wire it into your AI tools
+cortex start
 ```
+
+`cortex start` starts the MCP server (stdio) plus the REST API, **writes the config for your AI tools**
+(Claude Code / Cursor / OpenCode / Trae) with backups, and prints the integration steps.
+
+Then just ask Claude Code: *"How did we handle Redis cache penetration in that note from last month?"*
+
+Claude Desktop users can install the extension instead (`.mcpb`, import by double-click, no terminal):
+[download cortex-local-memory-4.0.1.mcpb](https://github.com/lh123aa/cortex/releases/download/v4.0.1/cortex-local-memory-4.0.1.mcpb) ·
+listed in the official MCP Registry as `cc.qataroasis/cortex`
+
+Need the Pro limits (500k docs / 100 GiB)? [Start a 14-day trial](https://cortex.qataroasis.cc/trial) — no card, and your index survives when it drops back to Free.
 
 ---
 

@@ -51,6 +51,10 @@ cortex start
 
 > 想先要 Pro 的额度（50 万篇 / 100 GB）？[领 14 天试用](https://cortex.qataroasis.cc/trial)，不用付款，到期自动降回 Free，索引不丢。
 
+Claude Desktop 用户也可以直接装扩展（`.mcpb`，双击导入，无需终端）：
+[下载 cortex-local-memory-4.0.1.mcpb](https://github.com/lh123aa/cortex/releases/download/v4.0.1/cortex-local-memory-4.0.1.mcpb) ·
+已收录在官方 MCP Registry：`cc.qataroasis/cortex`
+
 `cortex start` 会做三件事：
 
 - 启动 MCP 服务器（stdio）+ REST API

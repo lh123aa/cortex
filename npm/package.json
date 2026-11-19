@@ -1,0 +1,36 @@
+{
+  "name": "cortex-mcp-local",
+  "version": "4.0.1",
+  "description": "Local-first memory MCP server for Claude Code / Cursor: one 33 MB binary, no cloud, ~50 ms ranked retrieval over your own notes and code.",
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "claude",
+    "claude-code",
+    "memory",
+    "rag",
+    "local-first"
+  ],
+  "license": "Apache-2.0",
+  "author": "Hugh Li <lh123aa@outlook.com>",
+  "homepage": "https://cortex.qataroasis.cc",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lh123aa/cortex.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lh123aa/cortex/issues"
+  },
+  "mcpName": "cc.qataroasis/cortex",
+  "bin": {
+    "cortex-mcp-local": "bin/run.js"
+  },
+  "files": [
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
