@@ -16,6 +16,7 @@
   <img src="https://img.shields.io/badge/测试-24_24_包通过-success?style=flat-square" alt="Tests">
   <a href="https://github.com/lh123aa/cortex/actions"><img src="https://img.shields.io/github/actions/workflow/status/lh123aa/cortex/build.yml?style=flat-square&logo=github" alt="Build"></a>
   <a href="https://github.com/lh123aa/cortex/stargazers"><img src="https://img.shields.io/github/stars/lh123aa/cortex?style=flat-square&logo=github" alt="Stars"></a>
+  <a href="https://glama.ai/mcp/servers/lh123aa/cortex"><img src="https://glama.ai/mcp/servers/lh123aa/cortex/badges/score.svg" alt="Glama score"></a>
 </p>
 
 <p align="center">
