@@ -156,6 +156,23 @@ Free 永久免费，功能不阉割，只限制文档数量。需要省时间的
 
 完整报告：[性能优化记录](docs/launch/05-performance-optimization.md) · [基准方法与边界](benchmarks/README.md)
 
+### 和同类产品的对账（对手的数字由第三方给出）
+
+| 项目 | 数字 | 条件 | 来源 |
+|---|---|---|---|
+| mem0 · LoCoMo（厂商自评） | 92.5% | managed platform，不是开源的那个 SDK | [mem0.ai/blog](https://mem0.ai/blog/ai-memory-benchmarks-in-2026) |
+| mem0 · LoCoMo（第三方复现） | **61.0% / 64.2%** | GPT-4o-mini / GPT-4.1-mini，按公开协议重跑 | [arXiv 2606.29778](https://arxiv.org/html/2606.29778v1) |
+| mem0 · 检索延迟 | Mean **1,089 ms** · P90 1,397 ms · P99 **4,637 ms** | NVIDIA H800，10 QPS | 同上，表 5 |
+| Zep · 检索延迟 | Mean 571.7 ms · P99 5,348.7 ms | 同上 | 同上 |
+| **Cortex · 端到端检索**（MCP 全链路，含向量 + BM25） | **45–54 ms** | 557 篇 / 3.1 MB，本机 Windows | [`bench/2026-11-19`](benchmarks/README.md) |
+| **Cortex · 引擎级 FTS** | **P50 0.43 ms** · P95 2.35 ms · P99 3.91 ms | 27,157 文档 / 84,562 分块，FTS-only | 上表 |
+
+> **口径提醒（必读，否则这张表就是误导）**
+> 1. Cortex 的 0.43 ms 是 **FTS-only 引擎内计时**，mem0 的 1,089 ms 是**服务端含语义检索的全链路**。这两个数**不能直接横比**。能横比的是 Cortex 的 **45–54 ms 端到端** 对 mem0 的 **1,089 ms**，约 20 倍。
+> 2. 我们**没有跑 LoCoMo / LongMemEval**，因此**不宣称准确率优于 mem0**。任何没有公开 benchmark 分数的「更准」，都是营销话术，包括我们的。
+> 3. Recall@1/5/10 = 1.000 是合成语料上的管线正确性验证，**不是语义质量分数**。
+> 4. mem0 的自评分数描述的是它的托管版；按它自己的文档，开源自托管版不含那些专有优化。这也是为什么同一套 LoCoMo 第三方重跑会差 28–31 个点。
+
 ---
 
 ## ✨ 核心能力
