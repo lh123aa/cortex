@@ -32,7 +32,12 @@ const EnvLicensePath = "CORTEX_LICENSE_PATH"
 
 // DefaultPricingURL is where users are pointed when they hit a quota or want to
 // upgrade their plan.
-const DefaultPricingURL = "https://github.com/lh123aa/cortex#pricing"
+const DefaultPricingURL = "https://cortex.qataroasis.cc/buy"
+
+// DefaultTrialURL is where users can get a free 14-day trial license. Quota
+// errors point here first: a trial costs the user nothing and unblocks the work
+// immediately, while a purchase decision usually takes longer.
+const DefaultTrialURL = "https://cortex.qataroasis.cc/trial"
 
 // PublicKeyHex is the hex-encoded Ed25519 public key used to verify licenses.
 //
@@ -157,7 +162,11 @@ func Limits(plan Plan) PlanLimits {
 	case PlanEnterprise:
 		return PlanLimits{Documents: -1, StorageBytes: -1}
 	default: // PlanFree and anything unknown
-		return PlanLimits{Documents: 5_000, StorageBytes: 1 * gib}
+		// 5k was too tight: a normal Obsidian vault or a mid-size code repo
+		// passes it on the first run, which made the first experience a quota
+		// error instead of a working index. 20k covers personal use and most
+		// small teams while keeping Pro (500k) clearly differentiated.
+		return PlanLimits{Documents: 20_000, StorageBytes: 4 * gib}
 	}
 }
 
@@ -178,7 +187,12 @@ func (e *QuotaError) Error() string {
 	case PlanTeam:
 		fmt.Fprintf(&b, ". Upgrade to Enterprise: %s", DefaultPricingURL)
 	default:
-		fmt.Fprintf(&b, ". Upgrade to Pro: %s", DefaultPricingURL)
+		// A Free-plan user hitting this is almost always a first run with a
+		// folder bigger than the quota. Give an immediate no-cost way forward
+		// (trial) before mentioning a purchase, and say plainly that nothing
+		// was written so the message is not mistaken for a partial failure.
+		fmt.Fprintf(&b, ". Nothing was indexed. Free plan allows %s. To continue: (1) index a smaller folder; (2) start a free 14-day trial: %s; (3) buy a license: %s",
+			formatQuotaValue(e.Resource, e.Limit), DefaultTrialURL, DefaultPricingURL)
 	}
 	return b.String()
 }

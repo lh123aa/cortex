@@ -4,7 +4,7 @@
   "display_name": "Cortex Local Memory",
   "version": "4.0.1",
   "description": "Local-first memory for Claude. One 33 MB Go binary, hybrid BM25 + vector retrieval in ~50 ms, no cloud, no Docker.",
-  "long_description": "Cortex indexes your notes, docs and code on device and returns ranked ~512-token passages instead of file paths. Hybrid search (BM25 + vector), incremental re-index, MCP stdio server. Free tier: 5,000 documents / 1 GiB. The bundle ships a small launcher that downloads the matching release binary on first run and verifies its SHA256.",
+  "long_description": "Cortex indexes your notes, docs and code on device and returns ranked ~512-token passages instead of file paths. Hybrid search (BM25 + vector), incremental re-index, MCP stdio server. Free tier: 20,000 documents / 4 GiB. The bundle ships a small launcher that downloads the matching release binary on first run and verifies its SHA256.",
   "author": {
     "name": "Hugh Li",
     "url": "https://cortex.qataroasis.cc"

@@ -6,7 +6,7 @@ One 33 MB Go binary, no Docker, no database, no cloud. Your notes never leave th
 - **~50 ms** end-to-end ranked retrieval (measured on 557 docs; [benchmark](https://dev.to/lh123aa/same-50-ms-as-ripgrep-but-it-returns-answers-benchmarking-a-local-memory-index-on-557-docs-3nj0))
 - Returns **ranked 512-token chunks**, not file paths
 - Indexes markdown, text, code, PDF, DOCX, HTML
-- Free tier: 5,000 documents / 1 GiB
+- Free tier: 20,000 documents / 4 GiB
 
 ## Run
 

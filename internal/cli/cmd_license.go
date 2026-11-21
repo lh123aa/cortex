@@ -75,7 +75,8 @@ func newLicenseStatusCmd() *cobra.Command {
 				fmt.Println("  License:   not activated")
 				fmt.Printf("  Path:      %s (missing)\n", path)
 				fmt.Println()
-				fmt.Println("  Limits:    5,000 documents · 1.0 GB storage")
+				lim := license.Limits(license.PlanFree)
+				fmt.Printf("  Limits:    %s documents · %s storage\n", formatCount(lim.Documents), formatBytes(lim.StorageBytes))
 				fmt.Printf("\n  Upgrade:   %s\n", pricingURL)
 				fmt.Println("  Activate:  cortex license activate <license-key>")
 				return nil

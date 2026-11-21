@@ -224,11 +224,11 @@ func TestLimitsTable(t *testing.T) {
 		plan Plan
 		docs int64
 	}{
-		{PlanFree, 5_000},
+		{PlanFree, 20_000},
 		{PlanPro, 500_000},
 		{PlanTeam, 1_000_000},
 		{PlanEnterprise, -1},
-		{Plan("unknown"), 5_000}, // 未知按 Free
+		{Plan("unknown"), 20_000}, // 未知按 Free
 	}
 	for _, c := range cases {
 		if got := Limits(c.plan).Documents; got != c.docs {
@@ -242,7 +242,7 @@ func TestCheckQuota(t *testing.T) {
 	if err := CheckQuota(free, 100, 1024); err != nil {
 		t.Fatalf("under free limits should pass: %v", err)
 	}
-	err := CheckQuota(free, 5_000, 0)
+	err := CheckQuota(free, 20_000, 0)
 	if err == nil {
 		t.Fatal("reaching document limit should fail")
 	}
@@ -255,7 +255,7 @@ func TestCheckQuota(t *testing.T) {
 		t.Fatalf("enterprise should be unlimited: %v", err)
 	}
 
-	if err := CheckQuota(nil, 10_000, 0); err == nil {
+	if err := CheckQuota(nil, 25_000, 0); err == nil {
 		t.Fatal("nil license should be treated as free and exceed limit")
 	}
 }
